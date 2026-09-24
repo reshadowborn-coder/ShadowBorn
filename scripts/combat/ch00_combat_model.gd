@@ -121,6 +121,24 @@ func step(action: String) -> Dictionary:
 		shadow["veil"] = true
 		shadow["a2_cd"] = A2_COOLDOWN
 
+	var post_action_shadow := {
+		"hp": float(shadow.get("hp",0.0)),
+		"max_hp": float(shadow.get("max_hp",0.0)),
+		"atk": float(shadow.get("atk",SHADOW_ATK)),
+		"def": float(shadow.get("def",SHADOW_DEF)),
+		"a2_cd": int(shadow.get("a2_cd",0)),
+		"fray": bool(shadow.get("fray",false)),
+		"veil": veil_strength if bool(shadow.get("veil",false)) else 0.0
+	}
+	var post_action_enemy := {
+		"hp": float(enemy.get("hp",0.0)),
+		"max_hp": float(enemy.get("max_hp",0.0)),
+		"atk": float(enemy.get("atk",0.0)),
+		"def": float(enemy.get("def",0.0)),
+		"guard": guard,
+		"intent": "RUSH PREP" if visible_state == "RUSH_PREP_VISIBLE" else ""
+	}
+
 	var enemy_action := "NONE"
 	var incoming := 0.0
 	var veil_prevented := 0.0
@@ -166,7 +184,9 @@ func step(action: String) -> Dictionary:
 		"a2_cd_after": int(shadow["a2_cd"]),
 		"fray_after": bool(shadow["fray"]),
 		"veil_after": bool(shadow["veil"]),
-		"terminal": terminal
+		"terminal": terminal,
+		"post_action_shadow": post_action_shadow,
+		"post_action_enemy": post_action_enemy
 	}
 
 static func _profile(script_id: String) -> Dictionary:
