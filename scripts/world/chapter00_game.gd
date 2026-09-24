@@ -21,6 +21,7 @@ var act0_flow := Act0Orchestrator.new()
 @onready var room5_combat:MultiEnemyEncounter=$Room5Combat
 @onready var room5_hud:MultiTargetHUD=$MultiTargetHUD
 var room5_active := false
+var room5_solo_attempt := false
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
@@ -33,6 +34,7 @@ func _ready() -> void:
 	act0_flow.companion_ready.connect(_on_companion_ready)
 	room5_combat.finished.connect(_on_room5_finished)
 	room5_combat.failed.connect(_on_room5_failed)
+	room5_combat.solo_limit_reached.connect(_on_room5_solo_limit)
 	room5_combat.state_changed.connect(room5_hud.render)
 	room5_hud.target_selected.connect(room5_select_target)
 	room5_hud.skill_pressed.connect(room5_action)
@@ -199,23 +201,33 @@ func choose_covenant_weapon(family:String) -> bool:
 
 func enter_catacomb_room(room:int) -> void:
 	if room!=catacombs.room:return
-	if room==5 and not catacombs.summon_unlocked:
-		if act0_flow.room5_first_contact():
-			checkpoint_position=Vector3(0,0.9,-96); shadow.global_position=checkpoint_position
-			director.set_checkpoint("room5_return"); _save_progress()
-		return
 	var enemies:=CatacombEncounterPlan.enemies(room)
-	if enemies.size()==1: begin_encounter(str(enemies[0].id),enemies[0])
+	if room==5 and not catacombs.summon_unlocked:
+		_start_room5_solo_attempt(enemies)
+		return
+	if enemies.size()==1:
+		begin_encounter(str(enemies[0].id),enemies[0])
 	elif room==5 and catacombs.summon_unlocked and catacombs.rematch_ready:
 		_start_room5_rematch(enemies)
 
 
-func _start_room5_rematch(enemies:Array) -> void:
-	if room5_active:return
+func _start_room5_solo_attempt(enemies:Array)->void:
+	if room5_active:
+		return
 	room5_active=true
+	room5_solo_attempt=true
 	shadow.set_physics_process(false)
 	room5_hud.open()
-	room5_combat.start(enemies,true)
+	room5_combat.start(enemies,false,true)
+
+func _start_room5_rematch(enemies:Array) -> void:
+	if room5_active:
+		return
+	room5_active=true
+	room5_solo_attempt=false
+	shadow.set_physics_process(false)
+	room5_hud.open()
+	room5_combat.start(enemies,true,false)
 
 func room5_select_target(index:int) -> void:
 	if room5_active:room5_combat.select_target(index)
@@ -226,13 +238,32 @@ func room5_action(skill:String) -> void:
 func _on_room5_finished() -> void:
 	room5_hud.close()
 	room5_active=false
+	room5_solo_attempt=false
 	act0_flow.room_cleared(5)
 	director.set_checkpoint("act0_complete")
 	checkpoint_position=shadow.global_position
 	shadow.set_physics_process(true)
 	_save_progress()
 
+func _on_room5_solo_limit()->void:
+	_resolve_room5_solo_limit()
+
+func _resolve_room5_solo_limit()->void:
+	room5_hud.close()
+	room5_active=false
+	room5_solo_attempt=false
+	if act0_flow.room5_first_contact():
+		checkpoint_position=Vector3(0,0.9,-96)
+		shadow.global_position=checkpoint_position
+		shadow.velocity=Vector3.ZERO
+		director.set_checkpoint("room5_return")
+	shadow.set_physics_process(true)
+	_save_progress()
+
 func _on_room5_failed() -> void:
+	if room5_solo_attempt:
+		_resolve_room5_solo_limit()
+		return
 	room5_hud.close()
 	room5_active=false
 	shadow.global_position=checkpoint_position
