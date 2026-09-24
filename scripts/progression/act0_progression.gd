@@ -20,7 +20,7 @@ var forged_item:={}
 var first_forge_done:=false
 
 func restore(state:Dictionary)->void:
-	stage=str(state.get("act0_stage","temple_entry"))
+	stage=str(state.get("act0_stage","exterior"))
 	covenant_joined=bool(state.get("covenant_joined",false))
 	weapon_family=str(state.get("weapon_family",""))
 	silver=int(state.get("silver",0))
