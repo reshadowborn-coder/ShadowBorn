@@ -17,6 +17,7 @@ var checkpoint_position := Vector3(0,0.9,8)
 var active_enemy_visual: Node3D
 var cleared_encounters: Array[String] = []
 var performance_mode := "smooth60"
+var reduced_motion:=false
 var act0 := Act0Progression.new()
 var catacombs := CatacombProgression.new()
 var team := TeamState.new()
@@ -61,6 +62,7 @@ func _ready() -> void:
 	encounter.encounter_failed.connect(_on_failed)
 	settings_button.pressed.connect(_open_settings)
 	settings_menu.performance_mode_changed.connect(_on_performance_mode_changed)
+	settings_menu.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	call_deferred("_apply_cleared_visuals")
 
 func _restore_save() -> void:
@@ -72,22 +74,33 @@ func _restore_save() -> void:
 	shadow.global_position = checkpoint_position
 	cleared_encounters.assign(state.cleared_encounters)
 	performance_mode = str(state.performance_mode)
+	reduced_motion=bool(state.get("reduced_motion",false))
 	_apply_performance_mode()
+	_apply_presentation_settings()
 
 func _apply_performance_mode() -> void:
 	Engine.max_fps = 30 if performance_mode == "battery30" else 60
 
 func _open_settings() -> void:
-	settings_menu.open(performance_mode)
+	settings_menu.open(performance_mode,reduced_motion)
 
 func _on_performance_mode_changed(mode: String) -> void:
 	performance_mode = mode
 	_apply_performance_mode()
 	_save_progress()
 
+func _on_reduced_motion_changed(value:bool)->void:
+	reduced_motion=value
+	_apply_presentation_settings()
+	_save_progress()
+
+func _apply_presentation_settings()->void:
+	camera_rig.set_reduced_motion(reduced_motion)
+	presenter.set_reduced_motion(reduced_motion)
+
 func _build_save_state()->Dictionary:
 	var state := SaveManager.load_state()
-	state.merge({"version":SaveManager.SAVE_VERSION,"checkpoint":director.checkpoint,"route_index":director.route_index,"checkpoint_position":[checkpoint_position.x,checkpoint_position.y,checkpoint_position.z],"cleared_encounters":cleared_encounters,"performance_mode":performance_mode}, true)
+	state.merge({"version":SaveManager.SAVE_VERSION,"checkpoint":director.checkpoint,"route_index":director.route_index,"checkpoint_position":[checkpoint_position.x,checkpoint_position.y,checkpoint_position.z],"cleared_encounters":cleared_encounters,"performance_mode":performance_mode,"reduced_motion":reduced_motion}, true)
 	var temple_state:=act0.snapshot()
 	var cat_state:=catacombs.snapshot()
 	for k in temple_state:
@@ -204,9 +217,10 @@ func play_world_reveal(id: String) -> void:
 	mobile_controls.set_enabled(false)
 	shadow.set_physics_process(false)
 	camera_rig.enter_reveal(Vector3(0, 5.5, -70.0))
-	await get_tree().create_timer(1.65).timeout
+	await get_tree().create_timer(0.45 if reduced_motion else 1.65).timeout
 	camera_rig.exit_reveal()
-	await get_tree().create_timer(0.35).timeout
+	if not reduced_motion:
+		await get_tree().create_timer(0.35).timeout
 	shadow.set_physics_process(true)
 	_refresh_navigation()
 
