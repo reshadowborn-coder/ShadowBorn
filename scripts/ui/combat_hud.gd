@@ -38,6 +38,8 @@ func render_state(state: Dictionary) -> void:
 	a2_button.text = "A2  "+a2_name.to_upper() if cd <= 0 else "A2  %s  [CD %d]"%[a2_name.to_upper(),cd]
 	var states: Array[String] = []
 	if e.get("guard",false): states.append("GUARD")
+	var intent := str(e.get("intent",""))
+	if not intent.is_empty(): states.append(intent.to_upper())
 	if s.get("veil",0.0) > 0.0: states.append("VEIL")
 	if s.get("fray",false): states.append("FRAY")
 	state_label.text = "  •  ".join(states)
