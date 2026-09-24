@@ -14,3 +14,8 @@ The suite checks the highest-risk deterministic rules that should not regress:
 - combat damage math remains deterministic.
 
 Runtime execution is still required on a machine/device with Godot 4 installed.
+
+
+## CI
+
+Every push to `main` now downloads Godot 4.4.1 on Ubuntu, parses/imports the project headlessly, and runs this suite. This catches GDScript/parser and deterministic state regressions before a mobile device pass.
