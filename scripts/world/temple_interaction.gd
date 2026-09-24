@@ -1,6 +1,6 @@
 class_name TempleInteraction
 extends Area3D
-@export_enum("keeper","covenant","smith","catacombs") var interaction:="keeper"
+@export_enum("keeper","covenant","smith","merchant","engraver","catacombs") var interaction:="keeper"
 var used:=false
 func _ready()->void: body_entered.connect(_enter)
 func _enter(body:Node)->void:
