@@ -5,6 +5,7 @@ const STONE:=Color(.135,.14,.145)
 const FLOOR:=Color(.085,.09,.095)
 const BONE:=Color(.43,.41,.36)
 var mats:={}
+var meshes:={}
 
 func _ready()->void:
 	_build()
@@ -19,13 +20,20 @@ func mat(c:Color)->StandardMaterial3D:
 	mats[k]=m
 	return m
 
-func box(n:String,p:Vector3,s:Vector3,c:Color=STONE,parent:Node3D=self)->MeshInstance3D:
-	var x:=MeshInstance3D.new()
-	x.name=n
+func _mesh(s:Vector3,c:Color)->BoxMesh:
+	var key:=str(s)+"|"+str(c)
+	if meshes.has(key):
+		return meshes[key]
 	var mesh:=BoxMesh.new()
 	mesh.size=s
 	mesh.material=mat(c)
-	x.mesh=mesh
+	meshes[key]=mesh
+	return mesh
+
+func box(n:String,p:Vector3,s:Vector3,c:Color=STONE,parent:Node3D=self)->MeshInstance3D:
+	var x:=MeshInstance3D.new()
+	x.name=n
+	x.mesh=_mesh(s,c)
 	x.position=p
 	parent.add_child(x)
 	return x
@@ -55,7 +63,7 @@ func _build()->void:
 
 	for i in range(5):
 		var z:=-122.0-float(i)*13.0
-		box("Room%02dFloor"%(i+1),Vector3(0,-.2,z),Vector3(12,.4,11),FLOOR,visual)
+		solid_box("Room%02dFloor"%(i+1),Vector3(0,-.2,z),Vector3(12,.4,11),FLOOR,visual,collision)
 		solid_box("Room%02dWallL"%(i+1),Vector3(-6,2.2,z),Vector3(.7,4.4,11),STONE,visual,collision)
 		solid_box("Room%02dWallR"%(i+1),Vector3(6,2.2,z),Vector3(.7,4.4,11),STONE,visual,collision)
 		solid_box("Room%02dArchL"%(i+1),Vector3(-2.8,2.2,z-5.4),Vector3(.8,4.4,.8),STONE,visual,collision)
