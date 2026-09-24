@@ -25,6 +25,7 @@ func _test_temple_progression()->void:
 	var state:=SaveManager.default_state()
 	_check(int(state.silver)==0,"new game starts with zero Silver")
 	_check(str(state.act0_stage)=="exterior","new game starts in exterior stage")
+	_check(not bool(state.reduced_motion),"Reduced Motion defaults off without affecting gameplay")
 
 	var p:=Act0Progression.new()
 	p.restore(state)
