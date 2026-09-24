@@ -4,7 +4,7 @@ extends Node
 const SAVE_PATH := "user://chapter00_save.json"
 const TMP_PATH := SAVE_PATH + ".tmp"
 const BAK_PATH := SAVE_PATH + ".bak"
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 
 static func default_state() -> Dictionary:
 	return {
