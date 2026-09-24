@@ -58,6 +58,7 @@ func _ready() -> void:
 	encounter.combat_state_changed.connect(_on_combat_state)
 	encounter.shadow_attack_presented.connect(presenter.play_shadow_attack)
 	encounter.enemy_attack_presented.connect(presenter.play_enemy_attack)
+	encounter.enemy_beat_presented.connect(presenter.play_enemy_beat)
 	encounter.encounter_finished.connect(_on_finished)
 	encounter.encounter_failed.connect(_on_failed)
 	settings_button.pressed.connect(_open_settings)
