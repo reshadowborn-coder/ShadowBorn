@@ -207,3 +207,7 @@ metadata/family = "mage_staff"
 position = Vector2(550,500)
 size = Vector2(450,75)
 text = "CONFIRM WEAPON"
+[node name="Cancel" type="Button" parent="Game/CovenantMenu/Panel"]
+position = Vector2(550,590)
+size = Vector2(450,65)
+text = "BACK"
