@@ -20,38 +20,48 @@ func reset_shadow() -> void:
 func start_encounter(id: String, profile: Dictionary) -> void:
 	if active:
 		return
-	# Each authored encounter is a discrete battle. Reset here so retry,
-	# process restart, and uninterrupted play begin from the same HP/state.
+	# Every authored encounter is a discrete battle. This keeps uninterrupted
+	# play, death/retry, and process-restart semantics identical.
 	reset_shadow()
 	encounter_id = id
 	enemy = profile.duplicate(true)
 	enemy.max_hp = enemy.get("hp", 10.0)
 	active = true
 	action_locked = false
-	if id == "shield_boss":
+	if bool(enemy.get("guard",false)):
 		enemy.guard = true
 		enemy.guard_phase = "brace"
 	emit_signal("encounter_started", id)
 	_emit_state()
 
 func shadow_action(skill: String) -> void:
-	if not active or action_locked: return
-	if skill == "A2" and shadow.a2_cd > 0: return
+	if not active or action_locked:
+		return
+	if skill == "A2" and shadow.a2_cd > 0:
+		return
+
 	action_locked = true
+	_emit_state()
+
 	var result: Dictionary
-	var guarded := enemy.get("guard", false)
+	var guarded := bool(enemy.get("guard", false))
 	if skill == "A2":
 		result = CombatResolver.resolve_a2(shadow, enemy)
-		shadow.a2_cd = result.cooldown + 1
-		shadow.veil = result.veil
+		shadow.a2_cd = int(result.cooldown) + 1
+		shadow.veil = float(result.veil)
 	else:
 		result = CombatResolver.resolve_a1(shadow, enemy)
 		shadow.fray = true
+
 	emit_signal("shadow_attack_presented", skill, result.damage, guarded)
 	await get_tree().create_timer(0.34).timeout
-	if not active: return
-	enemy.hp -= result.damage
+	if not active:
+		action_locked=false
+		return
+
+	enemy.hp -= float(result.damage)
 	_emit_state()
+
 	if enemy.hp <= 0.0:
 		await get_tree().create_timer(0.28).timeout
 		active = false
@@ -59,26 +69,35 @@ func shadow_action(skill: String) -> void:
 		emit_signal("encounter_finished", encounter_id)
 		_emit_state()
 		return
+
 	await get_tree().create_timer(0.18).timeout
 	var incoming := _prepare_enemy_turn()
 	emit_signal("enemy_attack_presented", incoming)
 	await get_tree().create_timer(0.30).timeout
-	if not active: return
+	if not active:
+		action_locked=false
+		return
+
 	shadow.hp -= incoming
-	if shadow.a2_cd > 0: shadow.a2_cd -= 1
+	if shadow.a2_cd > 0:
+		shadow.a2_cd -= 1
+
 	if shadow.hp <= 0.0:
 		active = false
 		action_locked = false
+		_emit_state()
 		emit_signal("encounter_failed", encounter_id)
-	_emit_state()
+		return
+
 	action_locked = false
+	_emit_state()
 
 func _prepare_enemy_turn() -> float:
 	var incoming: float = enemy.get("damage", 2.0)
 	if shadow.veil > 0.0:
 		incoming *= (1.0 - shadow.veil)
 		shadow.veil = 0.0
-	if encounter_id == "shield_boss" and enemy.get("guard_phase", "") == "brace":
+	if enemy.get("guard_phase", "") == "brace":
 		enemy.guard = false
 		enemy.guard_phase = "open"
 	return incoming
