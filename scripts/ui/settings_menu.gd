@@ -2,6 +2,8 @@ class_name SettingsMenu
 extends CanvasLayer
 
 signal performance_mode_changed(mode: String)
+signal menu_opened
+signal menu_closed
 
 @onready var panel: Panel = $Panel
 @onready var mode_label: Label = $Panel/Mode
@@ -22,9 +24,13 @@ func open(mode: String) -> void:
 	current_mode = mode
 	_refresh()
 	panel.visible = true
+	menu_opened.emit()
 
 func close() -> void:
+	if not panel.visible:
+		return
 	panel.visible = false
+	menu_closed.emit()
 
 func _choose(mode: String) -> void:
 	current_mode = mode
