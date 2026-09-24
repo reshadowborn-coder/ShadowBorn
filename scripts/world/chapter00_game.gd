@@ -33,6 +33,7 @@ func _ready() -> void:
 	var persisted := SaveManager.load_state()
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
 	act0_flow.restore(persisted); team.restore(persisted)
+	_apply_identity_state(persisted)
 	_apply_equipment_state()
 	_restore_act0_position()
 	act0_flow.companion_ready.connect(_on_companion_ready)
@@ -431,3 +432,7 @@ func _on_combat_skill_requested(skill:String)->void:
 	if _ui_modal_open():
 		return
 	encounter.shadow_action(skill)
+
+
+func _apply_identity_state(state:Dictionary)->void:
+	shadow_proxy.set_identity(str(state.get("shadow_identity","male")))
