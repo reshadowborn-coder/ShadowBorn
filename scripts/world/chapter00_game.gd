@@ -12,6 +12,7 @@ extends Node
 @onready var covenant_menu:CovenantMenu=$CovenantMenu
 @onready var mobile_controls:MobileControls=$MobileControls
 @onready var shadow_proxy:ShadowProxy=get_parent().get_node("Shadow/ShadowProxy")
+@onready var story_toast:StoryToast=$StoryToast
 var checkpoint_position := Vector3(0,0.9,8)
 var active_enemy_visual: Node3D
 var cleared_encounters: Array[String] = []
@@ -220,17 +221,34 @@ func temple_interact(kind:String) -> void:
 	match kind:
 		"keeper":
 			if act0.stage=="temple_entry" and act0.join_covenant():
+				story_toast.show_message("Keeper: The dead do not fear the dark. Only what wakes inside it. Bind your shape to the Forgotten Covenant.")
 				_save_progress()
 			elif act0.stage=="room5_return" and act0_flow.temple_story_handoff():
+				story_toast.show_message("Keeper: One shadow has found its limit. Call the one who still answers beneath the stone.")
 				_save_progress()
 		"covenant":
-			if act0.covenant_joined and act0.weapon_family.is_empty(): covenant_menu.open()
+			if act0.covenant_joined and act0.weapon_family.is_empty():
+				covenant_menu.open()
+			elif not act0.covenant_joined:
+				story_toast.show_message("The Covenant stone is silent. The Keeper has not named you yet.")
 		"smith":
 			if act0.stage=="first_forge":
-				_commit_first_forge_transaction()
+				if _commit_first_forge_transaction():
+					story_toast.show_message("Smith: Silver remembers heat. Your chosen form has an edge now.")
+			elif not act0.first_forge_done:
+				story_toast.show_message("The forge waits for a Covenant weapon and one piece of Silver.")
+		"merchant":
+			story_toast.show_message("Merchant: The shelves are nearly bare. Trade opens after the first descent.")
+		"engraver":
+			story_toast.show_message("The engraver's stones are dormant. Runes will answer later.")
 		"catacombs":
 			if act0_flow.enter_catacombs():
-				checkpoint_position=Vector3(0,0.9,-117); shadow.global_position=checkpoint_position; _save_progress()
+				checkpoint_position=Vector3(0,0.9,-117)
+				shadow.global_position=checkpoint_position
+				story_toast.show_message("The lower passage opens. The air below carries old bone-dust.")
+				_save_progress()
+			else:
+				story_toast.show_message("The passage does not answer an unbound, unforged shadow.")
 
 func choose_covenant_weapon(family:String) -> bool:
 	var ok:=act0.choose_weapon(family)
@@ -342,6 +360,7 @@ func _on_room5_finished() -> void:
 	_show_room5_visuals(false)
 	director.set_checkpoint("act0_complete")
 	checkpoint_position=shadow.global_position
+	story_toast.show_message("The seal yields. The Cradle of Shadows is behind you.",4.2)
 	shadow.set_physics_process(true)
 	_refresh_navigation()
 	_save_progress()
@@ -361,6 +380,7 @@ func _resolve_room5_solo_limit()->void:
 		shadow.global_position=checkpoint_position
 		shadow.velocity=Vector3.ZERO
 		director.set_checkpoint("room5_return")
+		story_toast.show_message("One shadow was not enough. Return to the Keeper.")
 	shadow.set_physics_process(true)
 	_refresh_navigation()
 	_save_progress()
@@ -392,8 +412,9 @@ func _catacomb_room_for_encounter(id:String)->int:
 	return 0
 
 
-func _on_companion_ready(_profile:Dictionary)->void:
+func _on_companion_ready(profile:Dictionary)->void:
 	team.unlock_story_slot()
+	story_toast.show_message("%s answers the call. A second formation slot is now active."%str(profile.get("name","A forgotten guardian")))
 	# Keep the player in the Temple after the story handoff instead of
 	# teleporting straight back to the Catacombs.
 	checkpoint_position=shadow.global_position
