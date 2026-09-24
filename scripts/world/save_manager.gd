@@ -84,11 +84,44 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	for key in raw.keys():
 		state[key] = raw[key]
 	state.version = SAVE_VERSION
+
 	if typeof(state.get("cleared_encounters")) != TYPE_ARRAY:
 		state.cleared_encounters = []
 	if typeof(state.get("checkpoint_position")) != TYPE_ARRAY or state.checkpoint_position.size() != 3:
 		state.checkpoint_position = [0.0,0.9,8.0]
+
 	state.route_index = clampi(int(state.get("route_index",0)),0,Chapter00Director.ROUTE.size()-1)
+	state.silver = maxi(0,int(state.get("silver",0)))
+	state.catacomb_room = clampi(int(state.get("catacomb_room",0)),0,5)
+
+	var mode:=str(state.get("performance_mode","smooth60"))
+	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
+
+	var valid_stages:=["exterior","temple_entry","weapon_choice","first_forge","catacombs","room5_return","room5_rematch","act0_complete"]
+	if str(state.get("act0_stage","exterior")) not in valid_stages:
+		state.act0_stage="exterior"
+
+	var family:=str(state.get("weapon_family",""))
+	if not family.is_empty() and not Act0Progression.WEAPONS.has(family):
+		state.weapon_family=""
+		state.forged_item={}
+		state.first_forge_done=false
+
+	if bool(state.get("first_forge_done",false)):
+		var item=state.get("forged_item",{})
+		if typeof(item)!=TYPE_DICTIONARY or str(item.get("family",""))!=str(state.weapon_family):
+			state.first_forge_done=false
+			state.forged_item={}
+			if bool(state.get("covenant_joined",false)) and not str(state.weapon_family).is_empty():
+				state.act0_stage="first_forge"
+
+	if bool(state.get("act0_complete",false)):
+		state.room5_solo_limit_seen=true
+		state.story_summon_unlocked=true
+		state.room5_rematch_ready=true
+		state.catacomb_room=5
+		state.act0_stage="act0_complete"
+
 	return state
 
 func patch_and_save(patch:Dictionary)->bool:
