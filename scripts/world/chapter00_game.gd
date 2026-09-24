@@ -318,7 +318,7 @@ func _start_room5_rematch(enemies:Array) -> void:
 	room5_combat.start(enemies,true,false)
 
 func room5_select_target(index:int) -> void:
-	if room5_active:
+	if room5_active and not _ui_modal_open():
 		room5_combat.select_target(index)
 		_set_room5_target_visual(index)
 
@@ -333,6 +333,7 @@ func _on_room5_finished() -> void:
 	camera_rig.exit_combat()
 	if not act0_flow.room_cleared(5):
 		shadow.set_physics_process(true)
+		_refresh_navigation()
 		return
 	for id in ["cat_r5_skeleton_a","cat_r5_skeleton_b"]:
 		if id not in cleared_encounters:
@@ -360,6 +361,7 @@ func _resolve_room5_solo_limit()->void:
 		shadow.velocity=Vector3.ZERO
 		director.set_checkpoint("room5_return")
 	shadow.set_physics_process(true)
+	_refresh_navigation()
 	_save_progress()
 
 func _on_room5_failed() -> void:
