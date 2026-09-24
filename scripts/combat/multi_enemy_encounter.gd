@@ -73,7 +73,12 @@ func shadow_action(skill:String)->void:
 		state_mult*=guard_mult
 
 	var damage:=CombatResolver.damage(8.0,coeff,float(e.def),state_mult)
-	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
+	var next_hp:=maxf(0.0,float(e.current_hp)-damage)
+	# The first Room 5 encounter is an authored tutorial limit, not a hidden
+	# DPS check. Keep enemies non-lethal until the story beat resolves.
+	if solo_limit_mode:
+		next_hp=maxf(1.0,next_hp)
+	e.current_hp=next_hp
 	enemies[selected]=e
 
 	if companion_active and not _all_dead():
