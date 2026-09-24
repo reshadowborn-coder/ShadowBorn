@@ -39,6 +39,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ch00_combat_fixture_tests.gd 2>&1 | tee /tmp/ch00-combat-fixtures.log
           ! grep -q "SCRIPT ERROR:" /tmp/ch00-combat-fixtures.log
 
+      - name: Run pre-Temple playable adapter tests
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/ch00_pretemple_controller_tests.gd 2>&1 | tee /tmp/ch00-pretemple-controller.log
+          ! grep -q "SCRIPT ERROR:" /tmp/ch00-pretemple-controller.log
+
       - name: Run Act 0 scene smoke
         run: |
           set -o pipefail
