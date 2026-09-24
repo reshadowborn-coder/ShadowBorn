@@ -6,13 +6,16 @@ const CHAPTER_SCENE := "res://scenes/chapter00/chapter00_graybox.tscn"
 var main_panel:Panel
 var identity_panel:Panel
 var continue_button:Button
+var confirm_panel:Panel
 var identity_mode:="new"
+var pending_identity:=""
 
 func _ready()->void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_background()
 	_build_main()
 	_build_identity()
+	_build_replace_confirm()
 	_refresh_continue()
 
 func _build_background()->void:
@@ -153,6 +156,72 @@ func _close_identity()->void:
 	_refresh_continue()
 
 func _confirm_identity(identity:String)->void:
+	if identity_mode=="new" and SaveManager.has_save():
+		pending_identity=identity
+		identity_panel.visible=false
+		confirm_panel.visible=true
+		return
+	_commit_identity(identity)
+
+
+func _build_replace_confirm()->void:
+	confirm_panel=_panel(Vector2(620,300))
+	confirm_panel.visible=false
+
+	var header:=Label.new()
+	header.text="REPLACE CURRENT SAVE?"
+	header.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	header.position=Vector2(40,35)
+	header.size=Vector2(540,45)
+	header.add_theme_font_size_override("font_size",24)
+	confirm_panel.add_child(header)
+
+	var body:=Label.new()
+	body.text="Your current Act 0 progress will be replaced. This cannot be undone from the game menu."
+	body.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	body.position=Vector2(55,95)
+	body.size=Vector2(510,70)
+	confirm_panel.add_child(body)
+
+	var replace:=Button.new()
+	replace.text="REPLACE SAVE"
+	replace.position=Vector2(55,195)
+	replace.size=Vector2(240,62)
+	replace.focus_mode=Control.FOCUS_NONE
+	replace.pressed.connect(_replace_confirmed)
+	confirm_panel.add_child(replace)
+
+	var cancel:=Button.new()
+	cancel.text="CANCEL"
+	cancel.position=Vector2(325,195)
+	cancel.size=Vector2(240,62)
+	cancel.focus_mode=Control.FOCUS_NONE
+	cancel.pressed.connect(_cancel_replace)
+	confirm_panel.add_child(cancel)
+
+func _replace_confirmed()->void:
+	if pending_identity.is_empty():
+		return
+	var identity:=pending_identity
+	pending_identity=""
+	_commit_identity(identity)
+
+func _cancel_replace()->void:
+	pending_identity=""
+	confirm_panel.visible=false
+	identity_panel.visible=true
+
+func _commit_identity(identity:String)->void:
 	var ok:=SaveManager.create_new_game(identity) if identity_mode=="new" else SaveManager.set_identity_on_existing_save(identity)
 	if ok:
 		get_tree().change_scene_to_file(CHAPTER_SCENE)
+
+func _unhandled_input(event:InputEvent)->void:
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	if confirm_panel.visible:
+		_cancel_replace()
+	elif identity_panel.visible:
+		_close_identity()
+	get_viewport().set_input_as_handled()
