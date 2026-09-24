@@ -13,10 +13,19 @@ var checkpoint_position := Vector3(0,0.9,8)
 var active_enemy_visual: Node3D
 var cleared_encounters: Array[String] = []
 var performance_mode := "smooth60"
+var act0 := Act0Progression.new()
+var catacombs := CatacombProgression.new()
+var team := TeamState.new()
+var act0_flow := Act0Orchestrator.new()
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
+	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow)
 	_restore_save()
+	var persisted := SaveManager.load_state()
+	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
+	act0_flow.restore(persisted); team.restore(persisted)
+	act0_flow.companion_ready.connect(func(_profile): team.unlock_story_slot())
 	encounter.reset_shadow()
 	hud.skill_pressed.connect(encounter.shadow_action)
 	encounter.encounter_started.connect(_on_started)
@@ -53,7 +62,11 @@ func _on_performance_mode_changed(mode: String) -> void:
 	_save_progress()
 
 func _save_progress() -> void:
-	SaveManager.save_state({"version":SaveManager.SAVE_VERSION,"checkpoint":director.checkpoint,"route_index":director.route_index,"checkpoint_position":[checkpoint_position.x,checkpoint_position.y,checkpoint_position.z],"cleared_encounters":cleared_encounters,"performance_mode":performance_mode})
+	var state := SaveManager.load_state()
+	state.merge({"version":SaveManager.SAVE_VERSION,"checkpoint":director.checkpoint,"route_index":director.route_index,"checkpoint_position":[checkpoint_position.x,checkpoint_position.y,checkpoint_position.z],"cleared_encounters":cleared_encounters,"performance_mode":performance_mode}, true)
+	for k in act0.snapshot(): state[k]=act0.snapshot()[k]
+	for k in catacombs.snapshot(): state[k]=catacombs.snapshot()[k]
+	SaveManager.save_state(state)
 
 func is_encounter_cleared(id: String) -> bool:
 	return id in cleared_encounters
@@ -119,3 +132,36 @@ func play_world_reveal(id: String) -> void:
 	camera_rig.exit_reveal()
 	await get_tree().create_timer(0.35).timeout
 	shadow.set_physics_process(true)
+
+
+func enter_temple() -> void:
+	if not is_encounter_cleared("shield_boss"): return
+	act0.stage="temple_entry"; checkpoint_position=Vector3(0,0.9,-78); shadow.global_position=checkpoint_position
+	director.set_checkpoint("temple_entry"); _save_progress()
+
+func temple_interact(kind:String) -> void:
+	match kind:
+		"keeper":
+			if act0.stage=="temple_entry": act0.join_covenant(); _save_progress()
+			elif act0.stage=="room5_return": act0_flow.temple_story_handoff(); _save_progress()
+		"smith":
+			if act0.stage=="first_forge" and act0.commit_first_forge(): _save_progress()
+		"catacombs":
+			if act0_flow.enter_catacombs():
+				checkpoint_position=Vector3(0,0.9,-117); shadow.global_position=checkpoint_position; _save_progress()
+
+func choose_covenant_weapon(family:String) -> bool:
+	var ok:=act0.choose_weapon(family)
+	if ok:_save_progress()
+	return ok
+
+func enter_catacomb_room(room:int) -> void:
+	if room!=catacombs.room:return
+	if room==5 and not catacombs.summon_unlocked:
+		if act0_flow.room5_first_contact():
+			checkpoint_position=Vector3(0,0.9,-96); shadow.global_position=checkpoint_position
+			director.set_checkpoint("room5_return"); _save_progress()
+		return
+	var enemies:=CatacombEncounterPlan.enemies(room)
+	if enemies.size()==1: begin_encounter(str(enemies[0].id),enemies[0])
+	# Room 5 rematch requires the multi-enemy combat layer; progression remains locked until that resolves.
