@@ -7,13 +7,14 @@ signal skill_pressed(skill:String)
 @onready var target_a:Button=$Panel/TargetA
 @onready var target_b:Button=$Panel/TargetB
 @onready var state:Label=$Panel/State
+@onready var a1:Button=$Panel/A1
 @onready var a2:Button=$Panel/A2
 
 func _ready()->void:
 	hide()
 	target_a.pressed.connect(func():target_selected.emit(0))
 	target_b.pressed.connect(func():target_selected.emit(1))
-	$Panel/A1.pressed.connect(func():skill_pressed.emit("A1"))
+	a1.pressed.connect(func():skill_pressed.emit("A1"))
 	a2.pressed.connect(func():skill_pressed.emit("A2"))
 
 func open()->void:
@@ -38,9 +39,10 @@ func render(data:Dictionary)->void:
 
 	if bool(data.get("limit_reached",false)):
 		state.text="THE SHADOW CANNOT HOLD — RETREAT"
-		$Panel/A1.disabled=true
+		a1.disabled=true
 		a2.disabled=true
 		return
+	a1.disabled=false
 	var suffix:=""
 	if bool(data.get("companion_active",false)):
 		suffix="  |  ALLY ACTIVE"
