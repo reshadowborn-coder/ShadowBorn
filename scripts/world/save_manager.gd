@@ -2,7 +2,7 @@ class_name SaveManager
 extends Node
 
 const SAVE_PATH := "user://chapter00_save.json"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 static func default_state() -> Dictionary:
 	return {
