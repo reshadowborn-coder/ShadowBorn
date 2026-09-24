@@ -15,7 +15,7 @@ const WEAPONS := {
 var stage:="temple_entry"
 var covenant_joined:=false
 var weapon_family:=""
-var silver:=1
+var silver:=0
 var forged_item:={}
 var first_forge_done:=false
 
@@ -23,7 +23,7 @@ func restore(state:Dictionary)->void:
 	stage=str(state.get("act0_stage","temple_entry"))
 	covenant_joined=bool(state.get("covenant_joined",false))
 	weapon_family=str(state.get("weapon_family",""))
-	silver=int(state.get("silver",1))
+	silver=int(state.get("silver",0))
 	forged_item=state.get("forged_item",{}).duplicate(true)
 	first_forge_done=bool(state.get("first_forge_done",false))
 
