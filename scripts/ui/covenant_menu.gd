@@ -2,6 +2,8 @@ class_name CovenantMenu
 extends CanvasLayer
 
 signal weapon_requested(family:String)
+signal menu_opened
+signal menu_closed
 
 @onready var panel:Control=$Panel
 @onready var details:Label=$Panel/Details
@@ -23,9 +25,13 @@ func open()->void:
 	details.text="FORGOTTEN COVENANT\nChoose a weapon family to preview A1 / A2.\nP1 remains LOCKED until Lv10."
 	confirm.disabled=true
 	panel.visible=true
+	menu_opened.emit()
 
 func close()->void:
+	if not panel.visible:
+		return
 	panel.visible=false
+	menu_closed.emit()
 
 func _select(family:String)->void:
 	if not Act0Progression.WEAPONS.has(family):
