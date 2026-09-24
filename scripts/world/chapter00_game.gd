@@ -176,7 +176,7 @@ func _on_combat_state(state: Dictionary) -> void:
 	var e: Dictionary = state.get("enemy", {})
 	var shield := active_enemy_visual.get_node_or_null("Shield") as Node3D
 	if shield:
-		var guarded := e.get("guard", false)
+		var guarded: bool = bool(e.get("guard", false))
 		shield.rotation_degrees.x = -18.0 if guarded else 8.0
 		shield.position.z = -0.42 if guarded else -0.18
 
@@ -470,4 +470,4 @@ func _on_combat_skill_requested(skill:String)->void:
 
 
 func _apply_identity_state(state:Dictionary)->void:
-	shadow_proxy.set_identity(str(state.get("shadow_identity","male")))
+	shadow_proxy.apply_identity(str(state.get("shadow_identity","male")))
