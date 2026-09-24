@@ -16,6 +16,8 @@ func _run()->void:
 	_test_temple_progression()
 	_test_catacomb_progression()
 	_test_combat_math()
+	_test_save_recovery()
+	_test_room5_limit_contract()
 	print("Act 0 state tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -60,3 +62,42 @@ func _test_combat_math()->void:
 	var base:=CombatResolver.damage(8.0,1.30,4.0)
 	var expected:=8.0*1.30*(100.0/104.0)
 	_check(absf(base-expected)<0.0001,"damage formula remains deterministic")
+
+
+func _test_save_recovery()->void:
+	var lost_silver:=SaveManager.default_state()
+	lost_silver.cleared_encounters=["shield_boss","shield_boss"]
+	lost_silver.act0_stage="first_forge"
+	lost_silver.covenant_joined=true
+	lost_silver.weapon_family="bow"
+	lost_silver.silver=0
+	var repaired:=SaveManager._migrate(lost_silver)
+	_check(repaired.cleared_encounters.count("shield_boss")==1,"save migration deduplicates reward ledger")
+	_check(int(repaired.silver)>=1 and repaired.act0_stage=="first_forge","pre-forge Silver is repaired instead of soft-locking")
+
+	var broken_forge:=SaveManager.default_state()
+	broken_forge.cleared_encounters=["shield_boss"]
+	broken_forge.covenant_joined=true
+	broken_forge.weapon_family="two_hand_axe"
+	broken_forge.first_forge_done=true
+	broken_forge.forged_item={"family":"bow","equipped":true}
+	broken_forge.silver=0
+	broken_forge.catacomb_room=4
+	var rollback:=SaveManager._migrate(broken_forge)
+	_check(not rollback.first_forge_done and rollback.act0_stage=="first_forge","invalid committed forge rolls back to first_forge")
+	_check(int(rollback.silver)>=1 and int(rollback.catacomb_room)==0,"invalid forge refunds progression currency and Catacomb state")
+
+	var impossible_story:=SaveManager.default_state()
+	impossible_story.story_summon_unlocked=true
+	impossible_story.room5_rematch_ready=true
+	var story_repair:=SaveManager._migrate(impossible_story)
+	_check(not story_repair.story_summon_unlocked and int(story_repair.catacomb_room)==0,"story summon cannot survive without Covenant/forge chain")
+
+func _test_room5_limit_contract()->void:
+	var profiles:=CatacombEncounterPlan.enemies(5)
+	_check(profiles.size()==2,"Room 5 remains a two-enemy encounter")
+	var multi:=MultiEnemyEncounter.new()
+	multi.set_loadout("two_hand_axe")
+	multi.start(profiles,false,true)
+	multi.shadow_action("A2")
+	_check(multi.active and not multi._all_dead(),"solo-limit attempt cannot be won on the first action")
