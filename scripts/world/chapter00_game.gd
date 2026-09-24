@@ -238,12 +238,47 @@ func enter_catacomb_room(room:int) -> void:
 		_start_room5_rematch(enemies)
 
 
+func _room5_visuals()->Array[Node3D]:
+	var out:Array[Node3D]=[]
+	for id in ["cat_r5_skeleton_a","cat_r5_skeleton_b"]:
+		var v:=_find_enemy_visual(id)
+		if v:
+			out.append(v)
+	return out
+
+func _stage_room5_scene()->void:
+	var visuals:=_room5_visuals()
+	var focus:=Vector3(0,1.0,-175.5)
+	for v in visuals:
+		v.visible=true
+		v.scale=Vector3.ONE
+		focus+=v.global_position
+	if not visuals.is_empty():
+		focus/=float(visuals.size()+1)
+	shadow.global_position=Vector3(0,0.9,-171.5)
+	shadow.look_at(Vector3(focus.x,shadow.global_position.y,focus.z),Vector3.UP)
+	for v in visuals:
+		v.look_at(Vector3(shadow.global_position.x,v.global_position.y,shadow.global_position.z),Vector3.UP)
+	camera_rig.enter_combat(shadow.global_position,focus)
+
+func _set_room5_target_visual(index:int)->void:
+	var visuals:=_room5_visuals()
+	for i in range(visuals.size()):
+		visuals[i].scale=Vector3.ONE*1.08 if i==index else Vector3.ONE
+
+func _show_room5_visuals(value:bool)->void:
+	for v in _room5_visuals():
+		v.visible=value
+		v.scale=Vector3.ONE
+
 func _start_room5_solo_attempt(enemies:Array)->void:
 	if room5_active:
 		return
 	room5_active=true
 	room5_solo_attempt=true
 	shadow.set_physics_process(false)
+	_stage_room5_scene()
+	_set_room5_target_visual(0)
 	room5_hud.open()
 	room5_combat.start(enemies,false,true)
 
@@ -253,11 +288,15 @@ func _start_room5_rematch(enemies:Array) -> void:
 	room5_active=true
 	room5_solo_attempt=false
 	shadow.set_physics_process(false)
+	_stage_room5_scene()
+	_set_room5_target_visual(0)
 	room5_hud.open()
 	room5_combat.start(enemies,true,false)
 
 func room5_select_target(index:int) -> void:
-	if room5_active:room5_combat.select_target(index)
+	if room5_active:
+		room5_combat.select_target(index)
+		_set_room5_target_visual(index)
 
 func room5_action(skill:String) -> void:
 	if room5_active:room5_combat.shadow_action(skill)
@@ -266,21 +305,29 @@ func _on_room5_finished() -> void:
 	room5_hud.close()
 	room5_active=false
 	room5_solo_attempt=false
+	camera_rig.exit_combat()
 	if not act0_flow.room_cleared(5):
 		shadow.set_physics_process(true)
 		return
+	for id in ["cat_r5_skeleton_a","cat_r5_skeleton_b"]:
+		if id not in cleared_encounters:
+			cleared_encounters.append(id)
+	_show_room5_visuals(false)
 	director.set_checkpoint("act0_complete")
 	checkpoint_position=shadow.global_position
 	shadow.set_physics_process(true)
 	_save_progress()
 
 func _on_room5_solo_limit()->void:
+	await get_tree().create_timer(0.70).timeout
 	_resolve_room5_solo_limit()
 
 func _resolve_room5_solo_limit()->void:
 	room5_hud.close()
 	room5_active=false
 	room5_solo_attempt=false
+	camera_rig.exit_combat()
+	_show_room5_visuals(true)
 	if act0_flow.room5_first_contact():
 		checkpoint_position=Vector3(0,0.9,-96)
 		shadow.global_position=checkpoint_position
@@ -295,6 +342,8 @@ func _on_room5_failed() -> void:
 		return
 	room5_hud.close()
 	room5_active=false
+	camera_rig.exit_combat()
+	_show_room5_visuals(true)
 	shadow.global_position=checkpoint_position
 	shadow.velocity=Vector3.ZERO
 	shadow.set_physics_process(true)
