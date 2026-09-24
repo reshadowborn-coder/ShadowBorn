@@ -115,6 +115,33 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 			if bool(state.get("covenant_joined",false)) and not str(state.weapon_family).is_empty():
 				state.act0_stage="first_forge"
 
+	# Repair progression dependencies instead of allowing impossible states.
+	if not bool(state.get("covenant_joined",false)):
+		state.weapon_family=""
+		state.forged_item={}
+		state.first_forge_done=false
+		if str(state.act0_stage) not in ["exterior","temple_entry"]:
+			state.act0_stage="temple_entry"
+
+	if bool(state.get("first_forge_done",false)):
+		state.covenant_joined=true
+		if state.catacomb_room==0:
+			state.catacomb_room=1
+		if str(state.act0_stage) in ["weapon_choice","first_forge","temple_entry"]:
+			state.act0_stage="catacombs"
+
+	if bool(state.get("story_summon_unlocked",false)) or bool(state.get("room5_rematch_ready",false)):
+		state.room5_solo_limit_seen=true
+		state.story_summon_unlocked=true
+		state.room5_rematch_ready=true
+		state.catacomb_room=5
+		if not bool(state.get("act0_complete",false)):
+			state.act0_stage="room5_rematch"
+	elif bool(state.get("room5_solo_limit_seen",false)):
+		state.catacomb_room=5
+		if not bool(state.get("act0_complete",false)):
+			state.act0_stage="room5_return"
+
 	if bool(state.get("act0_complete",false)):
 		state.room5_solo_limit_seen=true
 		state.story_summon_unlocked=true
