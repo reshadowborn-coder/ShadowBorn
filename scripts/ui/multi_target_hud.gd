@@ -36,6 +36,11 @@ func render(data:Dictionary)->void:
 	a2.disabled=cd>0
 	a2.text="A2  ACTIVE" if cd==0 else "A2  ACTIVE  [CD %d]"%cd
 
+	if bool(data.get("limit_reached",false)):
+		state.text="THE SHADOW CANNOT HOLD — RETREAT"
+		$Panel/A1.disabled=true
+		a2.disabled=true
+		return
 	var suffix:=""
 	if bool(data.get("companion_active",false)):
 		suffix="  |  ALLY ACTIVE"
