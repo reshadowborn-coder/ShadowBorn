@@ -1,0 +1,121 @@
+class_name Chapter00Game
+extends Node
+
+@onready var encounter: EncounterController = $EncounterController
+@onready var hud: CombatHUD = $CombatHUD
+@onready var shadow: CharacterBody3D = get_parent().get_node("Shadow")
+@onready var director: Chapter00Director = get_parent().get_node("Director")
+@onready var camera_rig: CameraDirector = get_parent().get_node("CameraRig")
+@onready var presenter: CombatPresenter = $CombatPresenter
+@onready var settings_menu: SettingsMenu = $SettingsMenu
+@onready var settings_button: Button = $CombatHUD/SettingsButton
+var checkpoint_position := Vector3(0,0.9,8)
+var active_enemy_visual: Node3D
+var cleared_encounters: Array[String] = []
+var performance_mode := "smooth60"
+
+func _ready() -> void:
+	add_to_group("chapter00_game")
+	_restore_save()
+	encounter.reset_shadow()
+	hud.skill_pressed.connect(encounter.shadow_action)
+	encounter.encounter_started.connect(_on_started)
+	encounter.combat_state_changed.connect(hud.render_state)
+	encounter.combat_state_changed.connect(_on_combat_state)
+	encounter.shadow_attack_presented.connect(presenter.play_shadow_attack)
+	encounter.enemy_attack_presented.connect(presenter.play_enemy_attack)
+	encounter.encounter_finished.connect(_on_finished)
+	encounter.encounter_failed.connect(_on_failed)
+	settings_button.pressed.connect(_open_settings)
+	settings_menu.performance_mode_changed.connect(_on_performance_mode_changed)
+	call_deferred("_apply_cleared_visuals")
+
+func _restore_save() -> void:
+	var state := SaveManager.load_state()
+	director.checkpoint = str(state.checkpoint)
+	director.set_route_index(int(state.route_index))
+	var p: Array = state.checkpoint_position
+	checkpoint_position = Vector3(float(p[0]),float(p[1]),float(p[2]))
+	shadow.global_position = checkpoint_position
+	cleared_encounters.assign(state.cleared_encounters)
+	performance_mode = str(state.performance_mode)
+	_apply_performance_mode()
+
+func _apply_performance_mode() -> void:
+	Engine.max_fps = 30 if performance_mode == "battery30" else 60
+
+func _open_settings() -> void:
+	settings_menu.open(performance_mode)
+
+func _on_performance_mode_changed(mode: String) -> void:
+	performance_mode = mode
+	_apply_performance_mode()
+	_save_progress()
+
+func _save_progress() -> void:
+	SaveManager.save_state({"version":SaveManager.SAVE_VERSION,"checkpoint":director.checkpoint,"route_index":director.route_index,"checkpoint_position":[checkpoint_position.x,checkpoint_position.y,checkpoint_position.z],"cleared_encounters":cleared_encounters,"performance_mode":performance_mode})
+
+func is_encounter_cleared(id: String) -> bool:
+	return id in cleared_encounters
+
+func begin_encounter(id: String, profile: Dictionary) -> void:
+	if is_encounter_cleared(id): return
+	shadow.set_physics_process(false)
+	active_enemy_visual = _find_enemy_visual(id)
+	if active_enemy_visual:
+		_position_combatants(active_enemy_visual)
+		camera_rig.enter_combat(shadow.global_position, active_enemy_visual.global_position)
+		presenter.bind_combatants(shadow, active_enemy_visual)
+	encounter.start_encounter(id, profile)
+
+func _find_enemy_visual(id: String) -> Node3D:
+	for node in get_tree().get_nodes_in_group("encounter_visual"):
+		if node.get_meta("encounter_id", "") == id: return node as Node3D
+	return null
+
+func _apply_cleared_visuals() -> void:
+	for node in get_tree().get_nodes_in_group("encounter_visual"):
+		if is_encounter_cleared(str(node.get_meta("encounter_id", ""))): node.visible = false
+
+func _position_combatants(enemy_visual: Node3D) -> void:
+	var center := enemy_visual.global_position
+	shadow.global_position = center + Vector3(-2.8, 0.0, 1.1)
+	enemy_visual.global_position = center + Vector3(2.4, 0.0, -0.6)
+	shadow.look_at(Vector3(enemy_visual.global_position.x, shadow.global_position.y, enemy_visual.global_position.z), Vector3.UP)
+	enemy_visual.look_at(Vector3(shadow.global_position.x, enemy_visual.global_position.y, shadow.global_position.z), Vector3.UP)
+
+func _on_started(id: String) -> void: hud.show_combat(id)
+
+func _on_combat_state(state: Dictionary) -> void:
+	if not active_enemy_visual: return
+	var e: Dictionary = state.get("enemy", {})
+	var shield := active_enemy_visual.get_node_or_null("Shield") as Node3D
+	if shield:
+		var guarded := e.get("guard", false)
+		shield.rotation_degrees.x = -18.0 if guarded else 8.0
+		shield.position.z = -0.42 if guarded else -0.18
+
+func _on_finished(id: String) -> void:
+	presenter.play_enemy_death()
+	await get_tree().create_timer(0.30).timeout
+	hud.hide_combat()
+	if active_enemy_visual: active_enemy_visual.visible = false
+	active_enemy_visual = null; presenter.clear(); camera_rig.exit_combat(); shadow.set_physics_process(true)
+	if id not in cleared_encounters: cleared_encounters.append(id)
+	checkpoint_position = shadow.global_position
+	director.set_checkpoint(id + "_cleared")
+	director.advance()
+	_save_progress()
+
+func _on_failed(_id: String) -> void:
+	hud.hide_combat(); active_enemy_visual = null; presenter.clear(); camera_rig.exit_combat(); encounter.reset_shadow()
+	shadow.global_position = checkpoint_position; shadow.velocity = Vector3.ZERO; shadow.set_physics_process(true)
+
+func play_world_reveal(id: String) -> void:
+	if id != "temple" or encounter.active: return
+	shadow.set_physics_process(false)
+	camera_rig.enter_reveal(Vector3(0, 5.5, -70.0))
+	await get_tree().create_timer(1.65).timeout
+	camera_rig.exit_reveal()
+	await get_tree().create_timer(0.35).timeout
+	shadow.set_physics_process(true)
