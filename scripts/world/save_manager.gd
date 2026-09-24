@@ -131,10 +131,10 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 
 	# Later progress proves the Shield route was already cleared. Repair the
 	# reward ledger instead of allowing the boss/Silver transition to replay.
-	var later_progress:=covenant or not family.is_empty() or forged or state.catacomb_room>0 or solo_seen or summon or rematch or complete or str(state.act0_stage) not in ["exterior","temple_entry"]
+	var later_progress: bool = covenant or not family.is_empty() or forged or int(state.catacomb_room) > 0 or solo_seen or summon or rematch or complete or str(state.act0_stage) not in ["exterior","temple_entry"]
 	if later_progress and "shield_boss" not in state.cleared_encounters:
 		state.cleared_encounters.append("shield_boss")
-	var shield_cleared:="shield_boss" in state.cleared_encounters
+	var shield_cleared: bool = "shield_boss" in state.cleared_encounters
 	if shield_cleared:
 		state.route_index=maxi(state.route_index,Chapter00Director.ROUTE.size()-1)
 
