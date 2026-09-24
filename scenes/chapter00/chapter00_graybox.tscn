@@ -169,11 +169,15 @@ text = "30 FPS  BATTERY"
 position = Vector2(360,150)
 size = Vector2(280,70)
 text = "60 FPS  SMOOTH"
+[node name="ReducedMotion" type="Button" parent="Game/SettingsMenu/Panel"]
+position = Vector2(40,240)
+size = Vector2(600,58)
+text = "REDUCED MOTION: OFF"
 [node name="Info" type="Label" parent="Game/SettingsMenu/Panel"]
-position = Vector2(40,250)
-text = "30 FPS reduces power/thermal load.\n60 FPS is the default combat presentation target.\nCombat rules and damage remain identical."
+position = Vector2(40,315)
+text = "30 FPS reduces power/thermal load.\nReduced Motion limits camera and attack movement.\nCombat rules and damage remain identical."
 [node name="Close" type="Button" parent="Game/SettingsMenu/Panel"]
-position = Vector2(40,380)
+position = Vector2(40,400)
 size = Vector2(600,65)
 text = "CLOSE"
 
