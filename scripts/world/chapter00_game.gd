@@ -99,7 +99,12 @@ func _commit_first_forge_transaction()->bool:
 	state["act0_stage"]="catacombs"
 	if not SaveManager.save_state(state):
 		return false
-	return act0.apply_first_forge(candidate)
+	if act0.apply_first_forge(candidate):
+		return true
+	# Disk is authoritative once promotion succeeds. If an unexpected
+	# in-memory precondition changes, converge to the committed snapshot.
+	act0.restore(state)
+	return true
 
 func is_encounter_cleared(id: String) -> bool:
 	return id in cleared_encounters
@@ -196,8 +201,7 @@ func enter_temple() -> void:
 func temple_interact(kind:String) -> void:
 	match kind:
 		"keeper":
-			if act0.stage=="temple_entry":
-				act0.join_covenant()
+			if act0.stage=="temple_entry" and act0.join_covenant():
 				_save_progress()
 			elif act0.stage=="room5_return" and act0_flow.temple_story_handoff():
 				_save_progress()
