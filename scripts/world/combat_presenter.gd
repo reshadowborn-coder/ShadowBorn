@@ -18,32 +18,36 @@ func clear() -> void:
 	enemy_visual = null
 
 func play_shadow_attack(skill: String, _damage: float, target_guarded: bool) -> void:
-	if not is_instance_valid(shadow_visual) or not is_instance_valid(enemy_visual): return
+	if not is_instance_valid(shadow_visual) or not is_instance_valid(enemy_visual):
+		return
 	if reduced_motion:
 		_impact_flash(enemy_visual,target_guarded)
 		return
+	var timing: Dictionary = CombatPresentationContract.shadow_timing(skill,false)
 	var origin := shadow_visual.position
 	var dir := (enemy_visual.global_position - shadow_visual.global_position).normalized()
 	var anticipation := origin - dir * (0.20 if skill == "A1" else 0.34)
 	var contact := origin + dir * (0.58 if skill == "A1" else 1.05)
 	var t := create_tween()
-	t.tween_property(shadow_visual, "position", anticipation, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	t.tween_property(shadow_visual, "position", contact, 0.10 if skill == "A1" else 0.08).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	t.tween_callback(func(): _impact_flash(enemy_visual, target_guarded))
-	t.tween_property(shadow_visual, "position", origin, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(shadow_visual,"position",anticipation,float(timing["anticipation"])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(shadow_visual,"position",contact,float(timing["active"])).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	t.tween_callback(func(): _impact_flash(enemy_visual,target_guarded))
+	t.tween_property(shadow_visual,"position",origin,CombatPresentationContract.remainder_after_contact(timing)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func play_enemy_attack(_damage: float) -> void:
-	if not is_instance_valid(shadow_visual) or not is_instance_valid(enemy_visual): return
+	if not is_instance_valid(shadow_visual) or not is_instance_valid(enemy_visual):
+		return
 	if reduced_motion:
 		_impact_flash(shadow_visual,false)
 		return
+	var timing: Dictionary = CombatPresentationContract.enemy_timing("ATTACK",false)
 	var origin := enemy_visual.position
 	var dir := (shadow_visual.global_position - enemy_visual.global_position).normalized()
 	var t := create_tween()
-	t.tween_property(enemy_visual, "position", origin - dir * 0.18, 0.08)
-	t.tween_property(enemy_visual, "position", origin + dir * 0.48, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	t.tween_callback(func(): _impact_flash(shadow_visual, false))
-	t.tween_property(enemy_visual, "position", origin, 0.12)
+	t.tween_property(enemy_visual,"position",origin-dir*0.18,float(timing["anticipation"]))
+	t.tween_property(enemy_visual,"position",origin+dir*0.48,float(timing["active"])).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	t.tween_callback(func(): _impact_flash(shadow_visual,false))
+	t.tween_property(enemy_visual,"position",origin,CombatPresentationContract.remainder_after_contact(timing))
 
 func play_enemy_death() -> void:
 	if not is_instance_valid(enemy_visual): return
@@ -79,16 +83,17 @@ func set_reduced_motion(value:bool)->void:
 
 
 func play_enemy_beat(action:String, damage:float)->void:
-	if action in ["RUSH_PREP","BRACE_EXIT"]:
+	if action in ["RUSH_PREP","BRACE_EXIT","NONE"]:
 		if not is_instance_valid(enemy_visual):
 			return
 		if reduced_motion:
 			_impact_flash(enemy_visual,true)
 			return
+		var timing: Dictionary = CombatPresentationContract.enemy_timing(action,false)
 		var origin_scale:=enemy_visual.scale
 		var pulse_scale:=origin_scale*1.08
 		var t:=create_tween()
-		t.tween_property(enemy_visual,"scale",pulse_scale,0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		t.tween_property(enemy_visual,"scale",origin_scale,0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_property(enemy_visual,"scale",pulse_scale,float(timing["anticipation"])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(enemy_visual,"scale",origin_scale,maxf(0.0,float(timing["recovery_end"])-float(timing["anticipation"]))).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		return
 	play_enemy_attack(damage)
