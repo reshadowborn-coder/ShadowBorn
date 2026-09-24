@@ -82,3 +82,20 @@ func set_weapon_family(family:String)->void:
 		"mage_staff":
 			_box("Staff",Vector3(.55,.02,-.08),Vector3(.10,1.75,.10),WEAPON,weapon_root).rotation_degrees.z=-8
 			_box("Focus",Vector3(.66,.84,-.08),Vector3(.32,.32,.18),SHADOW_EDGE,weapon_root)
+
+
+func set_identity(identity:String)->void:
+	var torso:=get_node_or_null("Torso") as Node3D
+	var shoulders:=get_node_or_null("ShoulderMantle") as Node3D
+	var head:=get_node_or_null("Head") as Node3D
+	var mantle:=get_node_or_null("Mantle") as Node3D
+	if identity=="female":
+		if torso: torso.scale=Vector3(0.92,1.0,0.92)
+		if shoulders: shoulders.scale=Vector3(0.88,1.0,0.92)
+		if head: head.scale=Vector3(0.96,0.98,0.96)
+		if mantle: mantle.scale=Vector3(0.92,1.0,0.92)
+	else:
+		if torso: torso.scale=Vector3.ONE
+		if shoulders: shoulders.scale=Vector3.ONE
+		if head: head.scale=Vector3.ONE
+		if mantle: mantle.scale=Vector3.ONE
