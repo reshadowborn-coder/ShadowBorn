@@ -16,7 +16,7 @@ var decision := 0
 var terminal := "CONTINUE"
 var shadow := {}
 var enemy := {}
-var script: Array = []
+var encounter_beats: Array = []
 
 static func damage(atk: float, coeff: float, defense: float, state_mult: float = 1.0) -> float:
 	return atk * coeff * (K_DEF / (K_DEF + maxf(defense, 0.0))) * state_mult
@@ -40,20 +40,20 @@ func setup(script_id: String, veil: float) -> bool:
 		"atk": float(profile["enemy_atk"]),
 		"def": float(profile["enemy_def"])
 	}
-	script = profile["script"].duplicate(true)
+	encounter_beats = profile["script"].duplicate(true)
 	return true
 
 func step(action: String) -> Dictionary:
 	if terminal != "CONTINUE":
 		return {"error": "encounter_already_terminal"}
-	if decision >= script.size():
+	if decision >= encounter_beats.size():
 		return {"error": "script_exhausted"}
 	if action != "A1" and action != "A2":
 		return {"error": "invalid_action"}
 	if action == "A2" and int(shadow["a2_cd"]) > 0:
 		return {"error": "a2_not_ready"}
 
-	var beat: Dictionary = script[decision]
+	var beat: Dictionary = encounter_beats[decision]
 	decision += 1
 
 	var shadow_hp_before := float(shadow["hp"])
