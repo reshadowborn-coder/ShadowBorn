@@ -10,6 +10,8 @@ extends Node
 @onready var settings_menu: SettingsMenu = $SettingsMenu
 @onready var settings_button: Button = $CombatHUD/SettingsButton
 @onready var covenant_menu:CovenantMenu=$CovenantMenu
+@onready var mobile_controls:MobileControls=$MobileControls
+@onready var shadow_proxy:ShadowProxy=get_parent().get_node("Shadow/ShadowProxy")
 var checkpoint_position := Vector3(0,0.9,8)
 var active_enemy_visual: Node3D
 var cleared_encounters: Array[String] = []
@@ -30,6 +32,7 @@ func _ready() -> void:
 	var persisted := SaveManager.load_state()
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
 	act0_flow.restore(persisted); team.restore(persisted)
+	_apply_equipment_state()
 	_restore_act0_position()
 	act0_flow.companion_ready.connect(_on_companion_ready)
 	room5_combat.finished.connect(_on_room5_finished)
@@ -39,6 +42,11 @@ func _ready() -> void:
 	room5_hud.target_selected.connect(room5_select_target)
 	room5_hud.skill_pressed.connect(room5_action)
 	covenant_menu.weapon_requested.connect(_on_covenant_weapon_requested)
+	covenant_menu.menu_opened.connect(func():_set_navigation_enabled(false))
+	covenant_menu.menu_closed.connect(func():_set_navigation_enabled(true))
+	settings_menu.menu_opened.connect(func():_set_navigation_enabled(false))
+	settings_menu.menu_closed.connect(func():_set_navigation_enabled(true))
+	mobile_controls.direction_changed.connect(_on_mobile_direction)
 	encounter.reset_shadow()
 	hud.skill_pressed.connect(encounter.shadow_action)
 	encounter.encounter_started.connect(_on_started)
@@ -100,6 +108,7 @@ func _commit_first_forge_transaction()->bool:
 	if not SaveManager.save_state(state):
 		return false
 	if act0.apply_first_forge(candidate):
+		_apply_equipment_state()
 		return true
 	# Disk is authoritative once promotion succeeds. If an unexpected
 	# in-memory precondition changes, converge to the committed snapshot.
@@ -375,3 +384,21 @@ func _restore_act0_position()->void:
 	elif act0.stage=="act0_complete":
 		return
 	shadow.global_position=checkpoint_position
+
+
+func _apply_equipment_state()->void:
+	var family:=""
+	if act0.first_forge_done:
+		family=act0.weapon_family
+	encounter.set_loadout(family)
+	room5_combat.set_loadout(family)
+	shadow_proxy.set_weapon_family(family)
+
+func _on_mobile_direction(direction:Vector2)->void:
+	if shadow.has_method("set_virtual_direction"):
+		shadow.set_virtual_direction(direction)
+
+func _set_navigation_enabled(value:bool)->void:
+	if shadow.has_method("set_input_enabled"):
+		shadow.set_input_enabled(value)
+	mobile_controls.set_enabled(value)
