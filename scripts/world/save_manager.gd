@@ -21,6 +21,7 @@ static func default_state() -> Dictionary:
 		"story_summon_unlocked": false,
 		"catacomb_room": 0,
 		"room5_solo_limit_seen": false,
+		"room5_rematch_ready": false,
 		"act0_complete": false
 	}
 
