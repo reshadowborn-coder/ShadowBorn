@@ -12,7 +12,7 @@ const WEAPONS := {
 	"dual_daggers":{"label":"Dual Daggers","a1":"Twin Fang","a2":"Veil Rush","feel":"fast / setup"},
 	"mage_staff":{"label":"2H Mage Staff","a1":"Umbral Bolt","a2":"Night Pulse","feel":"control / arcane"}
 }
-var stage:="temple_entry"
+var stage:="exterior"
 var covenant_joined:=false
 var weapon_family:=""
 var silver:=0
@@ -30,13 +30,22 @@ func restore(state:Dictionary)->void:
 func snapshot()->Dictionary:
 	return {"act0_stage":stage,"covenant_joined":covenant_joined,"weapon_family":weapon_family,"silver":silver,"forged_item":forged_item.duplicate(true),"first_forge_done":first_forge_done}
 
-func join_covenant()->void:
-	if covenant_joined:return
-	covenant_joined=true;stage="weapon_choice";stage_changed.emit(stage)
+func join_covenant()->bool:
+	if covenant_joined or stage!="temple_entry":
+		return false
+	covenant_joined=true
+	stage="weapon_choice"
+	stage_changed.emit(stage)
+	return true
 
 func choose_weapon(family:String)->bool:
-	if not covenant_joined or not WEAPONS.has(family):return false
-	weapon_family=family;stage="first_forge";weapon_selected.emit(family);stage_changed.emit(stage);return true
+	if not covenant_joined or stage!="weapon_choice" or not weapon_family.is_empty() or not WEAPONS.has(family):
+		return false
+	weapon_family=family
+	stage="first_forge"
+	weapon_selected.emit(family)
+	stage_changed.emit(stage)
+	return true
 
 func can_first_forge()->bool:
 	return not first_forge_done and covenant_joined and stage=="first_forge" and WEAPONS.has(weapon_family) and silver>=1
