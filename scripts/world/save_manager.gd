@@ -130,6 +130,8 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	if later_progress and "shield_boss" not in state.cleared_encounters:
 		state.cleared_encounters.append("shield_boss")
 	var shield_cleared:="shield_boss" in state.cleared_encounters
+	if shield_cleared:
+		state.route_index=maxi(state.route_index,Chapter00Director.ROUTE.size()-1)
 
 	# Validate a committed forge before trusting downstream Catacomb state.
 	if forged:
@@ -185,7 +187,22 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	state.first_forge_done=true
 	state.catacomb_room=clampi(maxi(1,state.catacomb_room),1,5)
 
+	# Rebuild the visual/encounter ledger from authoritative room progress.
+	var cleared_by_room:={
+		2:"cat_r1_skeleton",
+		3:"cat_r2_hound",
+		4:"cat_r3_guard",
+		5:"cat_r4_revenant"
+	}
+	for threshold in cleared_by_room:
+		var cleared_id:String=cleared_by_room[threshold]
+		if state.catacomb_room>=int(threshold) and cleared_id not in state.cleared_encounters:
+			state.cleared_encounters.append(cleared_id)
+
 	if complete:
+		for id in ["cat_r5_skeleton_a","cat_r5_skeleton_b"]:
+			if id not in state.cleared_encounters:
+				state.cleared_encounters.append(id)
 		state.room5_solo_limit_seen=true
 		state.story_summon_unlocked=true
 		state.room5_rematch_ready=true
