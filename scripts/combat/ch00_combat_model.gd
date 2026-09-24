@@ -31,17 +31,54 @@ func setup(script_id: String, veil: float) -> bool:
 	terminal = "CONTINUE"
 	shadow = {
 		"hp": float(profile["shadow_hp"]),
+		"max_hp": float(profile["shadow_hp"]),
+		"atk": SHADOW_ATK,
+		"def": SHADOW_DEF,
 		"a2_cd": 0,
 		"fray": false,
 		"veil": false
 	}
 	enemy = {
 		"hp": float(profile["enemy_hp"]),
+		"max_hp": float(profile["enemy_hp"]),
 		"atk": float(profile["enemy_atk"]),
 		"def": float(profile["enemy_def"])
 	}
 	encounter_beats = profile["script"].duplicate(true)
 	return true
+
+func snapshot() -> Dictionary:
+	var visible_state := "TERMINAL"
+	var guard := false
+	var intent := ""
+	if terminal == "CONTINUE" and decision < encounter_beats.size():
+		var beat: Dictionary = encounter_beats[decision]
+		visible_state = str(beat.get("visible_state", "OPEN"))
+		guard = bool(beat.get("guard", false))
+		if visible_state == "RUSH_PREP_VISIBLE":
+			intent = "RUSH PREP"
+	return {
+		"terminal": terminal,
+		"decision": decision,
+		"visible_state": visible_state,
+		"shadow": {
+			"hp": float(shadow.get("hp", 0.0)),
+			"max_hp": float(shadow.get("max_hp", 0.0)),
+			"atk": float(shadow.get("atk", SHADOW_ATK)),
+			"def": float(shadow.get("def", SHADOW_DEF)),
+			"a2_cd": int(shadow.get("a2_cd", 0)),
+			"fray": bool(shadow.get("fray", false)),
+			"veil": veil_strength if bool(shadow.get("veil", false)) else 0.0
+		},
+		"enemy": {
+			"hp": float(enemy.get("hp", 0.0)),
+			"max_hp": float(enemy.get("max_hp", 0.0)),
+			"atk": float(enemy.get("atk", 0.0)),
+			"def": float(enemy.get("def", 0.0)),
+			"guard": guard,
+			"intent": intent
+		}
+	}
 
 func step(action: String) -> Dictionary:
 	if terminal != "CONTINUE":
