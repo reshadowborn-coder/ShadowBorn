@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource path="res://scripts/world/chapter00_director.gd" type="Script" id="1"]
 [ext_resource path="res://scripts/player/shadow_controller.gd" type="Script" id="2"]
@@ -11,6 +11,10 @@
 [ext_resource path="res://scripts/world/save_manager.gd" type="Script" id="9"]
 [ext_resource path="res://scripts/ui/settings_menu.gd" type="Script" id="10"]
 [ext_resource path="res://scripts/player/shadow_proxy.gd" type="Script" id="11"]
+[ext_resource path="res://scripts/world/temple_interior_builder.gd" type="Script" id="12"]
+[ext_resource path="res://scripts/world/catacombs_builder.gd" type="Script" id="13"]
+[ext_resource path="res://scripts/combat/multi_enemy_encounter.gd" type="Script" id="14"]
+[ext_resource path="res://scripts/ui/multi_target_hud.gd" type="Script" id="15"]
 [sub_resource type="CapsuleShape3D" id="PlayerShape"]
 radius = 0.42
 height = 1.7
@@ -130,3 +134,33 @@ text = "30 FPS reduces power/thermal load.\n60 FPS is the default combat present
 position = Vector2(40,380)
 size = Vector2(600,65)
 text = "CLOSE"
+
+[node name="Room5Combat" type="Node" parent="Game"]
+script = ExtResource("14")
+[node name="MultiTargetHUD" type="CanvasLayer" parent="Game"]
+layer = 5
+script = ExtResource("15")
+[node name="Panel" type="Panel" parent="Game/MultiTargetHUD"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 700.0
+offset_bottom = 260.0
+[node name="State" type="Label" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(16,12)
+text = "ROOM 5"
+[node name="TargetA" type="Button" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(16,48)
+size = Vector2(310,55)
+text = "TARGET A"
+[node name="TargetB" type="Button" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(340,48)
+size = Vector2(310,55)
+text = "TARGET B"
+[node name="A1" type="Button" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(16,125)
+size = Vector2(310,65)
+text = "A1  BASIC ATTACK"
+[node name="A2" type="Button" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(340,125)
+size = Vector2(310,65)
+text = "A2  ACTIVE"
