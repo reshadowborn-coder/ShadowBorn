@@ -41,18 +41,16 @@ func box(n:String,p:Vector3,s:Vector3,c:Color=STONE,parent:Node3D=self)->MeshIns
 	parent.add_child(x)
 	return x
 
-func collider(n:String,p:Vector3,s:Vector3,parent:Node3D)->void:
-	var body:=StaticBody3D.new()
-	body.name=n+"Collision"
-	body.position=p
+func collider(n:String,p:Vector3,s:Vector3,parent:StaticBody3D)->void:
 	var shape_node:=CollisionShape3D.new()
+	shape_node.name=n+"Shape"
+	shape_node.position=p
 	var shape:=BoxShape3D.new()
 	shape.size=s
 	shape_node.shape=shape
-	body.add_child(shape_node)
-	parent.add_child(body)
+	parent.add_child(shape_node)
 
-func solid_box(n:String,p:Vector3,s:Vector3,c:Color,visual:Node3D,collision:Node3D)->void:
+func solid_box(n:String,p:Vector3,s:Vector3,c:Color,visual:Node3D,collision:StaticBody3D)->void:
 	box(n,p,s,c,visual)
 	collider(n,p,s,collision)
 
@@ -103,7 +101,7 @@ func _build()->void:
 	var visual:=Node3D.new()
 	visual.name="CatacombVisual"
 	add_child(visual)
-	var collision:=Node3D.new()
+	var collision:=StaticBody3D.new()
 	collision.name="CatacombCollision"
 	add_child(collision)
 
