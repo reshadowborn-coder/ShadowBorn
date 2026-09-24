@@ -22,13 +22,25 @@ jobs:
           /tmp/godot/godot --version
 
       - name: Parse and import project
-        run: /tmp/godot/godot --headless --path . --editor --quit
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/godot-parse.log
+          ! grep -q "SCRIPT ERROR:" /tmp/godot-parse.log
 
       - name: Run Act 0 deterministic tests
-        run: /tmp/godot/godot --headless --path . --script res://tests/act0_state_tests.gd
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act0_state_tests.gd 2>&1 | tee /tmp/act0-state.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act0-state.log
 
       - name: Run Chapter 0 combat fixture parity
-        run: /tmp/godot/godot --headless --path . --script res://tests/ch00_combat_fixture_tests.gd
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/ch00_combat_fixture_tests.gd 2>&1 | tee /tmp/ch00-combat-fixtures.log
+          ! grep -q "SCRIPT ERROR:" /tmp/ch00-combat-fixtures.log
 
       - name: Run Act 0 scene smoke
-        run: /tmp/godot/godot --headless --path . --script res://tests/act0_scene_smoke.gd
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act0_scene_smoke.gd 2>&1 | tee /tmp/act0-scene.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act0-scene.log
