@@ -43,13 +43,13 @@ func _ready() -> void:
 	room5_hud.target_selected.connect(room5_select_target)
 	room5_hud.skill_pressed.connect(room5_action)
 	covenant_menu.weapon_requested.connect(_on_covenant_weapon_requested)
-	covenant_menu.menu_opened.connect(func():_set_navigation_enabled(false))
-	covenant_menu.menu_closed.connect(func():_set_navigation_enabled(true))
-	settings_menu.menu_opened.connect(func():_set_navigation_enabled(false))
-	settings_menu.menu_closed.connect(func():_set_navigation_enabled(true))
+	covenant_menu.menu_opened.connect(_refresh_navigation)
+	covenant_menu.menu_closed.connect(_refresh_navigation)
+	settings_menu.menu_opened.connect(_refresh_navigation)
+	settings_menu.menu_closed.connect(_refresh_navigation)
 	mobile_controls.direction_changed.connect(_on_mobile_direction)
 	encounter.reset_shadow()
-	hud.skill_pressed.connect(encounter.shadow_action)
+	hud.skill_pressed.connect(_on_combat_skill_requested)
 	encounter.encounter_started.connect(_on_started)
 	encounter.combat_state_changed.connect(hud.render_state)
 	encounter.combat_state_changed.connect(_on_combat_state)
@@ -152,7 +152,9 @@ func _restore_enemy_visual_home()->void:
 	if active_enemy_visual and active_enemy_visual.has_meta("combat_home_position"):
 		active_enemy_visual.global_position=active_enemy_visual.get_meta("combat_home_position")
 
-func _on_started(id: String) -> void: hud.show_combat(id)
+func _on_started(id: String) -> void:
+	hud.show_combat(id)
+	_refresh_navigation()
 
 func _on_combat_state(state: Dictionary) -> void:
 	if not active_enemy_visual: return
@@ -171,6 +173,7 @@ func _on_finished(id: String) -> void:
 	hud.hide_combat()
 	if active_enemy_visual: active_enemy_visual.visible = false
 	active_enemy_visual = null; presenter.clear(); camera_rig.exit_combat(); shadow.set_physics_process(true)
+	_refresh_navigation()
 	if first_clear:
 		cleared_encounters.append(id)
 		if id == "shield_boss":
@@ -192,15 +195,18 @@ func _on_failed(_id: String) -> void:
 	shadow.global_position = checkpoint_position
 	shadow.velocity = Vector3.ZERO
 	shadow.set_physics_process(true)
+	_refresh_navigation()
 
 func play_world_reveal(id: String) -> void:
 	if id != "temple" or encounter.active: return
+	mobile_controls.set_enabled(false)
 	shadow.set_physics_process(false)
 	camera_rig.enter_reveal(Vector3(0, 5.5, -70.0))
 	await get_tree().create_timer(1.65).timeout
 	camera_rig.exit_reveal()
 	await get_tree().create_timer(0.35).timeout
 	shadow.set_physics_process(true)
+	_refresh_navigation()
 
 
 func enter_temple() -> void:
@@ -293,6 +299,7 @@ func _start_room5_solo_attempt(enemies:Array)->void:
 	room5_active=true
 	room5_solo_attempt=true
 	shadow.set_physics_process(false)
+	_refresh_navigation()
 	_stage_room5_scene()
 	_set_room5_target_visual(0)
 	room5_hud.open()
@@ -304,6 +311,7 @@ func _start_room5_rematch(enemies:Array) -> void:
 	room5_active=true
 	room5_solo_attempt=false
 	shadow.set_physics_process(false)
+	_refresh_navigation()
 	_stage_room5_scene()
 	_set_room5_target_visual(0)
 	room5_hud.open()
@@ -315,7 +323,8 @@ func room5_select_target(index:int) -> void:
 		_set_room5_target_visual(index)
 
 func room5_action(skill:String) -> void:
-	if room5_active:room5_combat.shadow_action(skill)
+	if room5_active and not _ui_modal_open():
+		room5_combat.shadow_action(skill)
 
 func _on_room5_finished() -> void:
 	room5_hud.close()
@@ -332,6 +341,7 @@ func _on_room5_finished() -> void:
 	director.set_checkpoint("act0_complete")
 	checkpoint_position=shadow.global_position
 	shadow.set_physics_process(true)
+	_refresh_navigation()
 	_save_progress()
 
 func _on_room5_solo_limit()->void:
@@ -363,6 +373,7 @@ func _on_room5_failed() -> void:
 	shadow.global_position=checkpoint_position
 	shadow.velocity=Vector3.ZERO
 	shadow.set_physics_process(true)
+	_refresh_navigation()
 	_save_progress()
 
 
@@ -405,7 +416,16 @@ func _on_mobile_direction(direction:Vector2)->void:
 	if shadow.has_method("set_virtual_direction"):
 		shadow.set_virtual_direction(direction)
 
-func _set_navigation_enabled(value:bool)->void:
+func _ui_modal_open()->bool:
+	return settings_menu.panel.visible or covenant_menu.panel.visible
+
+func _refresh_navigation()->void:
+	var enabled:=not _ui_modal_open() and not encounter.active and not room5_active
 	if shadow.has_method("set_input_enabled"):
-		shadow.set_input_enabled(value)
-	mobile_controls.set_enabled(value)
+		shadow.set_input_enabled(enabled)
+	mobile_controls.set_enabled(enabled)
+
+func _on_combat_skill_requested(skill:String)->void:
+	if _ui_modal_open():
+		return
+	encounter.shadow_action(skill)
