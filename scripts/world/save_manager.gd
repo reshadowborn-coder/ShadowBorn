@@ -4,7 +4,7 @@ extends Node
 const SAVE_PATH := "user://chapter00_save.json"
 const TMP_PATH := SAVE_PATH + ".tmp"
 const BAK_PATH := SAVE_PATH + ".bak"
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 
 static func default_state() -> Dictionary:
 	return {
@@ -14,6 +14,7 @@ static func default_state() -> Dictionary:
 		"checkpoint_position": [0.0, 0.9, 8.0],
 		"cleared_encounters": [],
 		"performance_mode": "smooth60",
+		"reduced_motion": false,
 		"shadow_identity": "",
 		"act0_stage": "exterior",
 		"covenant_joined": false,
@@ -108,6 +109,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 
 	var mode:=str(state.get("performance_mode","smooth60"))
 	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
+	state.reduced_motion=bool(state.get("reduced_motion",false))
 	var identity:=str(state.get("shadow_identity",""))
 	state.shadow_identity = identity if identity in ["","male","female"] else ""
 
