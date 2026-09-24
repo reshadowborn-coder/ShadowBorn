@@ -38,7 +38,29 @@ func choose_weapon(family:String)->bool:
 	if not covenant_joined or not WEAPONS.has(family):return false
 	weapon_family=family;stage="first_forge";weapon_selected.emit(family);stage_changed.emit(stage);return true
 
+func can_first_forge()->bool:
+	return not first_forge_done and covenant_joined and stage=="first_forge" and WEAPONS.has(weapon_family) and silver>=1
+
+func first_forge_candidate()->Dictionary:
+	if not can_first_forge():
+		return {}
+	return {"id":"shadow_"+weapon_family+"_01","family":weapon_family,"level":0,"bonus_unlocked":false,"equipped":true}
+
+func apply_first_forge(candidate:Dictionary)->bool:
+	if not can_first_forge():
+		return false
+	if str(candidate.get("family",""))!=weapon_family:
+		return false
+	silver-=1
+	forged_item=candidate.duplicate(true)
+	first_forge_done=true
+	stage="catacombs"
+	forge_committed.emit(forged_item)
+	stage_changed.emit(stage)
+	return true
+
 func commit_first_forge()->bool:
-	if first_forge_done or not covenant_joined or stage!="first_forge" or weapon_family.is_empty() or silver<1:return false
-	var candidate={"id":"shadow_"+weapon_family+"_01","family":weapon_family,"level":0,"bonus_unlocked":false,"equipped":true}
-	silver-=1;forged_item=candidate;first_forge_done=true;stage="catacombs";forge_committed.emit(forged_item);stage_changed.emit(stage);return true
+	var candidate:=first_forge_candidate()
+	if candidate.is_empty():
+		return false
+	return apply_first_forge(candidate)
