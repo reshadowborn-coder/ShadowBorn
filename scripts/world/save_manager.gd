@@ -2,6 +2,8 @@ class_name SaveManager
 extends Node
 
 const SAVE_PATH := "user://chapter00_save.json"
+const TMP_PATH := SAVE_PATH + ".tmp"
+const BAK_PATH := SAVE_PATH + ".bak"
 const SAVE_VERSION := 2
 
 static func default_state() -> Dictionary:
@@ -26,40 +28,68 @@ static func default_state() -> Dictionary:
 	}
 
 static func load_state() -> Dictionary:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return default_state()
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file == null:
-		return default_state()
-	var parsed = JSON.parse_string(file.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY:
+	var parsed = _read_dictionary(SAVE_PATH)
+	if parsed == null:
+		parsed = _read_dictionary(BAK_PATH)
+	if parsed == null:
 		return default_state()
 	return _migrate(parsed)
 
+static func _read_dictionary(path:String):
+	if not FileAccess.file_exists(path):
+		return null
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return null
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return null
+	return parsed
+
 static func save_state(state: Dictionary) -> bool:
 	var normalized := _migrate(state.duplicate(true))
-	var tmp_path := SAVE_PATH + ".tmp"
-	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
+	var file := FileAccess.open(TMP_PATH, FileAccess.WRITE)
 	if file == null:
 		return false
 	file.store_string(JSON.stringify(normalized))
 	file.flush()
 	file.close()
+
+	var save_abs := ProjectSettings.globalize_path(SAVE_PATH)
+	var tmp_abs := ProjectSettings.globalize_path(TMP_PATH)
+	var bak_abs := ProjectSettings.globalize_path(BAK_PATH)
+
+	if FileAccess.file_exists(BAK_PATH):
+		DirAccess.remove_absolute(bak_abs)
+
 	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
-	var err := DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp_path), ProjectSettings.globalize_path(SAVE_PATH))
-	return err == OK
+		var backup_err := DirAccess.rename_absolute(save_abs, bak_abs)
+		if backup_err != OK:
+			DirAccess.remove_absolute(tmp_abs)
+			return false
+
+	var promote_err := DirAccess.rename_absolute(tmp_abs, save_abs)
+	if promote_err != OK:
+		if FileAccess.file_exists(BAK_PATH) and not FileAccess.file_exists(SAVE_PATH):
+			DirAccess.rename_absolute(bak_abs, save_abs)
+		return false
+
+	if FileAccess.file_exists(BAK_PATH):
+		DirAccess.remove_absolute(bak_abs)
+	return true
 
 static func _migrate(raw: Dictionary) -> Dictionary:
 	var state := default_state()
-	for key in raw.keys(): state[key] = raw[key]
+	for key in raw.keys():
+		state[key] = raw[key]
 	state.version = SAVE_VERSION
-	if typeof(state.get("cleared_encounters")) != TYPE_ARRAY: state.cleared_encounters = []
+	if typeof(state.get("cleared_encounters")) != TYPE_ARRAY:
+		state.cleared_encounters = []
 	if typeof(state.get("checkpoint_position")) != TYPE_ARRAY or state.checkpoint_position.size() != 3:
 		state.checkpoint_position = [0.0,0.9,8.0]
 	state.route_index = clampi(int(state.get("route_index",0)),0,Chapter00Director.ROUTE.size()-1)
 	return state
-
 
 func patch_and_save(patch:Dictionary)->bool:
 	var state:=load_state()
