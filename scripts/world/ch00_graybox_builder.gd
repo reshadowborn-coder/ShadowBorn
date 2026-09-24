@@ -11,6 +11,7 @@ const MOSS := Color(0.10,0.16,0.11)
 const ROOF := Color(0.24,0.09,0.065)
 const DEADWOOD := Color(0.12,0.095,0.075)
 var _materials: Dictionary = {}
+var _box_meshes: Dictionary = {}
 var _visual_root: Node3D
 var _collision_root: Node3D
 const TRIGGER_SCRIPT = preload("res://scripts/combat/encounter_trigger.gd")
@@ -31,11 +32,24 @@ func _material(color:Color) -> StandardMaterial3D:
 	var mat:=StandardMaterial3D.new(); mat.albedo_color=color; mat.roughness=0.95
 	_materials[key]=mat; return mat
 
+func _box_mesh(size:Vector3,color:Color)->BoxMesh:
+	var key:=str(size)+"|"+str(color)
+	if _box_meshes.has(key):
+		return _box_meshes[key]
+	var mesh:=BoxMesh.new()
+	mesh.size=size
+	mesh.material=_material(color)
+	_box_meshes[key]=mesh
+	return mesh
+
 func _box(name:String,pos:Vector3,size:Vector3,color:Color=STONE,parent:Node3D=null) -> MeshInstance3D:
 	var target := parent if parent != null else _visual_root
-	var m:=MeshInstance3D.new(); m.name=name
-	var mesh:=BoxMesh.new(); mesh.size=size; mesh.material=_material(color)
-	m.mesh=mesh; m.position=pos; target.add_child(m); return m
+	var m:=MeshInstance3D.new()
+	m.name=name
+	m.mesh=_box_mesh(size,color)
+	m.position=pos
+	target.add_child(m)
+	return m
 
 func _blocker(name:String,pos:Vector3,size:Vector3) -> StaticBody3D:
 	var body:=StaticBody3D.new(); body.name=name; body.position=pos
@@ -64,8 +78,11 @@ func _capsule(name:String,pos:Vector3,radius:float,height:float,color:Color,pare
 func _build_route() -> void:
 	_build_awaken_pocket()
 	_box("CEM_01_Ground",Vector3(0,-0.25,0),Vector3(18,0.5,30),GROUND)
+	_blocker("CEM_01_FloorCollision",Vector3(0,-0.25,0),Vector3(18,0.5,30))
 	_box("RUIN_01_Ground",Vector3(2,-0.25,-29),Vector3(15,0.5,28),GROUND)
+	_blocker("RUIN_01_FloorCollision",Vector3(2,-0.25,-29),Vector3(15,0.5,28))
 	_box("TEMPLE_EXT_01_Ground",Vector3(0,-0.25,-58),Vector3(22,0.5,30),GROUND)
+	_blocker("TEMPLE_EXT_01_FloorCollision",Vector3(0,-0.25,-58),Vector3(22,0.5,30))
 	var grave_i:=0
 	for z in [-3.0,-8.0,-13.0,-18.0]:
 		_grave("GraveL%02d"%grave_i,Vector3(-5.2,0.0,z),-8.0+grave_i*5.0)
