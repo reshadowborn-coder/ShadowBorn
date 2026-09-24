@@ -59,3 +59,10 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.checkpoint_position = [0.0,0.9,8.0]
 	state.route_index = clampi(int(state.get("route_index",0)),0,Chapter00Director.ROUTE.size()-1)
 	return state
+
+
+func patch_and_save(patch:Dictionary)->bool:
+	var state:=load_state()
+	for key in patch:
+		state[key]=patch[key]
+	return save_state(state)
