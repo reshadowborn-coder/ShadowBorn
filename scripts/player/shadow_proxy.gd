@@ -84,7 +84,7 @@ func set_weapon_family(family:String)->void:
 			_box("Focus",Vector3(.66,.84,-.08),Vector3(.32,.32,.18),SHADOW_EDGE,weapon_root)
 
 
-func set_identity(identity:String)->void:
+func apply_identity(identity:String)->void:
 	var torso:=get_node_or_null("Torso") as Node3D
 	var shoulders:=get_node_or_null("ShoulderMantle") as Node3D
 	var head:=get_node_or_null("Head") as Node3D
