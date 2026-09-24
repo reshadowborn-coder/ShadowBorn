@@ -14,7 +14,7 @@ var rematch_ready:=false
 var complete:=false
 
 func restore(state:Dictionary)->void:
-	room=int(state.get("catacomb_room",0))
+	room=clampi(int(state.get("catacomb_room",0)),0,5)
 	room5_solo_limit_seen=bool(state.get("room5_solo_limit_seen",false))
 	summon_unlocked=bool(state.get("story_summon_unlocked",false))
 	rematch_ready=bool(state.get("room5_rematch_ready",false))
@@ -23,23 +23,39 @@ func restore(state:Dictionary)->void:
 func snapshot()->Dictionary:
 	return {"catacomb_room":room,"room5_solo_limit_seen":room5_solo_limit_seen,"story_summon_unlocked":summon_unlocked,"room5_rematch_ready":rematch_ready,"act0_complete":complete}
 
-func start()->void:
-	if room==0:room=1;room_changed.emit(room)
+func start()->bool:
+	if complete:
+		return false
+	if room==0:
+		room=1
+		room_changed.emit(room)
+	return true
 
-func clear_room(index:int)->void:
-	if index<1 or index>5:return
+func clear_room(index:int)->bool:
+	if complete or index<1 or index>5 or index!=room:
+		return false
 	if index<5:
-		room=maxi(room,index+1);room_changed.emit(room)
-	elif summon_unlocked and rematch_ready:
-		complete=true;act0_completed.emit()
+		room=index+1
+		room_changed.emit(room)
+		return true
+	if not summon_unlocked or not rematch_ready:
+		return false
+	complete=true
+	act0_completed.emit()
+	return true
 
 func trigger_room5_solo_limit()->bool:
-	if room!=5 or summon_unlocked:return false
+	if room!=5 or summon_unlocked or room5_solo_limit_seen or complete:
+		return false
 	room5_solo_limit_seen=true
 	solo_limit_triggered.emit()
 	return_to_temple_requested.emit()
 	return true
 
-func unlock_story_summon()->void:
-	if not room5_solo_limit_seen or summon_unlocked:return
-	summon_unlocked=true;rematch_ready=true;story_summon_unlocked.emit()
+func unlock_story_summon()->bool:
+	if not room5_solo_limit_seen or summon_unlocked or complete:
+		return false
+	summon_unlocked=true
+	rematch_ready=true
+	story_summon_unlocked.emit()
+	return true
