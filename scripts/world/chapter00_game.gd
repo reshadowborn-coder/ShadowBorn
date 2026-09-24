@@ -98,6 +98,7 @@ func _on_reduced_motion_changed(value:bool)->void:
 func _apply_presentation_settings()->void:
 	camera_rig.set_reduced_motion(reduced_motion)
 	presenter.set_reduced_motion(reduced_motion)
+	encounter.set_reduced_motion(reduced_motion)
 
 func _build_save_state()->Dictionary:
 	var state := SaveManager.load_state()
