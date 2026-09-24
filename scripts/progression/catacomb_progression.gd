@@ -5,6 +5,7 @@ signal room_changed(room:int)
 signal solo_limit_triggered
 signal story_summon_unlocked
 signal act0_completed
+signal return_to_temple_requested
 
 var room:=0
 var room5_solo_limit_seen:=false
@@ -36,6 +37,7 @@ func trigger_room5_solo_limit()->bool:
 	if room!=5 or summon_unlocked:return false
 	room5_solo_limit_seen=true
 	solo_limit_triggered.emit()
+	return_to_temple_requested.emit()
 	return true
 
 func unlock_story_summon()->void:
