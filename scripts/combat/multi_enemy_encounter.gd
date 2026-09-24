@@ -6,7 +6,7 @@ signal finished
 signal failed
 signal solo_limit_reached
 
-const A2_COOLDOWN := 3
+const FRAY_BONUS := 1.15
 const SOLO_LIMIT_ROUNDS := 2
 
 var enemies:Array=[]
@@ -18,6 +18,12 @@ var a2_cd:=0
 var rounds:=0
 var solo_limit_mode:=false
 var limit_reached:=false
+var fray:=false
+var veil:=0.0
+var loadout:Dictionary=ShadowLoadout.profile("")
+
+func set_loadout(family:String)->void:
+	loadout=ShadowLoadout.profile(family)
 
 func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void:
 	enemies=profiles.duplicate(true)
@@ -30,6 +36,8 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void
 	rounds=0
 	solo_limit_mode=force_solo_limit
 	limit_reached=false
+	fray=false
+	veil=0.0
 	active=true
 	_emit()
 
@@ -46,13 +54,27 @@ func shadow_action(skill:String)->void:
 		return
 
 	var e:Dictionary=enemies[selected]
-	var coeff:=1.0 if skill=="A1" else 1.30
-	var damage:=8.0*coeff*100.0/(100.0+float(e.def))
-	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
-	enemies[selected]=e
+	var coeff:=float(loadout.get("a1_coeff",1.0))
+	var guard_mult:=float(loadout.get("a1_guard_mult",0.65))
+	var state_mult:=1.0
 
 	if skill=="A2":
-		a2_cd=A2_COOLDOWN+1
+		coeff=float(loadout.get("a2_coeff",1.30))
+		guard_mult=float(loadout.get("a2_guard_mult",0.55))
+		if fray:
+			state_mult*=FRAY_BONUS
+			fray=false
+		a2_cd=int(loadout.get("a2_cd",3))+1
+		veil=float(loadout.get("a2_veil",0.15))
+	else:
+		fray=true
+
+	if bool(e.get("guard",false)):
+		state_mult*=guard_mult
+
+	var damage:=CombatResolver.damage(8.0,coeff,float(e.def),state_mult)
+	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
+	enemies[selected]=e
 
 	if companion_active and not _all_dead():
 		_companion_assist()
@@ -88,14 +110,21 @@ func _companion_assist()->void:
 	_select_living()
 	var e:Dictionary=enemies[selected]
 	var p:=StoryCompanion.profile()
-	var damage:=float(p.atk)*float(p.a1.coeff)*100.0/(100.0+float(e.def))
+	var damage:=CombatResolver.damage(float(p.atk),float(p.a1.coeff),float(e.def))
 	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
 	enemies[selected]=e
 
 func _enemy_phase()->void:
+	var veil_pending:=veil
 	for e in enemies:
-		if float(e.current_hp)>0.0:
-			shadow_hp=maxf(0.0,shadow_hp-float(e.damage))
+		if float(e.current_hp)<=0.0:
+			continue
+		var incoming:=float(e.damage)
+		if veil_pending>0.0:
+			incoming*=(1.0-veil_pending)
+			veil_pending=0.0
+			veil=0.0
+		shadow_hp=maxf(0.0,shadow_hp-incoming)
 
 func _all_dead()->bool:
 	for e in enemies:
@@ -120,5 +149,8 @@ func _emit()->void:
 		"a2_cd":a2_cd,
 		"rounds":rounds,
 		"solo_limit_mode":solo_limit_mode,
-		"limit_reached":limit_reached
+		"limit_reached":limit_reached,
+		"fray":fray,
+		"veil":veil,
+		"loadout":loadout.duplicate(true)
 	})
