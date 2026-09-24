@@ -93,6 +93,17 @@ func _test_save_recovery()->void:
 	var story_repair:=SaveManager._migrate(impossible_story)
 	_check(not story_repair.story_summon_unlocked and int(story_repair.catacomb_room)==0,"story summon cannot survive without Covenant/forge chain")
 
+	var late_room:=SaveManager.default_state()
+	late_room.cleared_encounters=["shield_boss"]
+	late_room.covenant_joined=true
+	late_room.weapon_family="sword_shield"
+	late_room.first_forge_done=true
+	late_room.forged_item={"family":"sword_shield","equipped":true,"level":0,"bonus_unlocked":false}
+	late_room.catacomb_room=5
+	var ledger:=SaveManager._migrate(late_room)
+	_check("cat_r1_skeleton" in ledger.cleared_encounters and "cat_r4_revenant" in ledger.cleared_encounters,"room progress rebuilds missing encounter visual ledger")
+	_check(int(ledger.route_index)==Chapter00Director.ROUTE.size()-1,"Temple/Catacomb progress repairs exterior route index")
+
 func _test_room5_limit_contract()->void:
 	var profiles:=CatacombEncounterPlan.enemies(5)
 	_check(profiles.size()==2,"Room 5 remains a two-enemy encounter")
