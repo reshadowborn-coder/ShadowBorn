@@ -119,12 +119,17 @@ func _on_combat_state(state: Dictionary) -> void:
 		shield.position.z = -0.42 if guarded else -0.18
 
 func _on_finished(id: String) -> void:
+	var first_clear := id not in cleared_encounters
 	presenter.play_enemy_death()
 	await get_tree().create_timer(0.30).timeout
 	hud.hide_combat()
 	if active_enemy_visual: active_enemy_visual.visible = false
 	active_enemy_visual = null; presenter.clear(); camera_rig.exit_combat(); shadow.set_physics_process(true)
-	if id not in cleared_encounters: cleared_encounters.append(id)
+	if first_clear:
+		cleared_encounters.append(id)
+		if id == "shield_boss":
+			act0.silver += 1
+			act0.stage = "temple_entry"
 	checkpoint_position = shadow.global_position
 	director.set_checkpoint(id + "_cleared")
 	director.advance()
