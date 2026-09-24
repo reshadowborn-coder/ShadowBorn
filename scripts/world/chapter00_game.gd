@@ -120,6 +120,7 @@ func _on_combat_state(state: Dictionary) -> void:
 
 func _on_finished(id: String) -> void:
 	var first_clear := id not in cleared_encounters
+	var cat_room := _catacomb_room_for_encounter(id)
 	presenter.play_enemy_death()
 	await get_tree().create_timer(0.30).timeout
 	hud.hide_combat()
@@ -133,6 +134,7 @@ func _on_finished(id: String) -> void:
 	checkpoint_position = shadow.global_position
 	director.set_checkpoint(id + "_cleared")
 	director.advance()
+	if cat_room > 0: act0_flow.room_cleared(cat_room)
 	_save_progress()
 
 func _on_failed(_id: String) -> void:
@@ -160,7 +162,7 @@ func temple_interact(kind:String) -> void:
 			if act0.stage=="temple_entry": act0.join_covenant(); _save_progress()
 			elif act0.stage=="room5_return": act0_flow.temple_story_handoff(); _save_progress()
 		"covenant":
-			if act0.covenant_joined and act0.weapon_family.is_empty(): covenant_menu.show()
+			if act0.covenant_joined and act0.weapon_family.is_empty(): covenant_menu.open()
 		"smith":
 			if act0.stage=="first_forge" and act0.commit_first_forge(): _save_progress()
 		"catacombs":
@@ -218,4 +220,11 @@ func _on_room5_failed() -> void:
 
 func _on_covenant_weapon_requested(family:String)->void:
 	if choose_covenant_weapon(family):
-		covenant_menu.hide()
+		covenant_menu.close()
+
+
+func _catacomb_room_for_encounter(id:String)->int:
+	for room in range(1,5):
+		var profiles:=CatacombEncounterPlan.enemies(room)
+		if profiles.size()==1 and str(profiles[0].id)==id:return room
+	return 0
