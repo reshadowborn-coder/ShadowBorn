@@ -11,7 +11,17 @@ static func default_state() -> Dictionary:
 		"route_index": 0,
 		"checkpoint_position": [0.0, 0.9, 8.0],
 		"cleared_encounters": [],
-		"performance_mode": "smooth60"
+		"performance_mode": "smooth60",
+		"act0_stage": "exterior",
+		"covenant_joined": false,
+		"weapon_family": "",
+		"silver": 0,
+		"forged_item": {},
+		"first_forge_done": false,
+		"story_summon_unlocked": false,
+		"catacomb_room": 0,
+		"room5_solo_limit_seen": false,
+		"act0_complete": false
 	}
 
 static func load_state() -> Dictionary:
