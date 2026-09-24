@@ -87,6 +87,17 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 
 	if typeof(state.get("cleared_encounters")) != TYPE_ARRAY:
 		state.cleared_encounters = []
+	else:
+		var clean:Array=[]
+		var seen:Dictionary={}
+		for value in state.cleared_encounters:
+			var id:=str(value)
+			if id.is_empty() or seen.has(id):
+				continue
+			seen[id]=true
+			clean.append(id)
+		state.cleared_encounters=clean
+
 	if typeof(state.get("checkpoint_position")) != TYPE_ARRAY or state.checkpoint_position.size() != 3:
 		state.checkpoint_position = [0.0,0.9,8.0]
 
@@ -98,56 +109,106 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
 
 	var valid_stages:=["exterior","temple_entry","weapon_choice","first_forge","catacombs","room5_return","room5_rematch","act0_complete"]
-	if str(state.get("act0_stage","exterior")) not in valid_stages:
-		state.act0_stage="exterior"
+	var stage:=str(state.get("act0_stage","exterior"))
+	state.act0_stage = stage if stage in valid_stages else "exterior"
 
 	var family:=str(state.get("weapon_family",""))
 	if not family.is_empty() and not Act0Progression.WEAPONS.has(family):
-		state.weapon_family=""
-		state.forged_item={}
-		state.first_forge_done=false
+		family=""
+	state.weapon_family=family
 
-	if bool(state.get("first_forge_done",false)):
+	var covenant:=bool(state.get("covenant_joined",false))
+	var forged:=bool(state.get("first_forge_done",false))
+	var solo_seen:=bool(state.get("room5_solo_limit_seen",false))
+	var summon:=bool(state.get("story_summon_unlocked",false))
+	var rematch:=bool(state.get("room5_rematch_ready",false))
+	var complete:=bool(state.get("act0_complete",false))
+
+	# Later progress proves the Shield route was already cleared. Repair the
+	# reward ledger instead of allowing the boss/Silver transition to replay.
+	var later_progress:=covenant or not family.is_empty() or forged or state.catacomb_room>0 or solo_seen or summon or rematch or complete or str(state.act0_stage) not in ["exterior","temple_entry"]
+	if later_progress and "shield_boss" not in state.cleared_encounters:
+		state.cleared_encounters.append("shield_boss")
+	var shield_cleared:="shield_boss" in state.cleared_encounters
+
+	# Validate a committed forge before trusting downstream Catacomb state.
+	if forged:
 		var item=state.get("forged_item",{})
-		if typeof(item)!=TYPE_DICTIONARY or str(item.get("family",""))!=str(state.weapon_family):
+		if family.is_empty() or typeof(item)!=TYPE_DICTIONARY or str(item.get("family",""))!=family or not bool(item.get("equipped",false)):
+			forged=false
 			state.first_forge_done=false
 			state.forged_item={}
-			if bool(state.get("covenant_joined",false)) and not str(state.weapon_family).is_empty():
-				state.act0_stage="first_forge"
+			state.silver=maxi(1,state.silver)
 
-	# Repair progression dependencies instead of allowing impossible states.
-	if not bool(state.get("covenant_joined",false)):
+	if not covenant:
 		state.weapon_family=""
 		state.forged_item={}
 		state.first_forge_done=false
-		if str(state.act0_stage) not in ["exterior","temple_entry"]:
-			state.act0_stage="temple_entry"
+		state.catacomb_room=0
+		state.room5_solo_limit_seen=false
+		state.story_summon_unlocked=false
+		state.room5_rematch_ready=false
+		state.act0_complete=false
+		state.act0_stage="temple_entry" if shield_cleared else "exterior"
+		if shield_cleared:
+			state.silver=maxi(1,state.silver)
+		return state
 
-	if bool(state.get("first_forge_done",false)):
-		state.covenant_joined=true
-		if state.catacomb_room==0:
-			state.catacomb_room=1
-		if str(state.act0_stage) in ["weapon_choice","first_forge","temple_entry"]:
-			state.act0_stage="catacombs"
+	state.covenant_joined=true
 
-	if bool(state.get("story_summon_unlocked",false)) or bool(state.get("room5_rematch_ready",false)):
-		state.room5_solo_limit_seen=true
-		state.story_summon_unlocked=true
-		state.room5_rematch_ready=true
-		state.catacomb_room=5
-		if not bool(state.get("act0_complete",false)):
-			state.act0_stage="room5_rematch"
-	elif bool(state.get("room5_solo_limit_seen",false)):
-		state.catacomb_room=5
-		if not bool(state.get("act0_complete",false)):
-			state.act0_stage="room5_return"
+	if family.is_empty():
+		state.forged_item={}
+		state.first_forge_done=false
+		state.catacomb_room=0
+		state.room5_solo_limit_seen=false
+		state.story_summon_unlocked=false
+		state.room5_rematch_ready=false
+		state.act0_complete=false
+		state.act0_stage="weapon_choice"
+		if shield_cleared:
+			state.silver=maxi(1,state.silver)
+		return state
 
-	if bool(state.get("act0_complete",false)):
+	if not forged:
+		state.first_forge_done=false
+		state.forged_item={}
+		state.catacomb_room=0
+		state.room5_solo_limit_seen=false
+		state.story_summon_unlocked=false
+		state.room5_rematch_ready=false
+		state.act0_complete=false
+		state.act0_stage="first_forge"
+		state.silver=maxi(1,state.silver)
+		return state
+
+	# From this point on, Covenant + weapon + committed forge are valid.
+	state.first_forge_done=true
+	state.catacomb_room=clampi(maxi(1,state.catacomb_room),1,5)
+
+	if complete:
 		state.room5_solo_limit_seen=true
 		state.story_summon_unlocked=true
 		state.room5_rematch_ready=true
 		state.catacomb_room=5
 		state.act0_stage="act0_complete"
+	elif summon or rematch:
+		state.room5_solo_limit_seen=true
+		state.story_summon_unlocked=true
+		state.room5_rematch_ready=true
+		state.catacomb_room=5
+		state.act0_stage="room5_rematch"
+	elif solo_seen:
+		state.room5_solo_limit_seen=true
+		state.story_summon_unlocked=false
+		state.room5_rematch_ready=false
+		state.catacomb_room=5
+		state.act0_stage="room5_return"
+	else:
+		state.room5_solo_limit_seen=false
+		state.story_summon_unlocked=false
+		state.room5_rematch_ready=false
+		state.act0_complete=false
+		state.act0_stage="catacombs"
 
 	return state
 
