@@ -8,6 +8,7 @@ const IRON:=Color(0.15,0.15,0.15)
 const EMBER:=Color(0.52,0.20,0.07)
 const CLOTH:=Color(0.16,0.09,0.08)
 var mats:={}
+var meshes:={}
 
 func _ready()->void:
 	_build()
@@ -22,13 +23,20 @@ func _mat(c:Color)->StandardMaterial3D:
 	mats[k]=m
 	return m
 
-func box(n:String,p:Vector3,s:Vector3,c:Color=STONE,parent:Node3D=self)->MeshInstance3D:
-	var x:=MeshInstance3D.new()
-	x.name=n
+func _mesh(s:Vector3,c:Color)->BoxMesh:
+	var key:=str(s)+"|"+str(c)
+	if meshes.has(key):
+		return meshes[key]
 	var mesh:=BoxMesh.new()
 	mesh.size=s
 	mesh.material=_mat(c)
-	x.mesh=mesh
+	meshes[key]=mesh
+	return mesh
+
+func box(n:String,p:Vector3,s:Vector3,c:Color=STONE,parent:Node3D=self)->MeshInstance3D:
+	var x:=MeshInstance3D.new()
+	x.name=n
+	x.mesh=_mesh(s,c)
 	x.position=p
 	parent.add_child(x)
 	return x
@@ -53,9 +61,9 @@ func _build()->void:
 	collision.name="TempleCollision"
 	add_child(collision)
 
-	box("NaveFloor",Vector3(0,-.2,-86),Vector3(18,.4,30),FLOOR,visual)
-	box("ApseFloor",Vector3(0,-.18,-104),Vector3(14,.36,10),FLOOR,visual)
-	box("CatacombPassageFloor",Vector3(0,-.18,-112.75),Vector3(8,.36,7.5),FLOOR,visual)
+	solid_box("NaveFloor",Vector3(0,-.2,-86),Vector3(18,.4,30),visual,collision,FLOOR)
+	solid_box("ApseFloor",Vector3(0,-.18,-104),Vector3(14,.36,10),visual,collision,FLOOR)
+	solid_box("CatacombPassageFloor",Vector3(0,-.18,-112.75),Vector3(8,.36,7.5),visual,collision,FLOOR)
 
 	for x in [-7.0,7.0]:
 		solid_box("NaveWall",Vector3(x,3.5,-89),Vector3(.8,7,34),visual,collision,STONE)
