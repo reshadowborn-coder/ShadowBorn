@@ -27,8 +27,8 @@ func render(data:Dictionary)->void:
 	if es.size()<2:
 		return
 	var s:=int(data.get("selected",0))
-	target_a.text=("%s  %.0f HP%s"%[es[0].id,es[0].current_hp,"  <" if s==0 else ""])
-	target_b.text=("%s  %.0f HP%s"%[es[1].id,es[1].current_hp,"  <" if s==1 else ""])
+	target_a.text=("%s  %.0f HP%s"%[es[0].get("label",es[0].id),es[0].current_hp,"  <" if s==0 else ""])
+	target_b.text=("%s  %.0f HP%s"%[es[1].get("label",es[1].id),es[1].current_hp,"  <" if s==1 else ""])
 	target_a.disabled=float(es[0].current_hp)<=0.0
 	target_b.disabled=float(es[1].current_hp)<=0.0
 
