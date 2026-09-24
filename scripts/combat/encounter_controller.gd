@@ -26,12 +26,16 @@ var enemy := {}
 var loadout: Dictionary = ShadowLoadout.profile("")
 var pre_temple_mode := false
 var pre_temple_model = null
+var reduced_motion := false
 
 func set_loadout(family: String) -> void:
 	loadout = ShadowLoadout.profile(family)
 
 func set_pre_temple_veil(value: float) -> void:
-	pre_temple_veil_strength = clampf(value, 0.0, 0.95)
+	pre_temple_veil_strength = clampf(value,0.0,0.95)
+
+func set_reduced_motion(value: bool) -> void:
+	reduced_motion = value
 
 func reset_shadow() -> void:
 	shadow = {"hp":20.0,"max_hp":20.0,"atk":8.0,"def":4.0,"a2_cd":0,"veil":0.0,"fray":false}
@@ -48,8 +52,8 @@ func start_encounter(id: String, profile: Dictionary) -> void:
 	if pre_temple_mode:
 		pre_temple_model = Ch00CombatModel.new()
 		var script_id := str(PRE_TEMPLE_SCRIPTS[id])
-		if not pre_temple_model.setup(script_id, pre_temple_veil_strength):
-			push_error("Failed to initialize pre-Temple combat script: " + script_id)
+		if not pre_temple_model.setup(script_id,pre_temple_veil_strength):
+			push_error("Failed to initialize pre-Temple combat script: "+script_id)
 			pre_temple_model = null
 			pre_temple_mode = false
 			return
@@ -58,13 +62,13 @@ func start_encounter(id: String, profile: Dictionary) -> void:
 		reset_shadow()
 		encounter_id = id
 		enemy = profile.duplicate(true)
-		enemy.max_hp = enemy.get("hp", 10.0)
+		enemy.max_hp = enemy.get("hp",10.0)
 		if bool(enemy.get("guard",false)):
 			enemy.guard = true
 			enemy.guard_phase = "brace"
 
 	active = true
-	emit_signal("encounter_started", id)
+	emit_signal("encounter_started",id)
 	_emit_state()
 
 func shadow_action(skill: String) -> void:
@@ -75,69 +79,89 @@ func shadow_action(skill: String) -> void:
 		return
 	_shadow_action_legacy(skill)
 
+func _wait(duration: float) -> void:
+	if duration > 0.0:
+		await get_tree().create_timer(duration).timeout
+
 func _shadow_action_pre_temple(skill: String) -> void:
-	if skill == "A2" and int(shadow.get("a2_cd", 0)) > 0:
+	if skill == "A2" and int(shadow.get("a2_cd",0)) > 0:
 		return
 	action_locked = true
 	_emit_state()
 
-	var guarded := bool(enemy.get("guard", false))
+	var guarded := bool(enemy.get("guard",false))
 	var result: Dictionary = pre_temple_model.step(skill)
 	if result.has("error"):
-		push_error("Pre-Temple combat step failed: " + str(result["error"]))
+		push_error("Pre-Temple combat step failed: "+str(result["error"]))
 		action_locked = false
 		_emit_state()
 		return
 
-	var dealt := float(result.get("outgoing_damage", 0.0))
-	emit_signal("shadow_attack_presented", skill, dealt, guarded)
-	await get_tree().create_timer(0.34).timeout
+	var dealt := float(result.get("outgoing_damage",0.0))
+	var shadow_timing: Dictionary = CombatPresentationContract.shadow_timing(skill,reduced_motion)
+	emit_signal("shadow_attack_presented",skill,dealt,guarded)
+	await _wait(float(shadow_timing.get("contact",0.0)))
 	if not active:
 		action_locked = false
 		return
 
-	enemy.hp = float(result.get("enemy_hp_after", enemy.get("hp", 0.0)))
+	_apply_pre_temple_post_action(result)
 	_emit_state()
 
-	var terminal := str(result.get("terminal", "CONTINUE"))
+	var terminal := str(result.get("terminal","CONTINUE"))
+	await _wait(CombatPresentationContract.remainder_after_contact(shadow_timing))
 	if terminal == "WIN":
+		active = false
+		action_locked = false
+		emit_signal("encounter_finished",encounter_id)
+		_emit_state()
+		return
+
+	await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
+	var enemy_action := str(result.get("enemy_action","NONE"))
+	var incoming := float(result.get("incoming_damage",0.0))
+	var enemy_timing: Dictionary = CombatPresentationContract.enemy_timing(enemy_action,reduced_motion)
+	emit_signal("enemy_beat_presented",enemy_action,incoming)
+
+	if incoming > 0.0:
+		await _wait(float(enemy_timing.get("contact",0.0)))
+		if not active:
+			action_locked = false
+			return
 		_sync_pre_temple_snapshot()
-		await get_tree().create_timer(0.28).timeout
-		active = false
-		action_locked = false
-		emit_signal("encounter_finished", encounter_id)
 		_emit_state()
-		return
+		await _wait(CombatPresentationContract.remainder_after_contact(enemy_timing))
+	else:
+		await _wait(float(enemy_timing.get("recovery_end",0.0)))
+		if not active:
+			action_locked = false
+			return
+		_sync_pre_temple_snapshot()
+		_emit_state()
 
-	await get_tree().create_timer(0.18).timeout
-	var enemy_action := str(result.get("enemy_action", "NONE"))
-	var incoming := float(result.get("incoming_damage", 0.0))
-	emit_signal("enemy_beat_presented", enemy_action, incoming)
-	await get_tree().create_timer(0.30).timeout
-	if not active:
-		action_locked = false
-		return
-
-	_sync_pre_temple_snapshot()
-	if terminal == "LOSE" or float(shadow.get("hp", 0.0)) <= 0.0:
+	if terminal == "LOSE" or float(shadow.get("hp",0.0)) <= 0.0:
 		active = false
 		action_locked = false
 		_emit_state()
-		emit_signal("encounter_failed", encounter_id)
+		emit_signal("encounter_failed",encounter_id)
 		return
 
 	action_locked = false
 	_emit_state()
 
+func _apply_pre_temple_post_action(result: Dictionary) -> void:
+	shadow = Dictionary(result.get("post_action_shadow",shadow)).duplicate(true)
+	enemy = Dictionary(result.get("post_action_enemy",enemy)).duplicate(true)
+
 func _sync_pre_temple_snapshot() -> void:
 	if pre_temple_model == null:
 		return
 	var snapshot: Dictionary = pre_temple_model.snapshot()
-	shadow = Dictionary(snapshot.get("shadow", {})).duplicate(true)
-	enemy = Dictionary(snapshot.get("enemy", {})).duplicate(true)
+	shadow = Dictionary(snapshot.get("shadow",{})).duplicate(true)
+	enemy = Dictionary(snapshot.get("enemy",{})).duplicate(true)
 
 func _shadow_action_legacy(skill: String) -> void:
-	if skill == "A2" and int(shadow.get("a2_cd", 0)) > 0:
+	if skill == "A2" and int(shadow.get("a2_cd",0)) > 0:
 		return
 
 	action_locked = true
@@ -166,30 +190,32 @@ func _shadow_action_legacy(skill: String) -> void:
 
 	var dealt := CombatResolver.damage(float(shadow.atk),coeff,float(enemy.def),state_mult)
 	if skill == "A2":
-		shadow.a2_cd = cooldown + 1
+		shadow.a2_cd = cooldown+1
 		shadow.veil = veil_gain
 
-	emit_signal("shadow_attack_presented", skill, dealt, guarded)
-	await get_tree().create_timer(0.34).timeout
+	var shadow_timing: Dictionary = CombatPresentationContract.shadow_timing(skill,reduced_motion)
+	emit_signal("shadow_attack_presented",skill,dealt,guarded)
+	await _wait(float(shadow_timing.get("contact",0.0)))
 	if not active:
 		action_locked = false
 		return
 
 	enemy.hp -= dealt
 	_emit_state()
+	await _wait(CombatPresentationContract.remainder_after_contact(shadow_timing))
 
 	if enemy.hp <= 0.0:
-		await get_tree().create_timer(0.28).timeout
 		active = false
 		action_locked = false
-		emit_signal("encounter_finished", encounter_id)
+		emit_signal("encounter_finished",encounter_id)
 		_emit_state()
 		return
 
-	await get_tree().create_timer(0.18).timeout
+	await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
 	var incoming := _prepare_enemy_turn_legacy()
-	emit_signal("enemy_attack_presented", incoming)
-	await get_tree().create_timer(0.30).timeout
+	var enemy_timing: Dictionary = CombatPresentationContract.enemy_timing("ATTACK",reduced_motion)
+	emit_signal("enemy_attack_presented",incoming)
+	await _wait(float(enemy_timing.get("contact",0.0)))
 	if not active:
 		action_locked = false
 		return
@@ -197,34 +223,36 @@ func _shadow_action_legacy(skill: String) -> void:
 	shadow.hp -= incoming
 	if shadow.a2_cd > 0:
 		shadow.a2_cd -= 1
+	_emit_state()
+	await _wait(CombatPresentationContract.remainder_after_contact(enemy_timing))
 
 	if shadow.hp <= 0.0:
 		active = false
 		action_locked = false
 		_emit_state()
-		emit_signal("encounter_failed", encounter_id)
+		emit_signal("encounter_failed",encounter_id)
 		return
 
 	action_locked = false
 	_emit_state()
 
 func _prepare_enemy_turn_legacy() -> float:
-	var incoming: float = enemy.get("damage", 2.0)
+	var incoming: float = enemy.get("damage",2.0)
 	if shadow.veil > 0.0:
-		incoming *= (1.0 - shadow.veil)
+		incoming *= (1.0-shadow.veil)
 		shadow.veil = 0.0
-	if enemy.get("guard_phase", "") == "brace":
+	if enemy.get("guard_phase","") == "brace":
 		enemy.guard = false
 		enemy.guard_phase = "open"
 	return incoming
 
 func _emit_state() -> void:
-	emit_signal("combat_state_changed", {
-		"active": active,
-		"action_locked": action_locked,
-		"encounter_id": encounter_id,
-		"pre_temple_mode": pre_temple_mode,
-		"shadow": shadow.duplicate(true),
-		"enemy": enemy.duplicate(true),
-		"loadout": loadout.duplicate(true)
+	emit_signal("combat_state_changed",{
+		"active":active,
+		"action_locked":action_locked,
+		"encounter_id":encounter_id,
+		"pre_temple_mode":pre_temple_mode,
+		"shadow":shadow.duplicate(true),
+		"enemy":enemy.duplicate(true),
+		"loadout":loadout.duplicate(true)
 	})
