@@ -29,7 +29,8 @@ func _ready() -> void:
 	var persisted := SaveManager.load_state()
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
 	act0_flow.restore(persisted); team.restore(persisted)
-	act0_flow.companion_ready.connect(func(_profile): team.unlock_story_slot())
+	_restore_act0_position()
+	act0_flow.companion_ready.connect(_on_companion_ready)
 	room5_combat.finished.connect(_on_room5_finished)
 	room5_combat.failed.connect(_on_room5_failed)
 	room5_combat.state_changed.connect(room5_hud.render)
@@ -228,3 +229,20 @@ func _catacomb_room_for_encounter(id:String)->int:
 		var profiles:=CatacombEncounterPlan.enemies(room)
 		if profiles.size()==1 and str(profiles[0].id)==id:return room
 	return 0
+
+
+func _on_companion_ready(_profile:Dictionary)->void:
+	team.unlock_story_slot()
+	checkpoint_position=Vector3(0,0.9,-111)
+	shadow.global_position=checkpoint_position
+	director.set_checkpoint("room5_rematch")
+	_save_progress()
+
+func _restore_act0_position()->void:
+	if act0.stage=="room5_return":
+		checkpoint_position=Vector3(0,0.9,-96)
+	elif act0.stage=="room5_rematch":
+		checkpoint_position=Vector3(0,0.9,-111)
+	elif act0.stage=="act0_complete":
+		return
+	shadow.global_position=checkpoint_position
