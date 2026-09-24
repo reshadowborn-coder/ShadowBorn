@@ -17,15 +17,19 @@ var act0 := Act0Progression.new()
 var catacombs := CatacombProgression.new()
 var team := TeamState.new()
 var act0_flow := Act0Orchestrator.new()
+var room5_combat := MultiEnemyEncounter.new()
+var room5_active := false
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
-	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow)
+	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow); add_child(room5_combat)
 	_restore_save()
 	var persisted := SaveManager.load_state()
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
 	act0_flow.restore(persisted); team.restore(persisted)
 	act0_flow.companion_ready.connect(func(_profile): team.unlock_story_slot())
+	room5_combat.finished.connect(_on_room5_finished)
+	room5_combat.failed.connect(_on_room5_failed)
 	encounter.reset_shadow()
 	hud.skill_pressed.connect(encounter.shadow_action)
 	encounter.encounter_started.connect(_on_started)
@@ -164,4 +168,33 @@ func enter_catacomb_room(room:int) -> void:
 		return
 	var enemies:=CatacombEncounterPlan.enemies(room)
 	if enemies.size()==1: begin_encounter(str(enemies[0].id),enemies[0])
-	# Room 5 rematch requires the multi-enemy combat layer; progression remains locked until that resolves.
+	elif room==5 and catacombs.summon_unlocked and catacombs.rematch_ready:
+		_start_room5_rematch(enemies)
+
+
+func _start_room5_rematch(enemies:Array) -> void:
+	if room5_active:return
+	room5_active=true
+	shadow.set_physics_process(false)
+	room5_combat.start(enemies,true)
+
+func room5_select_target(index:int) -> void:
+	if room5_active:room5_combat.select_target(index)
+
+func room5_action(skill:String) -> void:
+	if room5_active:room5_combat.shadow_action(skill)
+
+func _on_room5_finished() -> void:
+	room5_active=false
+	act0_flow.room_cleared(5)
+	director.set_checkpoint("act0_complete")
+	checkpoint_position=shadow.global_position
+	shadow.set_physics_process(true)
+	_save_progress()
+
+func _on_room5_failed() -> void:
+	room5_active=false
+	shadow.global_position=checkpoint_position
+	shadow.velocity=Vector3.ZERO
+	shadow.set_physics_process(true)
+	_save_progress()
