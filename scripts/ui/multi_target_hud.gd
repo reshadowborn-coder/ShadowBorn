@@ -33,9 +33,13 @@ func render(data:Dictionary)->void:
 	target_a.disabled=float(es[0].current_hp)<=0.0
 	target_b.disabled=float(es[1].current_hp)<=0.0
 
+	var loadout:Dictionary=data.get("loadout",{})
+	var a1_name:=str(loadout.get("a1_name","Basic Attack")).to_upper()
+	var a2_name:=str(loadout.get("a2_name","Shadow Lunge")).to_upper()
 	var cd:=int(data.get("a2_cd",0))
+	a1.text="A1  "+a1_name
 	a2.disabled=cd>0
-	a2.text="A2  ACTIVE" if cd==0 else "A2  ACTIVE  [CD %d]"%cd
+	a2.text="A2  "+a2_name if cd==0 else "A2  %s  [CD %d]"%[a2_name,cd]
 
 	if bool(data.get("limit_reached",false)):
 		state.text="THE SHADOW CANNOT HOLD — RETREAT"
@@ -43,9 +47,14 @@ func render(data:Dictionary)->void:
 		a2.disabled=true
 		return
 	a1.disabled=false
-	var suffix:=""
+	var tags:Array[String]=[]
 	if bool(data.get("companion_active",false)):
-		suffix="  |  ALLY ACTIVE"
+		tags.append("ALLY ACTIVE")
 	elif bool(data.get("solo_limit_mode",false)):
-		suffix="  |  OUTNUMBERED"
+		tags.append("OUTNUMBERED")
+	if bool(data.get("fray",false)):
+		tags.append("FRAY")
+	if float(data.get("veil",0.0))>0.0:
+		tags.append("VEIL")
+	var suffix:="  |  "+"  •  ".join(tags) if not tags.is_empty() else ""
 	state.text="SHADOW %.0f HP%s"%[float(data.get("shadow_hp",0.0)),suffix]
