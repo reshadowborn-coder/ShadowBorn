@@ -10,8 +10,17 @@ signal menu_closed
 @onready var confirm:Button=$Panel/Confirm
 @onready var cancel:Button=$Panel/Cancel
 var selected:=""
+var blocker:ColorRect
 
 func _ready()->void:
+	blocker=ColorRect.new()
+	blocker.name="ModalBlocker"
+	blocker.color=Color(0,0,0,0.45)
+	blocker.mouse_filter=Control.MOUSE_FILTER_STOP
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(blocker)
+	move_child(blocker,0)
+	blocker.visible=false
 	panel.visible=false
 	for child in $Panel/Weapons.get_children():
 		if child is Button:
@@ -21,9 +30,12 @@ func _ready()->void:
 	confirm.disabled=true
 
 func open()->void:
+	if panel.visible:
+		return
 	selected=""
 	details.text="FORGOTTEN COVENANT\nChoose a weapon family to preview A1 / A2.\nP1 remains LOCKED until Lv10."
 	confirm.disabled=true
+	blocker.visible=true
 	panel.visible=true
 	menu_opened.emit()
 
@@ -31,6 +43,7 @@ func close()->void:
 	if not panel.visible:
 		return
 	panel.visible=false
+	blocker.visible=false
 	menu_closed.emit()
 
 func _select(family:String)->void:
