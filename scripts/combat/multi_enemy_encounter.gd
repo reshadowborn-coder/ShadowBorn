@@ -26,7 +26,7 @@ func shadow_action(skill:String)->void:
 	var coeff:=1.0 if skill=="A1" else 1.30
 	var damage:=8.0*coeff*100.0/(100.0+float(e.def))
 	e.current_hp=maxf(0.0,float(e.current_hp)-damage);enemies[selected]=e
-	if companion_active:_companion_assist()
+	if companion_active and not _all_dead():_companion_assist()
 	if _all_dead():active=false;finished.emit();return
 	_enemy_phase()
 	if shadow_hp<=0.0:active=false;failed.emit();return
