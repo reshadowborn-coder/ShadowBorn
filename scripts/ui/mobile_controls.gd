@@ -5,6 +5,7 @@ signal direction_changed(direction:Vector2)
 
 var held:Dictionary={"left":false,"right":false,"up":false,"down":false}
 var root:Control
+var touch_available:=false
 
 func _ready()->void:
 	layer=4
@@ -16,7 +17,8 @@ func _ready()->void:
 	_add_button("Right","▶",Vector2(196,-176),Vector2(276,-96),"right")
 	_add_button("Up","▲",Vector2(116,-256),Vector2(196,-176),"up")
 	_add_button("Down","▼",Vector2(116,-96),Vector2(196,-16),"down")
-	visible=DisplayServer.is_touchscreen_available()
+	touch_available=DisplayServer.is_touchscreen_available()
+	visible=touch_available
 
 func _add_button(name_:String,label:String,from:Vector2,to:Vector2,key:String)->void:
 	var b:=Button.new()
@@ -43,6 +45,7 @@ func _emit_direction()->void:
 	direction_changed.emit(Vector2(x,y).normalized())
 
 func set_enabled(value:bool)->void:
+	visible=touch_available and value
 	root.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	for child in root.get_children():
 		if child is Button:
