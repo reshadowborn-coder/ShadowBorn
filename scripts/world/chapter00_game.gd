@@ -124,11 +124,17 @@ func _apply_cleared_visuals() -> void:
 		if is_encounter_cleared(str(node.get_meta("encounter_id", ""))): node.visible = false
 
 func _position_combatants(enemy_visual: Node3D) -> void:
-	var center := enemy_visual.global_position
+	if not enemy_visual.has_meta("combat_home_position"):
+		enemy_visual.set_meta("combat_home_position",enemy_visual.global_position)
+	var center:Vector3=enemy_visual.get_meta("combat_home_position")
 	shadow.global_position = center + Vector3(-2.8, 0.0, 1.1)
 	enemy_visual.global_position = center + Vector3(2.4, 0.0, -0.6)
 	shadow.look_at(Vector3(enemy_visual.global_position.x, shadow.global_position.y, enemy_visual.global_position.z), Vector3.UP)
 	enemy_visual.look_at(Vector3(shadow.global_position.x, enemy_visual.global_position.y, shadow.global_position.z), Vector3.UP)
+
+func _restore_enemy_visual_home()->void:
+	if active_enemy_visual and active_enemy_visual.has_meta("combat_home_position"):
+		active_enemy_visual.global_position=active_enemy_visual.get_meta("combat_home_position")
 
 func _on_started(id: String) -> void: hud.show_combat(id)
 
@@ -161,8 +167,15 @@ func _on_finished(id: String) -> void:
 	_save_progress()
 
 func _on_failed(_id: String) -> void:
-	hud.hide_combat(); active_enemy_visual = null; presenter.clear(); camera_rig.exit_combat(); encounter.reset_shadow()
-	shadow.global_position = checkpoint_position; shadow.velocity = Vector3.ZERO; shadow.set_physics_process(true)
+	hud.hide_combat()
+	_restore_enemy_visual_home()
+	active_enemy_visual = null
+	presenter.clear()
+	camera_rig.exit_combat()
+	encounter.reset_shadow()
+	shadow.global_position = checkpoint_position
+	shadow.velocity = Vector3.ZERO
+	shadow.set_physics_process(true)
 
 func play_world_reveal(id: String) -> void:
 	if id != "temple" or encounter.active: return
@@ -183,8 +196,11 @@ func enter_temple() -> void:
 func temple_interact(kind:String) -> void:
 	match kind:
 		"keeper":
-			if act0.stage=="temple_entry": act0.join_covenant(); _save_progress()
-			elif act0.stage=="room5_return": act0_flow.temple_story_handoff(); _save_progress()
+			if act0.stage=="temple_entry":
+				act0.join_covenant()
+				_save_progress()
+			elif act0.stage=="room5_return" and act0_flow.temple_story_handoff():
+				_save_progress()
 		"covenant":
 			if act0.covenant_joined and act0.weapon_family.is_empty(): covenant_menu.open()
 		"smith":
@@ -203,6 +219,13 @@ func enter_catacomb_room(room:int) -> void:
 	if room!=catacombs.room:return
 	var enemies:=CatacombEncounterPlan.enemies(room)
 	if room==5 and not catacombs.summon_unlocked:
+		if catacombs.room5_solo_limit_seen:
+			checkpoint_position=Vector3(0,0.9,-96)
+			shadow.global_position=checkpoint_position
+			shadow.velocity=Vector3.ZERO
+			director.set_checkpoint("room5_return")
+			_save_progress()
+			return
 		_start_room5_solo_attempt(enemies)
 		return
 	if enemies.size()==1:
@@ -239,7 +262,9 @@ func _on_room5_finished() -> void:
 	room5_hud.close()
 	room5_active=false
 	room5_solo_attempt=false
-	act0_flow.room_cleared(5)
+	if not act0_flow.room_cleared(5):
+		shadow.set_physics_process(true)
+		return
 	director.set_checkpoint("act0_complete")
 	checkpoint_position=shadow.global_position
 	shadow.set_physics_process(true)
@@ -286,16 +311,14 @@ func _catacomb_room_for_encounter(id:String)->int:
 
 func _on_companion_ready(_profile:Dictionary)->void:
 	team.unlock_story_slot()
-	checkpoint_position=Vector3(0,0.9,-111)
-	shadow.global_position=checkpoint_position
+	# Keep the player in the Temple after the story handoff instead of
+	# teleporting straight back to the Catacombs.
+	checkpoint_position=shadow.global_position
 	director.set_checkpoint("room5_rematch")
-	_save_progress()
 
 func _restore_act0_position()->void:
 	if act0.stage=="room5_return":
 		checkpoint_position=Vector3(0,0.9,-96)
-	elif act0.stage=="room5_rematch":
-		checkpoint_position=Vector3(0,0.9,-111)
 	elif act0.stage=="act0_complete":
 		return
 	shadow.global_position=checkpoint_position
