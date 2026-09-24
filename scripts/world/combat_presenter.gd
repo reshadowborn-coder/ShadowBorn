@@ -76,3 +76,19 @@ func _impact_flash(target: Node3D, guarded: bool) -> void:
 
 func set_reduced_motion(value:bool)->void:
 	reduced_motion=value
+
+
+func play_enemy_beat(action:String, damage:float)->void:
+	if action in ["RUSH_PREP","BRACE_EXIT"]:
+		if not is_instance_valid(enemy_visual):
+			return
+		if reduced_motion:
+			_impact_flash(enemy_visual,true)
+			return
+		var origin_scale:=enemy_visual.scale
+		var pulse_scale:=origin_scale*1.08
+		var t:=create_tween()
+		t.tween_property(enemy_visual,"scale",pulse_scale,0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(enemy_visual,"scale",origin_scale,0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		return
+	play_enemy_attack(damage)
