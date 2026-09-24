@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource path="res://scripts/world/chapter00_director.gd" type="Script" id="1"]
 [ext_resource path="res://scripts/player/shadow_controller.gd" type="Script" id="2"]
@@ -17,6 +17,7 @@
 [ext_resource path="res://scripts/ui/multi_target_hud.gd" type="Script" id="15"]
 [ext_resource path="res://scripts/world/act0_trigger_builder.gd" type="Script" id="16"]
 [ext_resource path="res://scripts/ui/covenant_menu.gd" type="Script" id="17"]
+[ext_resource path="res://scripts/ui/mobile_controls.gd" type="Script" id="18"]
 [sub_resource type="CapsuleShape3D" id="PlayerShape"]
 radius = 0.42
 height = 1.7
@@ -76,6 +77,8 @@ fov = 42.0
 script = ExtResource("9")
 [node name="Game" type="Node" parent="."]
 script = ExtResource("5")
+[node name="MobileControls" type="CanvasLayer" parent="Game"]
+script = ExtResource("18")
 [node name="CombatPresenter" type="Node" parent="Game"]
 script = ExtResource("8")
 [node name="EncounterController" type="Node" parent="Game"]
