@@ -99,6 +99,7 @@ func _test_hound_adapter() -> void:
 	_check(_close(float(controller.enemy.hp),78.5185185),"Hound A2 damage matches fixture")
 	_check(int(controller.shadow.a2_cd)==3,"Hound A2 cooldown is 3 blocked opportunities")
 
+	print("Hound presentation order: "+str(order))
 	var p0 := _index(order,"shadow_present")
 	var p1 := _index(order,"enemy_hp_contact")
 	var p2 := _index(order,"enemy_present")
@@ -147,6 +148,7 @@ func _test_reduced_motion_order() -> void:
 	_check(_close(float(controller.shadow.hp),61.8474576),"Reduced motion preserves Hound semantic result")
 	_check(not controller.action_locked,"Reduced motion reaches same unlocked decision state")
 
+	print("Reduced presentation order: "+str(order))
 	var p0 := _index(order,"shadow_present")
 	var p1 := _index(order,"enemy_hp_contact")
 	var p2 := _index(order,"enemy_present")
