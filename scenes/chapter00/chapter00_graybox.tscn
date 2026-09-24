@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource path="res://scripts/world/chapter00_director.gd" type="Script" id="1"]
 [ext_resource path="res://scripts/player/shadow_controller.gd" type="Script" id="2"]
@@ -16,6 +16,7 @@
 [ext_resource path="res://scripts/combat/multi_enemy_encounter.gd" type="Script" id="14"]
 [ext_resource path="res://scripts/ui/multi_target_hud.gd" type="Script" id="15"]
 [ext_resource path="res://scripts/world/act0_trigger_builder.gd" type="Script" id="16"]
+[ext_resource path="res://scripts/ui/covenant_menu.gd" type="Script" id="17"]
 [sub_resource type="CapsuleShape3D" id="PlayerShape"]
 radius = 0.42
 height = 1.7
@@ -165,3 +166,38 @@ text = "A1  BASIC ATTACK"
 position = Vector2(340,125)
 size = Vector2(310,65)
 text = "A2  ACTIVE"
+
+[node name="CovenantMenu" type="CanvasLayer" parent="Game"]
+layer = 10
+script = ExtResource("17")
+[node name="Panel" type="Panel" parent="Game/CovenantMenu"]
+offset_left = 420.0
+offset_top = 150.0
+offset_right = 1500.0
+offset_bottom = 900.0
+[node name="Details" type="Label" parent="Game/CovenantMenu/Panel"]
+position = Vector2(40,35)
+size = Vector2(1000,120)
+text = "FORGOTTEN COVENANT"
+[node name="Weapons" type="VBoxContainer" parent="Game/CovenantMenu/Panel"]
+position = Vector2(40,170)
+size = Vector2(450,420)
+[node name="SwordShield" type="Button" parent="Game/CovenantMenu/Panel/Weapons"]
+text = "SWORD + SHIELD"
+metadata/family = "sword_shield"
+[node name="Bow" type="Button" parent="Game/CovenantMenu/Panel/Weapons"]
+text = "BOW"
+metadata/family = "bow"
+[node name="TwoHandAxe" type="Button" parent="Game/CovenantMenu/Panel/Weapons"]
+text = "2H AXE"
+metadata/family = "two_hand_axe"
+[node name="DualDaggers" type="Button" parent="Game/CovenantMenu/Panel/Weapons"]
+text = "DUAL DAGGERS"
+metadata/family = "dual_daggers"
+[node name="MageStaff" type="Button" parent="Game/CovenantMenu/Panel/Weapons"]
+text = "2H MAGE STAFF"
+metadata/family = "mage_staff"
+[node name="Confirm" type="Button" parent="Game/CovenantMenu/Panel"]
+position = Vector2(550,500)
+size = Vector2(450,75)
+text = "CONFIRM WEAPON"
