@@ -17,6 +17,7 @@ var active:=false
 var a2_cd:=0
 var rounds:=0
 var solo_limit_mode:=false
+var limit_reached:=false
 
 func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void:
 	enemies=profiles.duplicate(true)
@@ -28,6 +29,7 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void
 	a2_cd=0
 	rounds=0
 	solo_limit_mode=force_solo_limit
+	limit_reached=false
 	active=true
 	_emit()
 
@@ -68,6 +70,7 @@ func shadow_action(skill:String)->void:
 
 	if solo_limit_mode and rounds>=SOLO_LIMIT_ROUNDS:
 		active=false
+		limit_reached=true
 		_emit()
 		solo_limit_reached.emit()
 		return
@@ -116,5 +119,6 @@ func _emit()->void:
 		"companion_active":companion_active,
 		"a2_cd":a2_cd,
 		"rounds":rounds,
-		"solo_limit_mode":solo_limit_mode
+		"solo_limit_mode":solo_limit_mode,
+		"limit_reached":limit_reached
 	})
