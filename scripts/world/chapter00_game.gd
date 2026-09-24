@@ -9,6 +9,7 @@ extends Node
 @onready var presenter: CombatPresenter = $CombatPresenter
 @onready var settings_menu: SettingsMenu = $SettingsMenu
 @onready var settings_button: Button = $CombatHUD/SettingsButton
+@onready var covenant_menu:CovenantMenu=$CovenantMenu
 var checkpoint_position := Vector3(0,0.9,8)
 var active_enemy_visual: Node3D
 var cleared_encounters: Array[String] = []
@@ -34,6 +35,7 @@ func _ready() -> void:
 	room5_combat.state_changed.connect(room5_hud.render)
 	room5_hud.target_selected.connect(room5_select_target)
 	room5_hud.skill_pressed.connect(room5_action)
+	covenant_menu.weapon_requested.connect(_on_covenant_weapon_requested)
 	encounter.reset_shadow()
 	hud.skill_pressed.connect(encounter.shadow_action)
 	encounter.encounter_started.connect(_on_started)
@@ -152,6 +154,8 @@ func temple_interact(kind:String) -> void:
 		"keeper":
 			if act0.stage=="temple_entry": act0.join_covenant(); _save_progress()
 			elif act0.stage=="room5_return": act0_flow.temple_story_handoff(); _save_progress()
+		"covenant":
+			if act0.covenant_joined and act0.weapon_family.is_empty(): covenant_menu.show()
 		"smith":
 			if act0.stage=="first_forge" and act0.commit_first_forge(): _save_progress()
 		"catacombs":
@@ -205,3 +209,8 @@ func _on_room5_failed() -> void:
 	shadow.velocity=Vector3.ZERO
 	shadow.set_physics_process(true)
 	_save_progress()
+
+
+func _on_covenant_weapon_requested(family:String)->void:
+	if choose_covenant_weapon(family):
+		covenant_menu.hide()
