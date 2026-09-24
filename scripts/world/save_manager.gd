@@ -14,6 +14,7 @@ static func default_state() -> Dictionary:
 		"checkpoint_position": [0.0, 0.9, 8.0],
 		"cleared_encounters": [],
 		"performance_mode": "smooth60",
+		"shadow_identity": "",
 		"act0_stage": "exterior",
 		"covenant_joined": false,
 		"weapon_family": "",
@@ -107,6 +108,8 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 
 	var mode:=str(state.get("performance_mode","smooth60"))
 	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
+	var identity:=str(state.get("shadow_identity",""))
+	state.shadow_identity = identity if identity in ["","male","female"] else ""
 
 	var valid_stages:=["exterior","temple_entry","weapon_choice","first_forge","catacombs","room5_return","room5_rematch","act0_complete"]
 	var stage:=str(state.get("act0_stage","exterior"))
@@ -233,4 +236,22 @@ func patch_and_save(patch:Dictionary)->bool:
 	var state:=load_state()
 	for key in patch:
 		state[key]=patch[key]
+	return save_state(state)
+
+
+static func has_save()->bool:
+	return _read_dictionary(SAVE_PATH)!=null or _read_dictionary(BAK_PATH)!=null
+
+static func create_new_game(identity:String)->bool:
+	if identity not in ["male","female"]:
+		return false
+	var state:=default_state()
+	state.shadow_identity=identity
+	return save_state(state)
+
+static func set_identity_on_existing_save(identity:String)->bool:
+	if identity not in ["male","female"] or not has_save():
+		return false
+	var state:=load_state()
+	state.shadow_identity=identity
 	return save_state(state)
