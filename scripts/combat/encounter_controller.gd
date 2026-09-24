@@ -18,8 +18,11 @@ func reset_shadow() -> void:
 	shadow = {"hp":20.0,"max_hp":20.0,"atk":8.0,"def":4.0,"a2_cd":0,"veil":0.0,"fray":false}
 
 func start_encounter(id: String, profile: Dictionary) -> void:
-	if active: return
-	if shadow.is_empty() or shadow.hp <= 0.0: reset_shadow()
+	if active:
+		return
+	# Each authored encounter is a discrete battle. Reset here so retry,
+	# process restart, and uninterrupted play begin from the same HP/state.
+	reset_shadow()
 	encounter_id = id
 	enemy = profile.duplicate(true)
 	enemy.max_hp = enemy.get("hp", 10.0)
