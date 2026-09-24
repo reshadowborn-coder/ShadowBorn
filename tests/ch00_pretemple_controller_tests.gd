@@ -63,9 +63,7 @@ func _test_presentation_contract() -> void:
 func _test_hound_adapter() -> void:
 	var controller := _controller()
 	var order: Array[String] = []
-	var enemy_contact_seen := false
-	var shadow_contact_seen := false
-	var unlock_seen := false
+	var flags := {"enemy":false,"shadow":false,"unlock":false}
 	controller.shadow_attack_presented.connect(func(_skill:String,_damage:float,_guarded:bool)->void:
 		order.append("shadow_present")
 	)
@@ -76,14 +74,14 @@ func _test_hound_adapter() -> void:
 		var s: Dictionary = state.get("shadow",{})
 		var e: Dictionary = state.get("enemy",{})
 		var locked := bool(state.get("action_locked",false))
-		if locked and not enemy_contact_seen and float(e.get("hp",105.0)) < 105.0:
-			enemy_contact_seen = true
+		if locked and not bool(flags["enemy"]) and float(e.get("hp",105.0)) < 105.0:
+			flags["enemy"] = true
 			order.append("enemy_hp_contact")
-		if locked and not shadow_contact_seen and float(s.get("hp",80.0)) < 80.0:
-			shadow_contact_seen = true
+		if locked and not bool(flags["shadow"]) and float(s.get("hp",80.0)) < 80.0:
+			flags["shadow"] = true
 			order.append("shadow_hp_contact")
-		if not locked and shadow_contact_seen and not unlock_seen:
-			unlock_seen = true
+		if not locked and bool(flags["shadow"]) and not bool(flags["unlock"]):
+			flags["unlock"] = true
 			order.append("unlock")
 	)
 
@@ -118,9 +116,7 @@ func _test_reduced_motion_order() -> void:
 	var controller := _controller()
 	controller.set_reduced_motion(true)
 	var order: Array[String] = []
-	var enemy_contact_seen := false
-	var shadow_contact_seen := false
-	var unlock_seen := false
+	var flags := {"enemy":false,"shadow":false,"unlock":false}
 	controller.shadow_attack_presented.connect(func(_skill:String,_damage:float,_guarded:bool)->void:
 		order.append("shadow_present")
 	)
@@ -131,14 +127,14 @@ func _test_reduced_motion_order() -> void:
 		var s: Dictionary = state.get("shadow",{})
 		var e: Dictionary = state.get("enemy",{})
 		var locked := bool(state.get("action_locked",false))
-		if locked and not enemy_contact_seen and float(e.get("hp",105.0)) < 105.0:
-			enemy_contact_seen = true
+		if locked and not bool(flags["enemy"]) and float(e.get("hp",105.0)) < 105.0:
+			flags["enemy"] = true
 			order.append("enemy_hp_contact")
-		if locked and not shadow_contact_seen and float(s.get("hp",80.0)) < 80.0:
-			shadow_contact_seen = true
+		if locked and not bool(flags["shadow"]) and float(s.get("hp",80.0)) < 80.0:
+			flags["shadow"] = true
 			order.append("shadow_hp_contact")
-		if not locked and shadow_contact_seen and not unlock_seen:
-			unlock_seen = true
+		if not locked and bool(flags["shadow"]) and not bool(flags["unlock"]):
+			flags["unlock"] = true
 			order.append("unlock")
 	)
 
