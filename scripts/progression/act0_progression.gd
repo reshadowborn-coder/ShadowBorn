@@ -39,6 +39,6 @@ func choose_weapon(family:String)->bool:
 	weapon_family=family;stage="first_forge";weapon_selected.emit(family);stage_changed.emit(stage);return true
 
 func commit_first_forge()->bool:
-	if first_forge_done or weapon_family.is_empty() or silver<1:return false
+	if first_forge_done or not covenant_joined or stage!="first_forge" or weapon_family.is_empty() or silver<1:return false
 	var candidate={"id":"shadow_"+weapon_family+"_01","family":weapon_family,"level":0,"bonus_unlocked":false,"equipped":true}
 	silver-=1;forged_item=candidate;first_forge_done=true;stage="catacombs";forge_committed.emit(forged_item);stage_changed.emit(stage);return true
