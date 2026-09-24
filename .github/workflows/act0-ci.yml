@@ -26,3 +26,6 @@ jobs:
 
       - name: Run Act 0 deterministic tests
         run: /tmp/godot/godot --headless --path . --script res://tests/act0_state_tests.gd
+
+      - name: Run Act 0 scene smoke
+        run: /tmp/godot/godot --headless --path . --script res://tests/act0_scene_smoke.gd
