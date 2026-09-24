@@ -17,12 +17,13 @@ var act0 := Act0Progression.new()
 var catacombs := CatacombProgression.new()
 var team := TeamState.new()
 var act0_flow := Act0Orchestrator.new()
-var room5_combat := MultiEnemyEncounter.new()
+@onready var room5_combat:MultiEnemyEncounter=$Room5Combat
+@onready var room5_hud:MultiTargetHUD=$MultiTargetHUD
 var room5_active := false
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
-	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow); add_child(room5_combat)
+	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow)
 	_restore_save()
 	var persisted := SaveManager.load_state()
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
@@ -30,6 +31,9 @@ func _ready() -> void:
 	act0_flow.companion_ready.connect(func(_profile): team.unlock_story_slot())
 	room5_combat.finished.connect(_on_room5_finished)
 	room5_combat.failed.connect(_on_room5_failed)
+	room5_combat.state_changed.connect(room5_hud.render)
+	room5_hud.target_selected.connect(room5_select_target)
+	room5_hud.skill_pressed.connect(room5_action)
 	encounter.reset_shadow()
 	hud.skill_pressed.connect(encounter.shadow_action)
 	encounter.encounter_started.connect(_on_started)
@@ -176,6 +180,7 @@ func _start_room5_rematch(enemies:Array) -> void:
 	if room5_active:return
 	room5_active=true
 	shadow.set_physics_process(false)
+	room5_hud.open()
 	room5_combat.start(enemies,true)
 
 func room5_select_target(index:int) -> void:
@@ -185,6 +190,7 @@ func room5_action(skill:String) -> void:
 	if room5_active:room5_combat.shadow_action(skill)
 
 func _on_room5_finished() -> void:
+	room5_hud.close()
 	room5_active=false
 	act0_flow.room_cleared(5)
 	director.set_checkpoint("act0_complete")
@@ -193,6 +199,7 @@ func _on_room5_finished() -> void:
 	_save_progress()
 
 func _on_room5_failed() -> void:
+	room5_hud.close()
 	room5_active=false
 	shadow.global_position=checkpoint_position
 	shadow.velocity=Vector3.ZERO
