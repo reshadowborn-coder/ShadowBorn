@@ -72,12 +72,32 @@ func _on_performance_mode_changed(mode: String) -> void:
 	_apply_performance_mode()
 	_save_progress()
 
-func _save_progress() -> void:
+func _build_save_state()->Dictionary:
 	var state := SaveManager.load_state()
 	state.merge({"version":SaveManager.SAVE_VERSION,"checkpoint":director.checkpoint,"route_index":director.route_index,"checkpoint_position":[checkpoint_position.x,checkpoint_position.y,checkpoint_position.z],"cleared_encounters":cleared_encounters,"performance_mode":performance_mode}, true)
-	for k in act0.snapshot(): state[k]=act0.snapshot()[k]
-	for k in catacombs.snapshot(): state[k]=catacombs.snapshot()[k]
-	SaveManager.save_state(state)
+	var temple_state:=act0.snapshot()
+	var cat_state:=catacombs.snapshot()
+	for k in temple_state:
+		state[k]=temple_state[k]
+	for k in cat_state:
+		state[k]=cat_state[k]
+	return state
+
+func _save_progress()->bool:
+	return SaveManager.save_state(_build_save_state())
+
+func _commit_first_forge_transaction()->bool:
+	var candidate:=act0.first_forge_candidate()
+	if candidate.is_empty():
+		return false
+	var state:=_build_save_state()
+	state["silver"]=act0.silver-1
+	state["forged_item"]=candidate.duplicate(true)
+	state["first_forge_done"]=true
+	state["act0_stage"]="catacombs"
+	if not SaveManager.save_state(state):
+		return false
+	return act0.apply_first_forge(candidate)
 
 func is_encounter_cleared(id: String) -> bool:
 	return id in cleared_encounters
@@ -154,6 +174,7 @@ func play_world_reveal(id: String) -> void:
 
 func enter_temple() -> void:
 	if not is_encounter_cleared("shield_boss"): return
+	if act0.stage not in ["exterior","temple_entry"]: return
 	act0.stage="temple_entry"; checkpoint_position=Vector3(0,0.9,-78); shadow.global_position=checkpoint_position
 	director.set_checkpoint("temple_entry"); _save_progress()
 
@@ -165,7 +186,8 @@ func temple_interact(kind:String) -> void:
 		"covenant":
 			if act0.covenant_joined and act0.weapon_family.is_empty(): covenant_menu.open()
 		"smith":
-			if act0.stage=="first_forge" and act0.commit_first_forge(): _save_progress()
+			if act0.stage=="first_forge":
+				_commit_first_forge_transaction()
 		"catacombs":
 			if act0_flow.enter_catacombs():
 				checkpoint_position=Vector3(0,0.9,-117); shadow.global_position=checkpoint_position; _save_progress()
