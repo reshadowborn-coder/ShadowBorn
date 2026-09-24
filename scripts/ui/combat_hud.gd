@@ -7,6 +7,7 @@ signal skill_pressed(skill: String)
 @onready var player_hp: Label = $Panel/PlayerHP
 @onready var enemy_hp: Label = $Panel/EnemyHP
 @onready var state_label: Label = $Panel/State
+@onready var a1_button: Button = $Panel/A1
 @onready var a2_button: Button = $Panel/A2
 
 func _ready() -> void:
@@ -27,7 +28,9 @@ func render_state(state: Dictionary) -> void:
 	player_hp.text = "SHADOW  %.1f / %.1f" % [s.get("hp",0.0),s.get("max_hp",20.0)]
 	enemy_hp.text = "ENEMY   %.1f / %.1f" % [maxf(e.get("hp",0.0),0.0),e.get("max_hp",0.0)]
 	var cd: int = s.get("a2_cd",0)
-	a2_button.disabled = cd > 0
+	var locked:=bool(state.get("action_locked",false))
+	a1_button.disabled = locked
+	a2_button.disabled = locked or cd > 0
 	a2_button.text = "A2  SHADOW LUNGE" if cd <= 0 else "A2  COOLDOWN %d" % cd
 	var states: Array[String] = []
 	if e.get("guard",false): states.append("GUARD")
