@@ -6,6 +6,8 @@ func _ready()->void:
 	_interact(Vector3(0,1,-101),"Keeper","keeper")
 	_interact(Vector3(0,1,-105),"Covenant","covenant")
 	_interact(Vector3(-4.5,1,-82),"Smith","smith")
+	_interact(Vector3(4.6,1,-82),"Merchant","merchant")
+	_interact(Vector3(-4.6,1,-91),"Engraver","engraver")
 	_interact(Vector3(0,1,-112),"CatacombsEntry","catacombs")
 	for i in range(5):
 		_room(Vector3(0,1,-122.0-float(i)*13.0),"CatacombRoom%d"%(i+1),i+1)
