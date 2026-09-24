@@ -24,6 +24,7 @@ var act0_flow := Act0Orchestrator.new()
 @onready var room5_hud:MultiTargetHUD=$MultiTargetHUD
 var room5_active := false
 var room5_solo_attempt := false
+var room5_visual_cache:Array[Node3D]=[]
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
@@ -113,6 +114,7 @@ func _commit_first_forge_transaction()->bool:
 	# Disk is authoritative once promotion succeeds. If an unexpected
 	# in-memory precondition changes, converge to the committed snapshot.
 	act0.restore(state)
+	_apply_equipment_state()
 	return true
 
 func is_encounter_cleared(id: String) -> bool:
@@ -229,7 +231,10 @@ func choose_covenant_weapon(family:String) -> bool:
 	return ok
 
 func enter_catacomb_room(room:int) -> void:
-	if room!=catacombs.room:return
+	if catacombs.complete or act0.stage=="act0_complete":
+		return
+	if room!=catacombs.room:
+		return
 	var enemies:=CatacombEncounterPlan.enemies(room)
 	if room==5 and not catacombs.summon_unlocked:
 		if catacombs.room5_solo_limit_seen:
@@ -248,12 +253,14 @@ func enter_catacomb_room(room:int) -> void:
 
 
 func _room5_visuals()->Array[Node3D]:
-	var out:Array[Node3D]=[]
+	if room5_visual_cache.size()==2 and is_instance_valid(room5_visual_cache[0]) and is_instance_valid(room5_visual_cache[1]):
+		return room5_visual_cache
+	room5_visual_cache.clear()
 	for id in ["cat_r5_skeleton_a","cat_r5_skeleton_b"]:
 		var v:=_find_enemy_visual(id)
 		if v:
-			out.append(v)
-	return out
+			room5_visual_cache.append(v)
+	return room5_visual_cache
 
 func _stage_room5_scene()->void:
 	var visuals:=_room5_visuals()
