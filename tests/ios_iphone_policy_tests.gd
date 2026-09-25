@@ -64,5 +64,11 @@ func _run()->void:
 	var fallback:=MobileSafeArea.logical_margins(Vector2.ZERO,Vector2.ZERO,Rect2())
 	_check(fallback==Vector4(24,24,24,24),"safe-area conversion has deterministic fallback padding")
 
+	var target_3x:=MobileSafeArea.logical_points_to_viewport(44.0,Vector2(2341,1080),Vector2(2796,1290),3.0,80.0)
+	var target_2x:=MobileSafeArea.logical_points_to_viewport(44.0,Vector2(1921,1080),Vector2(1334,750),2.0,80.0)
+	_check(target_3x>=110.0,"44pt hit target expands correctly for a representative @3x landscape iPhone")
+	_check(target_2x>=126.0,"44pt hit target expands correctly for a representative @2x landscape iPhone")
+	_check(MobileSafeArea.logical_points_to_viewport(44.0,Vector2.ZERO,Vector2.ZERO,0.0,80.0)==80.0,"hit-target conversion has a deterministic fallback")
+
 	print("iPhone policy tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
