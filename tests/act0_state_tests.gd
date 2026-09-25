@@ -268,14 +268,24 @@ func _test_resume_transition_matrix()->void:
 	var weapon_resume:=SaveManager._migrate(weapon)
 	_check(str(weapon_resume.act0_stage)=="first_forge" and str(weapon_resume.weapon_family)=="bow","resume preserves irreversible weapon selection before forge")
 
-	var forged:=weapon.duplicate(true)
-	forged.first_forge_done=true
-	forged.forged_item={"id":"shadow_bow_01","family":"bow","level":0,"bonus_unlocked":false,"equipped":true}
-	forged.silver=0
+	var post_forge:=weapon.duplicate(true)
+	post_forge.first_forge_done=true
+	post_forge.forged_item={"id":"shadow_bow_01","family":"bow","level":0,"bonus_unlocked":false,"equipped":true}
+	post_forge.silver=0
+	post_forge.catacomb_room=0
+	post_forge.act0_stage=Act0Contract.STAGE_CATACOMBS
+	post_forge.checkpoint="temple_entry"
+	post_forge.checkpoint_position=SaveManager._vector3_array(Act0Layout.TEMPLE_ENTRY_CHECKPOINT)
+	var post_forge_resume:=SaveManager._migrate(post_forge)
+	_check(int(post_forge_resume.catacomb_room)==0 and str(post_forge_resume.checkpoint)=="temple_entry","committed forge does not auto-enter Catacomb Room 1")
+	_check(post_forge_resume.checkpoint_position==SaveManager._vector3_array(Act0Layout.TEMPLE_ENTRY_CHECKPOINT),"post-forge resume remains safely inside the Temple until physical Catacomb entry")
+
+	var forged:=post_forge.duplicate(true)
 	forged.catacomb_room=1
-	forged.act0_stage="catacombs"
+	forged.checkpoint="catacombs_entry"
+	forged.checkpoint_position=SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT)
 	var forged_resume:=SaveManager._migrate(forged)
-	_check(str(forged_resume.act0_stage)=="catacombs" and bool(forged_resume.first_forge_done),"resume preserves committed first forge/equip")
+	_check(str(forged_resume.act0_stage)=="catacombs" and bool(forged_resume.first_forge_done) and int(forged_resume.catacomb_room)==1,"physical Catacomb entry starts Room 1 and preserves committed forge/equip")
 
 	for room in range(1,6):
 		var room_state:=forged.duplicate(true)
