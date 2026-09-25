@@ -2,7 +2,7 @@ extends SceneTree
 
 const TOL := 0.00002
 const STEP_WAIT := 0.90
-const WATCHDOG_SECONDS := 8.0
+const WATCHDOG_SECONDS := 14.0
 
 var failures := 0
 var finished := false
@@ -45,6 +45,10 @@ func _run() -> void:
 	await _test_reduced_motion_order()
 	await _test_armless_adapter()
 	await _test_shield_adapter()
+	await _test_speed_profile_required()
+	await _test_equal_speed_scheduler_adapter()
+	await _test_faster_shadow_scheduler_adapter()
+	await _test_shield_seeded_first_opportunity()
 	_test_post_forge_separation()
 	finished = true
 	print("Chapter 0 pre-Temple controller integration complete. failures=%d" % failures)
@@ -180,6 +184,69 @@ func _test_shield_adapter() -> void:
 	_check(_close(float(controller.enemy.hp),79.6666667),"Shield guarded A1 damage matches fixture")
 	_check(not bool(controller.enemy.get("guard",false)),"Shield Guard exits before D2 command")
 	_check(bool(controller.shadow.get("fray",false)),"Shield A1 leaves Fray setup active")
+	await _destroy(controller)
+
+func _test_speed_profile_required() -> void:
+	var controller:=_controller()
+	controller.set_turn_meter_mode_enabled(true)
+	_check(
+		not controller.start_encounter("hound",{}),
+		"pre-Temple Speed mode rejects startup without an explicit Speed/gauge profile"
+	)
+	_check(not controller.active and controller.encounter_id.is_empty(),"rejected Speed startup leaves no active encounter")
+	await _destroy(controller)
+
+func _test_equal_speed_scheduler_adapter() -> void:
+	var controller:=_controller()
+	controller.set_reduced_motion(true)
+	controller.set_turn_meter_mode_enabled(true)
+	_check(controller.set_pre_temple_turn_meter_profile(100,100,0,0),"equal-Speed profile accepted")
+	_check(controller.start_encounter("hound",{}),"equal-Speed Hound scheduler encounter starts")
+	await create_timer(0.08).timeout
+	_check(StringName(controller.current_turn.get("actor_id",&""))==&"shadow" and not controller.action_locked,"equal-Speed scheduler opens the first Shadow command")
+	_check(not (controller.turn_timeline.snapshot() as Dictionary).is_empty(),"pre-Temple HUD state has authoritative turn-meter data")
+
+	controller.shadow_action("A2")
+	await create_timer(0.38).timeout
+	_check(_close(float(controller.shadow.hp),61.8474576),"equal-Speed scheduler reproduces Hound A2->Bite Shadow HP")
+	_check(_close(float(controller.enemy.hp),78.5185185),"equal-Speed scheduler reproduces Hound A2 damage")
+	_check(int(controller.shadow.a2_cd)==3,"equal-Speed scheduler preserves A2 cooldown after first action")
+	_check(StringName(controller.current_turn.get("actor_id",&""))==&"shadow" and not controller.action_locked,"equal-Speed scheduler returns to the next Shadow decision after one enemy opportunity")
+	await _destroy(controller)
+
+func _test_faster_shadow_scheduler_adapter() -> void:
+	var controller:=_controller()
+	controller.set_reduced_motion(true)
+	controller.set_turn_meter_mode_enabled(true)
+	_check(controller.set_pre_temple_turn_meter_profile(200,100,0,0),"faster-Shadow diagnostic profile accepted")
+	_check(controller.start_encounter("hound",{}),"faster-Shadow Hound encounter starts")
+	await create_timer(0.08).timeout
+	_check(StringName(controller.current_turn.get("actor_id",&""))==&"shadow","faster-Shadow first ticket is Shadow")
+
+	controller.shadow_action("A1")
+	await create_timer(0.18).timeout
+	_check(StringName(controller.current_turn.get("actor_id",&""))==&"shadow" and not controller.action_locked,"Shadow200 earns a second player opportunity before enemy100")
+	_check(_close(float(controller.shadow.hp),80.0),"no enemy Bite is hidden inside the first fast-Shadow action")
+	_check(_close(float(controller.enemy.hp),84.6296296),"first fast-Shadow A1 applies only its own outgoing damage")
+	_check(int(controller.pre_temple_model.snapshot().get("enemy_phase",-1))==0,"enemy phase remains zero until an enemy scheduler ticket resolves")
+	await _destroy(controller)
+
+func _test_shield_seeded_first_opportunity() -> void:
+	var controller:=_controller()
+	controller.set_reduced_motion(true)
+	controller.set_turn_meter_mode_enabled(true)
+	_check(
+		controller.set_pre_temple_turn_meter_profile(
+			100,200,CombatTurnTimeline.GAUGE_MAX,CombatTurnTimeline.GAUGE_MAX-1
+		),
+		"Shield seeded-first diagnostic profile accepted"
+	)
+	_check(controller.start_encounter("shield_boss",{}),"Shield seeded-first scheduler encounter starts")
+	await create_timer(0.08).timeout
+	_check(StringName(controller.current_turn.get("actor_id",&""))==&"shadow" and not controller.action_locked,"10000/9999 seed gives the first Shield decision to Shadow even when boss Speed is higher")
+	_check(bool(controller.enemy.get("guard",false)),"Shield Guard is still visible before that first seeded command")
+	_check(int(controller.pre_temple_model.snapshot().get("decision",-1))==0,"no hidden Shadow decision occurs before player input")
+	_check(int(controller.pre_temple_model.snapshot().get("enemy_phase",-1))==0,"no hidden BRACE_EXIT occurs before player input")
 	await _destroy(controller)
 
 func _test_post_forge_separation() -> void:
