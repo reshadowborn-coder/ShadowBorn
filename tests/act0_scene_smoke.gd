@@ -61,6 +61,12 @@ func _test_chapter_scene()->void:
 			var gate_shape:=temple_gate.get_child(0) as CollisionShape3D
 			var gate_box:=gate_shape.shape as BoxShape3D
 			_check(gate_box!=null and gate_box.size.x>=27.5,"Temple gate trigger spans the entire exterior route after the blocker opens")
+			var gate_shadow:=chapter.get_node_or_null("Shadow") as Node3D
+			if gate_shadow and temple_gate.has_method("_approaching_from_exterior"):
+				gate_shadow.global_position=temple_gate.global_position+Vector3(0,0,1.0)
+				_check(temple_gate._approaching_from_exterior(gate_shadow),"exterior-side Temple crossing activates the entrance transition")
+				gate_shadow.global_position=temple_gate.global_position+Vector3(0,0,-1.0)
+				_check(not temple_gate._approaching_from_exterior(gate_shadow),"Temple-side crossing remains free after resume/backtracking")
 		var cat_gate:=triggers.get_node_or_null("CatacombsEntry")
 		_check(cat_gate!=null and cat_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Catacombs are physically blocked before first forge")
 		if cat_gate:
