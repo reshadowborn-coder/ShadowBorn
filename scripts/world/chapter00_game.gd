@@ -251,6 +251,8 @@ func _apply_cleared_visuals() -> void:
 		if is_encounter_cleared(str(node.get_meta("encounter_id", ""))): node.visible = false
 
 func _position_combatants(enemy_visual: Node3D) -> void:
+	if not enemy_visual.has_meta("combat_home_transform"):
+		enemy_visual.set_meta("combat_home_transform",enemy_visual.global_transform)
 	if not enemy_visual.has_meta("combat_home_position"):
 		enemy_visual.set_meta("combat_home_position",enemy_visual.global_position)
 	var center:Vector3=enemy_visual.get_meta("combat_home_position")
@@ -259,9 +261,20 @@ func _position_combatants(enemy_visual: Node3D) -> void:
 	shadow.look_at(Vector3(enemy_visual.global_position.x, shadow.global_position.y, enemy_visual.global_position.z), Vector3.UP)
 	enemy_visual.look_at(Vector3(shadow.global_position.x, enemy_visual.global_position.y, shadow.global_position.z), Vector3.UP)
 
+func _restore_visual_home(visual:Node3D)->void:
+	if not is_instance_valid(visual):
+		return
+	if visual.has_meta("combat_home_transform"):
+		var home=visual.get_meta("combat_home_transform")
+		if typeof(home)==TYPE_TRANSFORM3D:
+			visual.global_transform=home
+			return
+	if visual.has_meta("combat_home_position"):
+		visual.global_position=visual.get_meta("combat_home_position")
+	visual.scale=Vector3.ONE
+
 func _restore_enemy_visual_home()->void:
-	if is_instance_valid(active_enemy_visual) and active_enemy_visual.has_meta("combat_home_position"):
-		active_enemy_visual.global_position=active_enemy_visual.get_meta("combat_home_position")
+	_restore_visual_home(active_enemy_visual)
 
 func _on_started(id: String) -> void:
 	hud.show_combat(id)
@@ -316,8 +329,7 @@ func _on_finished(id: String) -> void:
 		_restore_runtime_snapshot(before_state)
 		if is_instance_valid(defeated_visual):
 			defeated_visual.visible=true
-			if defeated_visual.has_meta("combat_home_position"):
-				defeated_visual.global_position=defeated_visual.get_meta("combat_home_position")
+			_restore_visual_home(defeated_visual)
 		encounter.reset_shadow()
 		story_toast.show_message("The victory could not be anchored. The encounter must be faced again.")
 		_refresh_navigation()
