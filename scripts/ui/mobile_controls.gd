@@ -3,8 +3,9 @@ extends CanvasLayer
 
 signal direction_changed(direction:Vector2)
 
-const BUTTON_SIZE:=80.0
-const STEP:=80.0
+const FALLBACK_BUTTON_SIZE:=96.0
+const EDGE_GAP:=24.0
+const CONTROL_GAP:=16.0
 
 var held:Dictionary={"left":false,"right":false,"up":false,"down":false}
 var root:Control
@@ -30,7 +31,7 @@ func _add_button(name_:String,label:String,key:String)->void:
 	b.name=name_
 	b.text=label
 	b.focus_mode=Control.FOCUS_NONE
-	b.custom_minimum_size=Vector2(BUTTON_SIZE,BUTTON_SIZE)
+	b.custom_minimum_size=Vector2(FALLBACK_BUTTON_SIZE,FALLBACK_BUTTON_SIZE)
 	b.button_down.connect(func(): _set_held(key,true))
 	b.button_up.connect(func(): _set_held(key,false))
 	root.add_child(b)
@@ -40,18 +41,21 @@ func _apply_safe_area()->void:
 		return
 	var m:=MobileSafeArea.current(get_viewport())
 	var viewport_size:=get_viewport().get_visible_rect().size
-	var origin:=Vector2(m.x+24.0,viewport_size.y-m.w-24.0)
-	_place("Left",origin+Vector2(0.0,-STEP*2.0))
-	_place("Right",origin+Vector2(STEP*2.0,-STEP*2.0))
-	_place("Up",origin+Vector2(STEP,-STEP*3.0))
-	_place("Down",origin+Vector2(STEP,-STEP))
+	var target:=MobileSafeArea.minimum_touch_target(get_viewport(),44.0,FALLBACK_BUTTON_SIZE)
+	var step:=target+CONTROL_GAP
+	var bottom_left:=Vector2(m.x+EDGE_GAP,viewport_size.y-m.w-EDGE_GAP)
+	_place("Left",bottom_left+Vector2(0.0,-step*2.0),target)
+	_place("Right",bottom_left+Vector2(step*2.0,-step*2.0),target)
+	_place("Up",bottom_left+Vector2(step,-step*3.0),target)
+	_place("Down",bottom_left+Vector2(step,-step),target)
 
-func _place(name_:String,top_left:Vector2)->void:
+func _place(name_:String,top_left:Vector2,size_:float)->void:
 	var button:=root.get_node_or_null(name_) as Button
 	if button==null:
 		return
 	button.position=top_left
-	button.size=Vector2(BUTTON_SIZE,BUTTON_SIZE)
+	button.size=Vector2(size_,size_)
+	button.custom_minimum_size=Vector2(size_,size_)
 
 func _set_held(key:String,value:bool)->void:
 	held[key]=value
