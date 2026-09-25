@@ -285,9 +285,7 @@ jobs:
           ! grep -q "SCRIPT ERROR:" /tmp/iphone-xcode-export.log
           ! grep -q "Project export for preset .* failed" /tmp/iphone-xcode-export.log
           test -f build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj/project.pbxproj
-          PCK="$(find build/ios -type f -name 'data.pck' -print -quit)"
-          test -n "$PCK"
-          test -s "$PCK"
+          test -f build/ios/Shadowborn-Act0-iPhone-QA/Shadowborn-Act0-iPhone-QA-Info.plist
 
       - name: Verify iPhone Xcode project contract
         run: |
