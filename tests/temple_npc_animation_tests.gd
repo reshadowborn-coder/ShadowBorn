@@ -68,8 +68,11 @@ func _run()->void:
 			shadow.global_position=Vector3(0,.9,8.0)
 			var sleeping_head:=keeper_sleep.get_node("Head") as Node3D
 			var sleeping_before:=sleeping_head.basis
+			keeper_sleep.play_interaction_reaction()
+			var reaction_before:=keeper_sleep.reaction_remaining
 			keeper_sleep._process(.75)
 			_check(sleeping_head.basis.is_equal_approx(sleeping_before),"Temple NPC pose work sleeps while player is far outside the hub")
+			_check(keeper_sleep.reaction_remaining<reaction_before,"off-range NPC reaction timers expire while pose work sleeps")
 			shadow.global_position=Vector3(0,.9,-90.0)
 
 	var smith:=chapter.get_node_or_null(paths["smith"]) as TempleNpcIdle
