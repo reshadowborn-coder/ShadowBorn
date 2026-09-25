@@ -160,7 +160,7 @@ static func has_animation(root: Node,name_: String) -> bool:
 	var player := _find_animation_player(root)
 	return player != null and player.has_animation(name_)
 
-static func animation_names(root: Node) -> Array[StringName]:
+static func animation_names(root: Node) -> PackedStringArray:
 	var player := _find_animation_player(root)
 	if player == null:
 		return []
