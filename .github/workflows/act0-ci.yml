@@ -105,6 +105,18 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/temple_npc_animation_tests.gd 2>&1 | tee /tmp/temple-npc-animation.log
           ! grep -q "SCRIPT ERROR:" /tmp/temple-npc-animation.log
 
+      - name: Run Act 1.1 deterministic progression tests
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act1_state_tests.gd 2>&1 | tee /tmp/act1-state.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act1-state.log
+
+      - name: Run Act 1.1 sewer and Temple scene smoke
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act1_scene_smoke.gd 2>&1 | tee /tmp/act1-scene.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act1-scene.log
+
       - name: Enforce iPhone runtime scene budgets
         run: |
           set -o pipefail
