@@ -199,9 +199,9 @@ func _test_save_recovery()->void:
 	malformed_flags.act0_complete="false"
 	malformed_flags.reduced_motion="true"
 	var malformed_recovery:=SaveManager._migrate(malformed_flags)
-	_check(not bool(malformed_recovery.covenant_joined) and not bool(malformed_recovery.first_forge_done),"non-boolean Covenant/forge flags cannot unlock progression")
-	_check(not bool(malformed_recovery.story_summon_unlocked) and not bool(malformed_recovery.room5_rematch_ready) and not bool(malformed_recovery.act0_complete),"non-boolean late Act 0 flags are rejected")
-	_check(not bool(malformed_recovery.reduced_motion),"non-boolean settings flags fall back safely")
+	_check(malformed_recovery.covenant_joined==false and malformed_recovery.first_forge_done==false,"non-boolean Covenant/forge flags cannot unlock progression")
+	_check(malformed_recovery.story_summon_unlocked==false and malformed_recovery.room5_rematch_ready==false and malformed_recovery.act0_complete==false,"non-boolean late Act 0 flags are rejected")
+	_check(malformed_recovery.reduced_motion==false,"non-boolean settings flags fall back safely")
 
 	var injected_forge:=SaveManager.default_state()
 	injected_forge.cleared_encounters=["hound","armless","shield_boss"]
@@ -211,7 +211,7 @@ func _test_save_recovery()->void:
 	injected_forge.forged_item={"id":"shadow_bow_01","family":"bow","level":0,"bonus_unlocked":false,"equipped":true,"bonus_power":999}
 	injected_forge.silver=0
 	var injected_recovery:=SaveManager._migrate(injected_forge)
-	_check(not bool(injected_recovery.first_forge_done) and str(injected_recovery.act0_stage)==Act0Contract.STAGE_FIRST_FORGE,"save migration rolls back forged items with injected fields")
+	_check(injected_recovery.first_forge_done==false and str(injected_recovery.act0_stage)==Act0Contract.STAGE_FIRST_FORGE,"save migration rolls back forged items with injected fields")
 	_check(int(injected_recovery.silver)==1,"invalid injected forge restores the one scripted Silver")
 
 	var bad_cat:=SaveManager.default_state()
