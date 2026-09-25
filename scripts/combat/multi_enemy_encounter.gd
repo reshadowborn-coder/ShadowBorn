@@ -29,7 +29,7 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void
 	enemies=profiles.duplicate(true)
 	if enemies.is_empty():
 		active=false
-		push_error("Multi-enemy encounter cannot start without enemies")
+		push_warning("Multi-enemy encounter cannot start without enemies")
 		_emit()
 		return
 	for e in enemies:
