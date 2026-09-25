@@ -375,3 +375,13 @@ func _test_room5_limit_contract()->void:
 	_check(multi.active and not multi._all_dead(),"solo-limit attempt cannot be won on the first action")
 	multi.shadow_action("A1")
 	_check(multi.limit_reached and not multi.active,"solo-limit resolves deterministically after the authored round limit")
+
+	var lethal_profiles:=CatacombEncounterPlan.enemies(5)
+	for enemy in lethal_profiles:
+		enemy["damage"]=999.0
+	var damage_proof:=MultiEnemyEncounter.new()
+	damage_proof.start(lethal_profiles,false,true)
+	damage_proof.shadow_action("A1")
+	_check(damage_proof.active and damage_proof.rounds==1 and damage_proof.shadow_hp>=1.0,"solo-limit cannot end one round early because of future damage tuning")
+	damage_proof.shadow_action("A1")
+	_check(damage_proof.limit_reached and damage_proof.rounds==2,"solo-limit timing remains the fixed two-round story contract under lethal tuning")
