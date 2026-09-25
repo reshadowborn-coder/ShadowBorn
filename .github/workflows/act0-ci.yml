@@ -99,6 +99,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_reaction_queue_tests.gd 2>&1 | tee /tmp/combat-reaction-queue.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-reaction-queue.log
 
+      - name: Validate skill passive and talent architecture
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_ability_architecture_tests.gd 2>&1 | tee /tmp/combat-ability-architecture.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-ability-architecture.log
+
       - name: Validate Act 1 speed-driven combat integration
         run: |
           set -o pipefail
