@@ -80,11 +80,11 @@ func _build()->void:
 
 	box("CovenantDais",Vector3(0,.2,-105),Vector3(7,.4,5),STONE,visual)
 	box("CovenantStone",Vector3(0,1.1,-106),Vector3(3.6,1.8,.65),Color(.12,.12,.14),visual)
-	_build_smith(Vector3(-4.5,0,-82),visual)
-	_build_merchant(Vector3(4.6,0,-82),visual)
-	_build_engraver(Vector3(-4.6,0,-91),visual)
-	_build_keeper(Vector3(0,0,-101),visual)
-	_build_weapon_altar(Vector3(0,0,-105),visual)
+	_build_smith(Act0Layout.floor_anchor(Act0Layout.SMITH_TRIGGER),visual)
+	_build_merchant(Act0Layout.floor_anchor(Act0Layout.MERCHANT_TRIGGER),visual)
+	_build_engraver(Act0Layout.floor_anchor(Act0Layout.ENGRAVER_TRIGGER),visual)
+	_build_keeper(Act0Layout.floor_anchor(Act0Layout.KEEPER_TRIGGER),visual)
+	_build_weapon_altar(Act0Layout.floor_anchor(Act0Layout.COVENANT_TRIGGER),visual)
 
 func _build_smith(p:Vector3,parent:Node3D)->void:
 	var r:=Node3D.new()
