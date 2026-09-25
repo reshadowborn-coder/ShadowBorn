@@ -49,6 +49,7 @@ func _run()->void:
 	_test_shield_first_opportunity_gate()
 	_test_tutorial_first_opportunity_seed()
 	_test_speed_and_initial_meter_are_one_cadence_contract()
+	_test_five_decision_alternation_diagnostic_band()
 	print("Chapter 0 Speed replay tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -164,3 +165,25 @@ func _test_speed_and_initial_meter_are_one_cadence_contract()->void:
 		seeded_order.append(StringName(ticket.get("actor_id",&"")))
 		near_ready_enemy.end_turn(StringName(ticket.get("actor_id",&"")))
 	_check(seeded_order==[&"shadow",&"shield",&"shadow"],"the same Speed values with a 10000/9999 tutorial seed preserve the intended opening alternation")
+
+func _ticket_order(shadow_speed:int,enemy_speed:int,count:int)->Array[StringName]:
+	var timeline:=CombatTurnTimeline.new()
+	timeline.add_actor(&"shadow",&"ally",shadow_speed,CombatTurnTimeline.GAUGE_MAX)
+	timeline.add_actor(&"enemy",&"enemy",enemy_speed,CombatTurnTimeline.GAUGE_MAX-1)
+	var out:Array[StringName]=[]
+	for _i in range(count):
+		var ticket:=timeline.next_turn()
+		var actor:=StringName(ticket.get("actor_id",&""))
+		out.append(actor)
+		timeline.end_turn(actor)
+	return out
+
+func _test_five_decision_alternation_diagnostic_band()->void:
+	var expected:Array[StringName]=[&"shadow",&"enemy",&"shadow",&"enemy",&"shadow",&"enemy",&"shadow",&"enemy",&"shadow"]
+	for enemy_speed in range(76,102):
+		_check(
+			_ticket_order(100,enemy_speed,9)==expected,
+			"diagnostic Shadow100/enemy%d with 10000/9999 seed preserves alternating cadence through five Shadow decisions"%enemy_speed
+		)
+	_check(_ticket_order(100,75,9)!=expected,"enemy SPD75 falls outside the five-decision alternating diagnostic band")
+	_check(_ticket_order(100,102,9)!=expected,"enemy SPD102 falls outside the five-decision alternating diagnostic band")
