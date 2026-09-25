@@ -390,8 +390,13 @@ func temple_interact(kind:String) -> void:
 				var before_checkpoint:=checkpoint_position
 				var before_checkpoint_id:=director.checkpoint
 				if act0_flow.temple_story_handoff():
+					checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
+					director.set_checkpoint("room5_rematch")
 					if _save_progress():
-						story_toast.show_message("Keeper: One shadow has found its limit. Call the one who still answers beneath the stone.")
+						if not act0_flow.commit_story_handoff_presentation():
+							push_error("Committed Room 5 story handoff could not emit presentation")
+						var companion:=StoryCompanion.profile()
+						story_toast.show_message("Keeper: One shadow has found its limit. %s answers the call. Formation slot 2 is active."%str(companion.get("name","A forgotten guardian")))
 					else:
 						act0.restore(before_state)
 						catacombs.restore(before_state)
@@ -579,6 +584,8 @@ func _on_room5_finished() -> void:
 		_show_room5_visuals(true)
 		story_toast.show_message("The final seal cannot hold without a save. The rematch remains unresolved.")
 		return
+	if not act0_flow.commit_act0_completion_presentation():
+		push_error("Committed Act 0 completion could not emit presentation")
 	story_toast.show_message("The seal yields. The Cradle of Shadows is behind you.",4.2)
 
 func _on_room5_solo_limit()->void:
@@ -603,6 +610,8 @@ func _resolve_room5_solo_limit()->void:
 			_restore_runtime_snapshot(before_state)
 			story_toast.show_message("The retreat could not be anchored. Room 5 remains uncommitted.")
 			return
+		if not act0_flow.commit_solo_limit_presentation():
+			push_error("Committed Room 5 solo-limit could not emit presentation")
 		story_toast.show_message("One shadow was not enough. Return to the Keeper.")
 		return
 	shadow.set_physics_process(true)
@@ -637,13 +646,9 @@ func _catacomb_room_for_encounter(id:String)->int:
 	return 0
 
 
-func _on_companion_ready(profile:Dictionary)->void:
+func _on_companion_ready(_profile:Dictionary)->void:
+	# This signal is emitted only after the story-handoff save commits.
 	team.unlock_story_slot()
-	story_toast.show_message("%s answers the call. A second formation slot is now active."%str(profile.get("name","A forgotten guardian")))
-	# Keep the live player at the Keeper, but persist a deterministic safe
-	# resume point in the Temple instead of an arbitrary overlap position.
-	checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
-	director.set_checkpoint("room5_rematch")
 
 func _restore_act0_position()->void:
 	if act0.stage in [Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH]:
