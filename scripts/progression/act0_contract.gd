@@ -41,6 +41,15 @@ const CATACOMB_ENCOUNTER_IDS := {
 	5:["cat_r5_skeleton_a","cat_r5_skeleton_b"]
 }
 
+const CATACOMB_CHECKPOINT_IDS := {
+	0:"temple_entry",
+	1:"catacombs_entry",
+	2:"cat_r1_skeleton_cleared",
+	3:"cat_r2_hound_cleared",
+	4:"cat_r3_guard_cleared",
+	5:"cat_r4_revenant_cleared"
+}
+
 const TRANSITIONS := {
 	STAGE_EXTERIOR:[STAGE_TEMPLE_ENTRY],
 	STAGE_TEMPLE_ENTRY:[STAGE_WEAPON_CHOICE],
@@ -77,3 +86,6 @@ static func can_start_exterior_encounter(id:String,cleared:Array,temple_reveal_s
 
 static func catacomb_encounter_ids(room:int)->Array:
 	return CATACOMB_ENCOUNTER_IDS.get(room,[]).duplicate()
+
+static func catacomb_checkpoint_id(room:int)->String:
+	return str(CATACOMB_CHECKPOINT_IDS.get(clampi(room,0,5),""))
