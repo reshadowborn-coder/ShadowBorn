@@ -99,6 +99,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/act0_scene_smoke.gd 2>&1 | tee /tmp/act0-scene.log
           ! grep -q "SCRIPT ERROR:" /tmp/act0-scene.log
 
+      - name: Validate Chapter 0 enemy ecology cues
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act0_enemy_ecology_tests.gd 2>&1 | tee /tmp/act0-enemy-ecology.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act0-enemy-ecology.log
+
       - name: Validate living Temple NPC presentation
         run: |
           set -o pipefail
