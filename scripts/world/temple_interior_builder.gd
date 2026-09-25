@@ -155,9 +155,13 @@ func _build_smith(p:Vector3,parent:Node3D)->void:
 	box("Forge",Vector3(-1.2,.8,.9),Vector3(1.3,1.6,1.2),STONE,r)
 	box("Ember",Vector3(-1.2,1.15,.25),Vector3(.75,.25,.08),EMBER,r)
 	var npc:=_build_npc_root("SmithNPC","smith",Vector3(-.92,0,.35),-90.0,LEATHER,IRON,r,.2)
-	var tool:=box("Tool",Vector3(.52,1.12,-.20),Vector3(.10,1.10,.10),IRON,npc)
+	var tool:=Node3D.new()
+	tool.name="Tool"
+	tool.position=Vector3(.52,1.12,-.20)
 	tool.rotation_degrees.z=-18.0
-	box("HammerHead",Vector3(.64,1.62,-.20),Vector3(.48,.20,.18),IRON,npc)
+	box("HammerHandle",Vector3(0,.28,0),Vector3(.10,1.10,.10),WOOD,tool)
+	box("HammerHead",Vector3(.10,.80,0),Vector3(.48,.20,.18),IRON,tool)
+	npc.add_child(tool)
 	box("Apron",Vector3(0,1.05,-.24),Vector3(.58,1.20,.08),Color(.15,.105,.07),npc)
 
 func _build_merchant(p:Vector3,parent:Node3D)->void:
