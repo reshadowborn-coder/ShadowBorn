@@ -117,6 +117,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_event_router_tests.gd 2>&1 | tee /tmp/combat-event-router.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-event-router.log
 
+      - name: Validate ability operation vocabulary
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_ability_ops_tests.gd 2>&1 | tee /tmp/combat-ability-ops.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-ability-ops.log
+
       - name: Validate Act 1 speed-driven combat integration
         run: |
           set -o pipefail

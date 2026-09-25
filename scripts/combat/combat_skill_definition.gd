@@ -45,6 +45,7 @@ func validate()->Array[String]:
 		errors.append("aura cannot have a cooldown")
 	if kind==SkillKind.AURA and target_rule!=TargetRule.ALL_ALLIES:
 		errors.append("team aura must target all allies")
+	errors.append_array(CombatAbilityOps.validate_steps(effect_steps))
 	for patch_value in rank_patches:
 		if typeof(patch_value)!=TYPE_DICTIONARY:
 			errors.append("rank patch must be a dictionary")

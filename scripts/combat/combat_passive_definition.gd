@@ -44,4 +44,5 @@ func validate()->Array[String]:
 		errors.append("passive reaction kind is invalid")
 	if proc_chance_bp<0 or proc_chance_bp>10000:
 		errors.append("passive proc chance is outside basis-point range")
+	errors.append_array(CombatAbilityOps.validate_steps(effect_steps))
 	return errors

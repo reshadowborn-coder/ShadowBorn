@@ -141,3 +141,11 @@ The runtime first produces eligible candidates. The CombatEventRouter then:
 A failed chance roll therefore does not silently consume the passive.
 
 Each natural turn window has a hard event-processing budget and the Reaction Queue has independent size/depth caps. These guards are intentionally redundant so a future combination of passives, gear and talents cannot create an infinite event loop.
+
+
+## Effect-step vocabulary
+Skills and passives may not invent arbitrary operation names. CombatAbilityOps validates a deliberately bounded vocabulary for damage, healing, statuses, cleanse/dispel, Turn Meter, speed, cooldowns, Extra Turns, resources and semantic tags.
+
+Each operation has structural safety checks. For example, an Extra Turn step cannot request more turns than the global timeline cap, status chance cannot exceed 100%, and Turn Meter/speed modifiers have hard data bounds.
+
+New mechanics should extend this shared vocabulary only when they represent a reusable game rule. One hero should not receive a bespoke hidden executor branch merely because its description is unusual.
