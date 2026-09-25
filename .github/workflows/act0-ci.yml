@@ -81,6 +81,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/perf_visual_consistency_tests.gd 2>&1 | tee /tmp/perf-visual-consistency.log
           ! grep -q "SCRIPT ERROR:" /tmp/perf-visual-consistency.log
 
+      - name: Validate Temple ambient NPC life
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/temple_npc_life_tests.gd 2>&1 | tee /tmp/temple-npc-life.log
+          ! grep -q "SCRIPT ERROR:" /tmp/temple-npc-life.log
+
       - name: Audit starter weapon visual contract
         run: |
           set -o pipefail
