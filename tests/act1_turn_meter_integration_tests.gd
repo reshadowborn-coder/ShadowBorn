@@ -50,8 +50,8 @@ func _run()->void:
 
 func _test_single_rat_turn_order()->void:
 	var controller:=_new_controller()
-	var enemy_attacks:=0
-	controller.enemy_attack_presented.connect(func(_damage:float): enemy_attacks+=1)
+	var enemy_attacks:Array[float]=[]
+	controller.enemy_attack_presented.connect(func(damage:float): enemy_attacks.append(damage))
 	var profile:=Dictionary(SewerEncounterPlan.PROFILES["a1_r1_rat"]).duplicate(true)
 	_check(controller.start_encounter("a1_r1_rat",profile),"Room 1 starts in turn-meter mode")
 	_check(await _wait_for_shadow(controller),"100 SPD Shadow reaches the first command window before 92 SPD Sewer Rat")
@@ -59,7 +59,7 @@ func _test_single_rat_turn_order()->void:
 	controller.shadow_action("A1")
 	_check(await _wait_for_next_shadow_or_end(controller),"turn loop returns to Shadow or a valid terminal state")
 	if controller.active:
-		_check(enemy_attacks==1,"slower Sewer Rat receives exactly one natural turn before Shadow's second turn")
+		_check(enemy_attacks.size()==1,"slower Sewer Rat receives exactly one natural turn before Shadow's second turn")
 		_check(controller.shadow_completed_turns==1,"one accepted Shadow action consumes exactly one Shadow turn")
 	controller.queue_free()
 	await process_frame
@@ -83,12 +83,12 @@ func _test_control_skip_blocks_cooldown()->void:
 	_check(controller.start_encounter("a1_r1_rat",profile),"control fixture starts")
 	_check(await _wait_for_shadow(controller),"control fixture reaches Shadow")
 	controller.shadow.a2_cd=2
-	_check(controller.apply_turn_control(&"shadow",CombatTurnTimeline.TAG_STUN,1,&"test_rat"),"controller exposes hard-control application")
-	# Finish the currently ready normal turn without changing combat through a
-	# skill: move the Stun to the next natural Shadow ticket.
+	# Close the current ready ticket first, then apply Stun so its one owner-turn
+	# duration belongs to the NEXT Shadow turn rather than expiring on this one.
 	controller.turn_timeline.end_turn(&"shadow")
 	controller.current_turn.clear()
 	controller.shadow_completed_turns=1
+	_check(controller.apply_turn_control(&"shadow",CombatTurnTimeline.TAG_STUN,1,&"test_rat"),"controller exposes hard-control application")
 	controller.action_locked=true
 	controller.call_deferred("_advance_turn_meter",controller.encounter_generation)
 	var elapsed:=0.0
