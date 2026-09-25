@@ -441,7 +441,8 @@ func _notification(what:int)->void:
 		if not is_node_ready(): return
 		mobile_controls.reset_input()
 		if what==NOTIFICATION_APPLICATION_PAUSED and not last_committed_state.is_empty():
-			SaveManager.save_state(last_committed_state.duplicate(true))
+			if not SaveManager.save_state(last_committed_state.duplicate(true)):
+				push_error("iOS suspend save failed; last committed Act 1 state remains in memory")
 	elif what in [NOTIFICATION_APPLICATION_FOCUS_IN,NOTIFICATION_APPLICATION_RESUMED]:
 		if is_node_ready(): _queue_mobile_reflow()
 	elif what==NOTIFICATION_OS_MEMORY_WARNING:
