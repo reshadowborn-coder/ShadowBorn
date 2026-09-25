@@ -288,6 +288,26 @@ func _test_save_recovery()->void:
 	_check("hound" in legacy_resume.cleared_encounters and "armless" in legacy_resume.cleared_encounters,"v4 Shield progress reconstructs skipped exterior prerequisites")
 
 
+	var malformed_numbers:=SaveManager.default_state()
+	malformed_numbers.version={"bad":true}
+	malformed_numbers.route_index=["bad"]
+	malformed_numbers.silver={"bad":1}
+	malformed_numbers.catacomb_room=null
+	var malformed_numeric_recovery:=SaveManager._migrate(malformed_numbers)
+	_check(int(malformed_numeric_recovery.route_index)==0,"non-numeric route_index falls back safely")
+	_check(int(malformed_numeric_recovery.silver)==0,"non-numeric Silver falls back safely")
+	_check(int(malformed_numeric_recovery.catacomb_room)==0,"non-numeric Catacomb room falls back safely")
+	_check(int(malformed_numeric_recovery.version)==SaveManager.SAVE_VERSION,"non-numeric save version migrates to the current version")
+
+	var huge_numbers:=SaveManager.default_state()
+	huge_numbers.route_index=1.0e300
+	huge_numbers.silver=-1.0e300
+	huge_numbers.catacomb_room=1.0e300
+	var huge_numeric_recovery:=SaveManager._migrate(huge_numbers)
+	_check(int(huge_numeric_recovery.route_index)>=0 and int(huge_numeric_recovery.route_index)<Chapter00Director.ROUTE.size(),"huge route_index is clamped before integer conversion")
+	_check(int(huge_numeric_recovery.silver)==0,"huge negative Silver is clamped safely")
+	_check(int(huge_numeric_recovery.catacomb_room)==0,"impossible future Catacomb room cannot manufacture progression without forge evidence")
+
 	var malformed_flags:=SaveManager.default_state()
 	malformed_flags.covenant_joined="false"
 	malformed_flags.first_forge_done=1
