@@ -27,24 +27,26 @@ var reveal_focus := Vector3.ZERO
 var reduced_motion := false
 
 func _process(delta: float) -> void:
-	var focus := _current_focus()
-	if focus == null:
+	if not _has_focus():
 		return
-
-	var desired: Vector3 = focus + offset
+	var focus := _current_focus()
+	var desired := focus + offset
 	var alpha := 1.0 - exp(-follow_lerp * delta)
 	global_position = global_position.lerp(desired, alpha)
 	rotation_degrees = rotation_degrees.lerp(target_rotation, alpha)
 	camera.fov = lerpf(camera.fov, target_fov, alpha)
 
-func _current_focus():
+func _has_focus() -> bool:
+	return combat_mode or reveal_mode or is_instance_valid(target)
+
+func _current_focus() -> Vector3:
 	if combat_mode:
 		return combat_focus
 	if reveal_mode:
 		return reveal_focus
 	if is_instance_valid(target):
 		return target.global_position
-	return null
+	return Vector3.ZERO
 
 func _apply_framing(next_offset: Vector3, next_rotation: Vector3, next_fov: float) -> void:
 	offset = next_offset
@@ -54,10 +56,9 @@ func _apply_framing(next_offset: Vector3, next_rotation: Vector3, next_fov: floa
 		_snap_to_current_framing()
 
 func _snap_to_current_framing() -> void:
-	var focus := _current_focus()
-	if focus == null:
+	if not _has_focus():
 		return
-	global_position = focus + offset
+	global_position = _current_focus() + offset
 	rotation_degrees = target_rotation
 	camera.fov = target_fov
 
