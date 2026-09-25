@@ -59,6 +59,20 @@ func _test_chapter_scene()->void:
 		_check(temple_gate!=null and temple_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Temple has a physical progression blocker")
 		var cat_gate:=triggers.get_node_or_null("CatacombsEntry")
 		_check(cat_gate!=null and cat_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Catacombs are physically blocked before first forge")
+		if cat_gate:
+			var cat_shape:=cat_gate.get_child(0) as CollisionShape3D
+			var cat_box:=cat_shape.shape as BoxShape3D
+			_check(cat_box!=null and cat_box.size.x>=7.0,"Catacomb entry trigger spans the full passage")
+		var keeper:=triggers.get_node_or_null("Keeper")
+		if keeper:
+			var keeper_shape:=keeper.get_child(0) as CollisionShape3D
+			var keeper_box:=keeper_shape.shape as BoxShape3D
+			_check(keeper_box!=null and keeper_box.size.x>=11.5,"Keeper handoff spans the Temple nave")
+		var covenant:=triggers.get_node_or_null("Covenant")
+		if covenant:
+			var covenant_shape:=covenant.get_child(0) as CollisionShape3D
+			var covenant_box:=covenant_shape.shape as BoxShape3D
+			_check(covenant_box!=null and covenant_box.size.x>=11.5,"Covenant handoff spans the Temple nave")
 		var room1:=triggers.get_node_or_null("CatacombRoom1")
 		if room1:
 			var room_shape:=room1.get_child(0) as CollisionShape3D
@@ -76,6 +90,10 @@ func _test_chapter_scene()->void:
 		var reveal_shape:=reveal_trigger.get_child(0) as CollisionShape3D
 		var reveal_box:=reveal_shape.shape as BoxShape3D
 		_check(reveal_box!=null and reveal_box.size.x>=20.0,"Temple reveal trigger spans the exterior route")
+
+	var cat_wall:=chapter.get_node_or_null("Catacombs/CatacombVisual/Room01WallL") as MeshInstance3D
+	if cat_wall and cat_wall.mesh is BoxMesh:
+		_check((cat_wall.mesh as BoxMesh).size.z>=13.0,"Catacomb side walls close the inter-room bypass gaps")
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
