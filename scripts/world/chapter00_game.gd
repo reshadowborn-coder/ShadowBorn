@@ -90,6 +90,8 @@ func _apply_performance_mode() -> void:
 	Engine.max_fps = 30 if performance_mode == "battery30" else 60
 
 func _open_settings() -> void:
+	if encounter.active or room5_active or covenant_menu.panel.visible:
+		return
 	settings_menu.open(performance_mode,reduced_motion)
 
 func _on_performance_mode_changed(mode: String) -> void:
@@ -352,6 +354,7 @@ func enter_temple()->bool:
 		_restore_runtime_snapshot(before_state)
 		story_toast.show_message("The Temple threshold rejects the crossing. Progress could not be saved.")
 		return false
+	story_toast.show_message("The Temple is quiet. A lone Keeper waits beyond the nave.")
 	return true
 
 func temple_interact(kind:String) -> void:
@@ -387,7 +390,9 @@ func temple_interact(kind:String) -> void:
 		"smith":
 			if act0.stage==Act0Contract.STAGE_FIRST_FORGE:
 				if _commit_first_forge_transaction():
-					story_toast.show_message("Smith: Silver remembers heat. Your chosen form has an edge now.")
+					story_toast.show_message("Smith: Silver remembers heat. Your chosen form has an edge now. The lower passage will answer you.")
+				else:
+					story_toast.show_message("The forge cannot bind this state. Check the Silver and try again.")
 			elif not act0.first_forge_done:
 				story_toast.show_message("The forge waits for a Covenant weapon and one piece of Silver.")
 		"merchant":
@@ -583,7 +588,9 @@ func _on_room5_failed() -> void:
 
 func _on_covenant_weapon_requested(family:String)->void:
 	if choose_covenant_weapon(family):
+		var chosen:Dictionary=Act0Progression.WEAPONS.get(family,{})
 		covenant_menu.close()
+		story_toast.show_message("The Covenant remembers %s. Return to the Smith and bind it in Silver."%str(chosen.get("label",family)))
 
 
 func _catacomb_room_for_encounter(id:String)->int:
@@ -632,6 +639,7 @@ func _ui_modal_open()->bool:
 
 func _refresh_navigation()->void:
 	var enabled:=not _ui_modal_open() and not encounter.active and not room5_active
+	settings_button.disabled=encounter.active or room5_active or covenant_menu.panel.visible
 	if shadow.has_method("set_input_enabled"):
 		shadow.set_input_enabled(enabled)
 	mobile_controls.set_enabled(enabled)
