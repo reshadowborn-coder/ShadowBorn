@@ -63,6 +63,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/android_qa_export_preset_tests.gd 2>&1 | tee /tmp/android-qa-export-preset.log
           ! grep -q "SCRIPT ERROR:" /tmp/android-qa-export-preset.log
 
+      - name: Validate iPhone runtime and export policy
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/ios_iphone_policy_tests.gd 2>&1 | tee /tmp/ios-iphone-policy.log
+          ! grep -q "SCRIPT ERROR:" /tmp/ios-iphone-policy.log
+
       - name: Probe all Catacomb weapon-family paths
         run: |
           set -o pipefail
@@ -218,5 +224,99 @@ jobs:
             build/android/apk-badging.txt
             build/android/apk-package-id.txt
             build/android/qa-build-manifest.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  iphone-xcode-project:
+    needs: headless-act0
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.4.1
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            -o /tmp/godot.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_macos.universal.zip
+          rm -rf /tmp/godot-macos
+          mkdir -p /tmp/godot-macos
+          unzip -q /tmp/godot.zip -d /tmp/godot-macos
+          chmod +x /tmp/godot-macos/Godot.app/Contents/MacOS/Godot
+          /tmp/godot-macos/Godot.app/Contents/MacOS/Godot --version
+
+      - name: Install Godot 4.4.1 export templates
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            -o /tmp/godot-templates.tpz \
+            https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz
+          rm -rf /tmp/godot-templates
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          mkdir -p "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
+          cp -a /tmp/godot-templates/templates/. "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/"
+          test -d "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/iphone.zip"
+
+      - name: Inject CI-only iPhone Team ID
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("export_presets.cfg")
+          text = p.read_text()
+          needle = 'application/app_store_team_id=""'
+          if needle not in text:
+              raise SystemExit("iPhone Team ID placeholder missing")
+          p.write_text(text.replace(needle, 'application/app_store_team_id="ABCDE12345"', 1))
+          PY
+          grep -q 'application/app_store_team_id="ABCDE12345"' export_presets.cfg
+
+      - name: Export iPhone QA Xcode project
+        run: |
+          set -o pipefail
+          mkdir -p build/ios
+          /tmp/godot-macos/Godot.app/Contents/MacOS/Godot --verbose --headless --path . \
+            --export-debug "iPhone QA" build/ios/Shadowborn-Act0-iPhone-QA.zip \
+            2>&1 | tee /tmp/iphone-xcode-export.log
+          ! grep -q "SCRIPT ERROR:" /tmp/iphone-xcode-export.log
+          test -s build/ios/Shadowborn-Act0-iPhone-QA.zip
+
+      - name: Verify iPhone Xcode project contract
+        run: |
+          set -euo pipefail
+          rm -rf build/ios/unpacked
+          mkdir -p build/ios/unpacked
+          unzip -q build/ios/Shadowborn-Act0-iPhone-QA.zip -d build/ios/unpacked
+          PBXPROJ="$(find build/ios/unpacked -path '*.xcodeproj/project.pbxproj' -print -quit)"
+          test -n "$PBXPROJ"
+          grep -q 'TARGETED_DEVICE_FAMILY = 1;' "$PBXPROJ"
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 16.0;' "$PBXPROJ"
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = org.shadowborn.chapter0.qa;' "$PBXPROJ"
+          grep -q 'DEVELOPMENT_TEAM = ABCDE12345;' "$PBXPROJ"
+          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-QA.zip.sha256
+          cat > build/ios/qa-build-manifest.txt <<EOF
+          repository=reshadowborn-coder/ShadowBorn
+          git_sha=$GITHUB_SHA
+          workflow_run_id=$GITHUB_RUN_ID
+          godot_version=4.4.1
+          platform=iOS
+          target_device=iPhone
+          min_ios=16.0
+          renderer=Metal
+          bundle_id=org.shadowborn.chapter0.qa
+          signing=project-only
+          EOF
+
+      - name: Upload iPhone QA Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadowborn-act0-iphone-xcode-qa
+          path: |
+            build/ios/Shadowborn-Act0-iPhone-QA.zip
+            build/ios/Shadowborn-Act0-iPhone-QA.zip.sha256
+            build/ios/qa-build-manifest.txt
           if-no-files-found: error
           retention-days: 7
