@@ -64,7 +64,9 @@ func _build()->void:
 	solid_box("CatacombPassageFloor",Vector3(0,-.18,-112.75),Vector3(8,.36,7.5),visual,collision,FLOOR)
 
 	for x in [-7.0,7.0]:
-		solid_box("NaveWall",Vector3(x,3.5,-89),Vector3(.8,7,34),visual,collision,STONE)
+		# Continuous from the Temple threshold to the rear wall. The previous
+		# short wall left a side escape gap between nave and apse.
+		solid_box("NaveWall",Vector3(x,3.5,-90),Vector3(.8,7,38),visual,collision,STONE)
 
 	for z in [-79.0,-86.0,-93.0,-100.0]:
 		solid_box("ColumnL",Vector3(-5.0,2.7,z),Vector3(.85,5.4,.85),visual,collision,STONE)
