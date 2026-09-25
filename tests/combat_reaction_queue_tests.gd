@@ -17,6 +17,7 @@ func _run()->void:
 	_test_duplicate_and_chain_guards()
 	_test_transaction_scoped_identity()
 	_test_reaction_is_not_a_turn()
+	_test_actor_invalidation_contract()
 	print("Combat reaction queue tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -71,3 +72,15 @@ func _test_reaction_is_not_a_turn()->void:
 	_check((after.effects as Array)==(before.effects as Array),"reaction resolution does not tick owner-turn effect durations")
 	_check(timeline.active_ticket()==ticket,"reaction queue cannot replace or finish the natural turn ticket")
 	timeline.end_turn(&"shadow")
+
+func _test_actor_invalidation_contract()->void:
+	var queue:=CombatReactionQueue.new()
+	queue.begin_window(91)
+	_check(queue.queue_reaction(&"rat_a",&"death_counter",CombatReactionQueue.KIND_COUNTER,20),"reaction can queue before actor invalidation")
+	_check(queue.queue_reaction(&"rat_a",&"death_assist",CombatReactionQueue.KIND_ASSIST,10),"same actor can own a distinct pending reaction")
+	_check(queue.queue_reaction(&"shadow",&"survivor_follow",CombatReactionQueue.KIND_FOLLOW_UP,0),"unrelated actor reaction queues")
+	queue.clear_actor(&"rat_a")
+	_check(queue.size()==1,"actor invalidation removes every pending reaction owned by that actor")
+	var survivor:=queue.pop_next()
+	_check(StringName(survivor.actor_id)==&"shadow","actor invalidation preserves unrelated pending reactions")
+	_check(not queue.has_pending(),"queue drains deterministically after invalidation")
