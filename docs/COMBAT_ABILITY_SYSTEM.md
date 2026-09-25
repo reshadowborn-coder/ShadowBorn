@@ -127,3 +127,17 @@ The Aura unlock milestone remains content/progression data; the runtime does not
 Talents do not mutate static skill definitions. CombatBuildCompiler builds battle-local CombatSkillSpecs, aggregates talent stat modifiers, applies whitelisted skill patches and exposes any granted passive IDs.
 
 This keeps respecs and balance changes safe: static content remains immutable while the battle receives a compiled build.
+
+
+## Event routing and proc commit
+Passive eligibility and passive activation are separate phases.
+
+The runtime first produces eligible candidates. The CombatEventRouter then:
+1. rolls the passive proc chance from deterministic combat RNG,
+2. applies chain-depth and queue guards,
+3. queues the Reaction,
+4. only then commits once-per-turn/once-per-battle/internal-cooldown state.
+
+A failed chance roll therefore does not silently consume the passive.
+
+Each natural turn window has a hard event-processing budget and the Reaction Queue has independent size/depth caps. These guards are intentionally redundant so a future combination of passives, gear and talents cannot create an infinite event loop.

@@ -48,7 +48,7 @@ func advance_owner_turn(actor_id:StringName)->void:
 		state["cooldown_owner_turns"]=cooldown
 		_state[key]=state
 
-func collect_reactions(event:CombatTriggerEvent)->Array[Dictionary]:
+func collect_reactions(event:CombatTriggerEvent,commit_state:bool=true)->Array[Dictionary]:
 	var out:Array[Dictionary]=[]
 	if event==null or event.event_type==&"":
 		return out
@@ -59,12 +59,8 @@ func collect_reactions(event:CombatTriggerEvent)->Array[Dictionary]:
 			var definition:CombatPassiveDefinition=definition_value
 			if not _eligible(owner_id,owner_team,definition,event):
 				continue
-			var key:=_key(owner_id,definition.id)
-			var state:Dictionary=_state[key]
-			state["used_battle"]=true
-			state["last_turn_serial"]=event.turn_serial
-			state["cooldown_owner_turns"]=definition.internal_cooldown_owner_turns
-			_state[key]=state
+			if commit_state:
+				_commit_trigger(owner_id,definition,event.turn_serial)
 			out.append({
 				"actor_id":owner_id,
 				"passive_id":definition.id,
@@ -88,8 +84,26 @@ func collect_reactions(event:CombatTriggerEvent)->Array[Dictionary]:
 	)
 	return out
 
+func commit_trigger(actor_id:StringName,passive_id:StringName,turn_serial:int)->bool:
+	if not _definitions.has(actor_id):
+		return false
+	for definition_value in _definitions[actor_id]:
+		var definition:CombatPassiveDefinition=definition_value
+		if definition.id==passive_id:
+			_commit_trigger(actor_id,definition,turn_serial)
+			return true
+	return false
+
 func state_snapshot()->Dictionary:
 	return _state.duplicate(true)
+
+func _commit_trigger(actor_id:StringName,definition:CombatPassiveDefinition,turn_serial:int)->void:
+	var key:=_key(actor_id,definition.id)
+	var state:Dictionary=_state.get(key,{})
+	state["used_battle"]=true
+	state["last_turn_serial"]=turn_serial
+	state["cooldown_owner_turns"]=definition.internal_cooldown_owner_turns
+	_state[key]=state
 
 func _eligible(
 	owner_id:StringName,
