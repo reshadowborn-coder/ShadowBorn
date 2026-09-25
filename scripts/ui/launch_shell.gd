@@ -1,7 +1,8 @@
 class_name LaunchShell
 extends Control
 
-const CHAPTER_SCENE := "res://scenes/chapter00/chapter00_graybox.tscn"
+const ACT0_SCENE := "res://scenes/chapter00/chapter00_graybox.tscn"
+const ACT1_SCENE := "res://scenes/chapter01/chapter01_sewer_graybox.tscn"
 const LAUNCH_BACKGROUND := Color(0.035294, 0.043137, 0.062745, 1.0)
 
 var main_panel:Panel
@@ -41,7 +42,7 @@ func _build_background()->void:
 	add_child(title)
 
 	var subtitle:=Label.new()
-	subtitle.text="ACT 0  •  THE SHADOW AWAKENS"
+	subtitle.text="THE CRADLE ABOVE  •  THE SEWERS BELOW"
 	subtitle.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.anchor_left=0.5
 	subtitle.anchor_right=0.5
@@ -136,6 +137,9 @@ func _build_identity()->void:
 func _refresh_continue()->void:
 	continue_button.disabled=not SaveManager.has_save()
 
+func _scene_for_state(state:Dictionary)->String:
+	return ACT1_SCENE if bool(state.get("act0_complete",false)) else ACT0_SCENE
+
 func _continue_game()->void:
 	if not SaveManager.has_save():
 		return
@@ -143,7 +147,7 @@ func _continue_game()->void:
 	if str(state.get("shadow_identity","")).is_empty():
 		_open_identity("continue")
 		return
-	get_tree().change_scene_to_file(CHAPTER_SCENE)
+	get_tree().change_scene_to_file(_scene_for_state(state))
 
 func _open_identity(mode:String)->void:
 	identity_mode=mode
@@ -151,7 +155,7 @@ func _open_identity(mode:String)->void:
 	identity_panel.visible=true
 	var info:=identity_panel.get_node("Info") as Label
 	if mode=="new" and SaveManager.has_save():
-		info.text="Starting a new game replaces the current Act 0 save. Choose the remembered form to continue."
+		info.text="Starting a new game replaces the current Shadowborn progress. Choose the remembered form to continue."
 	elif mode=="continue":
 		info.text="This older save has no recorded form. Choose one once; existing progress will be preserved."
 	else:
@@ -186,7 +190,7 @@ func _build_replace_confirm()->void:
 
 	var body:=Label.new()
 	body.name="Body"
-	body.text="Your current Act 0 progress will be replaced. This cannot be undone from the game menu."
+	body.text="Your current Shadowborn progress will be replaced. This cannot be undone from the game menu."
 	body.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	body.position=Vector2(55,95)
@@ -221,14 +225,15 @@ func _cancel_replace()->void:
 	pending_identity=""
 	var body:=confirm_panel.get_node_or_null("Body") as Label
 	if body:
-		body.text="Your current Act 0 progress will be replaced. This cannot be undone from the game menu."
+		body.text="Your current Shadowborn progress will be replaced. This cannot be undone from the game menu."
 	confirm_panel.visible=false
 	identity_panel.visible=true
 
 func _commit_identity(identity:String)->bool:
 	var ok:=SaveManager.create_new_game(identity) if identity_mode=="new" else SaveManager.set_identity_on_existing_save(identity)
 	if ok:
-		get_tree().change_scene_to_file(CHAPTER_SCENE)
+		var state:=SaveManager.load_state()
+		get_tree().change_scene_to_file(_scene_for_state(state))
 		return true
 
 	if confirm_panel.visible:
