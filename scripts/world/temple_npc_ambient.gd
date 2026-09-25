@@ -11,8 +11,10 @@ enum Style {
 @export var style:Style = Style.KEEPER
 @export var phase_offset := 0.0
 @export var motion_scale := 1.0
+@export var activation_distance := 28.0
 
 var _time := 0.0
+var _player:Node3D
 var _base_position := Vector3.ZERO
 var _base_rotation := Vector3.ZERO
 var _body:Node3D
@@ -31,8 +33,13 @@ func _ready() -> void:
 	_off_arm = get_node_or_null("OffArm") as Node3D
 	_work_prop = get_node_or_null("WorkArm/WorkProp") as Node3D
 	_focus_prop = get_node_or_null("FocusProp") as Node3D
+	_player = get_tree().get_first_node_in_group("player") as Node3D
 
 func _process(delta:float) -> void:
+	if is_instance_valid(_player):
+		var limit := activation_distance * activation_distance
+		if global_position.distance_squared_to(_player.global_position) > limit:
+			return
 	_time += delta
 	match style:
 		Style.KEEPER:
