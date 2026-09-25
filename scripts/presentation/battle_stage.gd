@@ -193,7 +193,7 @@ func _build_environment() -> void:
 	var floor := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(16.5,11.5)
-	plane.material = _mat(Color(0.043,0.047,0.053),0.83,0.03)
+	plane.material = _cobblestone_material()
 	floor.mesh = plane
 	add_child(floor)
 
@@ -232,6 +232,7 @@ func _build_environment() -> void:
 
 	_build_brazier(Vector3(4.25,0,-2.75))
 	_build_brazier(Vector3(-5.0,0,-3.55))
+	_build_autumn_leaves()
 
 	# Camera: rear-left of player, elevated, aimed diagonally across the field.
 	battle_camera = Camera3D.new()
@@ -440,6 +441,84 @@ func _spawn_damage_text(pos: Vector3,damage: int,effect: String) -> void:
 	t.tween_property(label,"modulate:a",0.15,0.55)
 	t.chain().tween_callback(label.queue_free)
 
+func _cobblestone_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+void fragment() {
+	vec2 uv = UV * vec2(13.0, 9.0);
+	float row = mod(floor(uv.y), 2.0);
+	uv.x += row * 0.5;
+	vec2 cell = floor(uv);
+	vec2 f = fract(uv);
+	float edge = min(min(f.x, 1.0-f.x), min(f.y, 1.0-f.y));
+	float stone_mask = smoothstep(0.035, 0.095, edge);
+	float rnd = fract(sin(dot(cell, vec2(12.9898,78.233))) * 43758.5453);
+	float grain = 0.5 + 0.5 * sin((UV.x * 97.0) + sin(UV.y * 73.0) * 1.7);
+	vec3 a = vec3(0.038,0.041,0.045);
+	vec3 b = vec3(0.090,0.084,0.074);
+	vec3 stone = mix(a,b,rnd*0.72);
+	stone *= mix(0.78,1.06,grain*0.35);
+	vec3 mortar = vec3(0.018,0.021,0.022);
+	ALBEDO = mix(mortar,stone,stone_mask);
+	ROUGHNESS = mix(1.0,0.88,stone_mask);
+	METALLIC = 0.0;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+func _stone_material(base_color: Color) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+uniform vec4 base_color : source_color = vec4(0.08,0.085,0.095,1.0);
+void fragment() {
+	float grain = 0.5 + 0.5 * sin(UV.x*83.0 + sin(UV.y*61.0)*2.4);
+	float stain = 0.5 + 0.5 * sin(UV.y*17.0 + UV.x*9.0);
+	vec3 col = base_color.rgb * mix(0.72,1.10,grain*0.45);
+	col *= mix(0.80,1.02,stain*0.32);
+	ALBEDO = col;
+	ROUGHNESS = 0.94;
+	METALLIC = 0.0;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("base_color",base_color)
+	return mat
+
+func _build_autumn_leaves() -> void:
+	var palettes := [
+		Color(0.31,0.105,0.028),
+		Color(0.48,0.19,0.035),
+		Color(0.36,0.25,0.055)
+	]
+	for p in range(palettes.size()):
+		var leaf_mesh := BoxMesh.new()
+		leaf_mesh.size = Vector3(0.13,0.008,0.065)
+		leaf_mesh.material = _mat(palettes[p],0.98,0.0)
+
+		var multi := MultiMesh.new()
+		multi.transform_format = MultiMesh.TRANSFORM_3D
+		multi.mesh = leaf_mesh
+		multi.instance_count = 18
+
+		for i in range(18):
+			var seed := i + p*19
+			var x := -7.0 + float((seed*37)%140)/10.0
+			var z := -4.7 + float((seed*61)%94)/10.0
+			var yaw := deg_to_rad(float((seed*53)%360))
+			var pitch := deg_to_rad(float(-5 + (seed*17)%11))
+			var basis := Basis(Vector3.UP,yaw) * Basis(Vector3.RIGHT,pitch)
+			multi.set_instance_transform(i,Transform3D(basis,Vector3(x,0.018+0.003*(seed%3),z)))
+
+		var instance := MultiMeshInstance3D.new()
+		instance.multimesh = multi
+		add_child(instance)
+
 func _mat(color: Color,rough: float,metal: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
@@ -451,7 +530,7 @@ func _box_node(size: Vector3,color: Color) -> MeshInstance3D:
 	var n := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	mesh.material = _mat(color,0.90,0.0)
+	mesh.material = _stone_material(color)
 	n.mesh = mesh
 	return n
 
