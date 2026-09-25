@@ -101,7 +101,7 @@ func _build_route() -> void:
 	_build_faded_sigil_marker()
 	_build_environment_props()
 	_build_route_occlusion()
-	_add_reveal_zone("temple", Vector3(0,0.8,-50.5), Vector3(10,2,4))
+	_add_reveal_zone("temple",Act0Layout.TEMPLE_REVEAL_TRIGGER,Act0Layout.TEMPLE_REVEAL_TRIGGER_SIZE)
 	_add_encounter("hound",Vector3(0,0.8,-12),12,2,2)
 	_add_encounter("armless",Vector3(1,0.8,-38),15,3,2.4)
 	_add_encounter("shield_boss",Vector3(0,0.8,-60),23,8,3.0)
