@@ -258,7 +258,7 @@ jobs:
           unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
           mkdir -p "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
           cp -a /tmp/godot-templates/templates/. "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/"
-          test -d "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/iphone.zip"
+          test -f "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/iphone.zip"
 
       - name: Inject CI-only iPhone Team ID
         run: |
