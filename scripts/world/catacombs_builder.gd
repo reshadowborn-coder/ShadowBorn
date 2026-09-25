@@ -106,7 +106,7 @@ func _build()->void:
 	add_child(collision)
 
 	for i in range(5):
-		var z:=-122.0-float(i)*13.0
+		var z:=Act0Layout.catacomb_room_z(i+1)
 		solid_box("Room%02dFloor"%(i+1),Vector3(0,-.2,z),Vector3(12,.4,13),FLOOR,visual,collision)
 		solid_box("Room%02dWallL"%(i+1),Vector3(-6,2.2,z),Vector3(.7,4.4,13),STONE,visual,collision)
 		solid_box("Room%02dWallR"%(i+1),Vector3(6,2.2,z),Vector3(.7,4.4,13),STONE,visual,collision)
