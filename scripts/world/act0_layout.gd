@@ -3,7 +3,11 @@ extends RefCounted
 
 # Mutable spatial/presentation tuning. These values may move during graybox
 # iteration without changing the Act 0 progression contract.
+const HOUND_TRIGGER := Vector3(0,0.8,-12)
+const ARMLESS_TRIGGER := Vector3(1,0.8,-38)
 const TEMPLE_REVEAL_TRIGGER := Vector3(0,0.8,-50.5)
+const SHIELD_TRIGGER := Vector3(0,0.8,-60)
+const TEMPLE_REVEAL_CAMERA_TARGET := Vector3(0,5.5,-70)
 const TEMPLE_GATE_TRIGGER := Vector3(0,1,-73)
 const FADED_SIGIL_TRIGGER := Vector3(0,1,-67)
 const TEMPLE_ENTRY_CHECKPOINT := Vector3(0,0.9,-78)
@@ -35,5 +39,8 @@ const TEMPLE_REVEAL_TRIGGER_SIZE := Vector3(26,2.5,4)
 static func floor_anchor(trigger_position:Vector3)->Vector3:
 	return Vector3(trigger_position.x,0,trigger_position.z)
 
+static func catacomb_room_z(room:int)->float:
+	return -122.0-float(room-1)*13.0
+
 static func catacomb_room_trigger_position(room:int)->Vector3:
-	return Vector3(0,1,-122.0-float(room-1)*13.0)
+	return Vector3(0,1,catacomb_room_z(room))
