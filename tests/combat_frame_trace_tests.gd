@@ -12,11 +12,26 @@ func _check(condition: bool, message: String) -> void:
 		push_error("FAIL: " + message)
 
 func _run() -> void:
+	_test_platform_present_evidence()
 	_test_single_event_frame_assignment()
 	_test_state_projection_and_recovery()
 	await _test_multi_enemy_trace()
 	print("Combat frame trace tests complete. failures=%d" % failures)
 	quit(1 if failures > 0 else 0)
+
+func _test_platform_present_evidence() -> void:
+	_check(
+		CombatFrameTrace.physical_present_evidence_for("iOS")=="external_xcode_instruments_or_metal_system_trace",
+		"iOS trace points QA to Xcode Instruments / Metal system evidence"
+	)
+	_check(
+		CombatFrameTrace.physical_present_evidence_for("Android")=="external_surfaceflinger_or_perfetto",
+		"Android trace points QA to SurfaceFlinger / Perfetto"
+	)
+	_check(
+		CombatFrameTrace.physical_present_evidence_for("Linux")=="external_platform_profiler",
+		"non-mobile/headless trace uses a neutral external profiler fallback"
+	)
 
 func _new_trace() -> CombatFrameTrace:
 	var trace := CombatFrameTrace.new()
