@@ -195,16 +195,19 @@ func _test_committed_orchestrator_signals()->void:
 	_check(int(counts["return"])==0,"solo-limit outward signal is deferred until save commit")
 	_check(flow.commit_solo_limit_presentation(),"committed solo-limit presentation can be emitted")
 	_check(int(counts["return"])==1,"solo-limit outward signal emits only after commit")
+	_check(not flow.commit_solo_limit_presentation() and int(counts["return"])==1,"solo-limit committed signal is strictly one-shot")
 
 	_check(flow.temple_story_handoff(),"story summon state transition succeeds before commit")
 	_check(int(counts["companion"])==0,"companion outward signal is deferred until save commit")
 	_check(flow.commit_story_handoff_presentation(),"committed companion presentation can be emitted")
 	_check(int(counts["companion"])==1,"companion outward signal emits only after commit")
+	_check(not flow.commit_story_handoff_presentation() and int(counts["companion"])==1,"companion committed signal is strictly one-shot")
 
 	_check(flow.room_cleared(5),"Room 5 completion state transition succeeds before commit")
 	_check(int(counts["complete"])==0,"Act 0 completion signal is deferred until save commit")
 	_check(flow.commit_act0_completion_presentation(),"committed Act 0 completion presentation can be emitted")
 	_check(int(counts["complete"])==1,"Act 0 completion signal emits only after commit")
+	_check(not flow.commit_act0_completion_presentation() and int(counts["complete"])==1,"Act 0 completion committed signal is strictly one-shot")
 
 func _test_combat_math()->void:
 	var base:=CombatResolver.damage(8.0,1.30,4.0)
