@@ -2,6 +2,7 @@ class_name CombatHUD
 extends CanvasLayer
 
 signal skill_pressed(skill: String)
+signal visual_state_updated(player_hp_text: String, enemy_hp_text: String, state_text: String, action_locked: bool, a2_cd: int)
 
 @onready var panel: Control = $Panel
 @onready var player_hp: Label = $Panel/PlayerHP
@@ -43,3 +44,4 @@ func render_state(state: Dictionary) -> void:
 	if s.get("veil",0.0) > 0.0: states.append("VEIL")
 	if s.get("fray",false): states.append("FRAY")
 	state_label.text = "  •  ".join(states)
+	emit_signal("visual_state_updated",player_hp.text,enemy_hp.text,state_label.text,locked,cd)
