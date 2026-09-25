@@ -52,3 +52,15 @@ The values intentionally preserve the authored tutorial flow while proving that 
 - Turn state inside an active fight is transient for Act 1.1.
 - iOS suspend/kill resumes from the last committed world checkpoint, never from a half-resolved animation/turn.
 - Irreversible story transitions still save atomically before presentation.
+
+
+## Reactions are not turns
+Counterattacks, assists, follow-ups and interrupts use a separate bounded reaction queue.
+- A Reaction never fills or consumes Turn Meter.
+- A Reaction never advances owner-turn buff/debuff duration.
+- A Reaction never refreshes skill cooldowns merely by occurring.
+- Reactions resolve by explicit priority and stable insertion order.
+- Duplicate actor/reaction identities are blocked inside one source-turn window.
+- Reaction chains are depth-limited and the pending queue is capped to prevent passive loops.
+
+An Extra Turn is different: it is a genuine owner turn and therefore participates in owner-turn durations and turn-based rules.
