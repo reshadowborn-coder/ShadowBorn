@@ -169,4 +169,4 @@ func _build_shield_boss(pos:Vector3) -> void:
 func _add_encounter(id:String,pos:Vector3,hp:float,defense:float,dmg:float) -> void:
 	var a:=Area3D.new(); a.name="ENC_"+id.to_upper(); a.position=pos; a.script=TRIGGER_SCRIPT
 	a.encounter_id=id; a.enemy_hp=hp; a.enemy_def=defense; a.enemy_damage=dmg
-	var c:=CollisionShape3D.new(); var shape:=BoxShape3D.new(); shape.size=Vector3(8,2,4); c.shape=shape; a.add_child(c); add_child(a)
+	var c:=CollisionShape3D.new(); var shape:=BoxShape3D.new(); shape.size=Act0Layout.EXTERIOR_ENCOUNTER_TRIGGER_SIZE; c.shape=shape; a.add_child(c); add_child(a)
