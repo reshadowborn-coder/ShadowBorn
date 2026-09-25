@@ -75,6 +75,18 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ios_iphone_policy_tests.gd 2>&1 | tee /tmp/ios-iphone-policy.log
           ! grep -q "SCRIPT ERROR:" /tmp/ios-iphone-policy.log
 
+      - name: Validate platform runtime pressure policy
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/platform_runtime_policy_tests.gd 2>&1 | tee /tmp/platform-runtime-policy.log
+          ! grep -q "SCRIPT ERROR:" /tmp/platform-runtime-policy.log
+
+      - name: Validate iOS native bridge source contract
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/ios_native_bridge_contract_tests.gd 2>&1 | tee /tmp/ios-native-bridge-contract.log
+          ! grep -q "SCRIPT ERROR:" /tmp/ios-native-bridge-contract.log
+
       - name: Run performance and visual consistency regressions
         run: |
           set -o pipefail
@@ -164,6 +176,65 @@ jobs:
           set -o pipefail
           /tmp/godot/godot --headless --path . --script res://tests/ios_asset_budget_tests.gd 2>&1 | tee /tmp/ios-asset-budget.log
           ! grep -q "SCRIPT ERROR:" /tmp/ios-asset-budget.log
+
+  ios-native-bridge:
+    needs: headless-act0
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SCons
+        run: python3 -m pip install --user 'scons>=4.0,<5'
+
+      - name: Generate exact Godot 4.4.1 iOS header archive
+        id: godot_headers
+        uses: ActionCommons/build-godot@v1
+        with:
+          version: '4.4.1'
+          flavor: stable
+          platform: ios
+          target: template_release
+          directory: './custom_godot_source'
+          timeout: '180'
+          options: 'create_header_archive'
+
+      - name: Extract Godot headers
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shadowborn-godot-headers
+          mkdir -p /tmp/shadowborn-godot-headers
+          unzip -q "${{ steps.godot_headers.outputs.header_archive }}" -d /tmp/shadowborn-godot-headers
+          test -f /tmp/shadowborn-godot-headers/core/object/object.h
+          test -f /tmp/shadowborn-godot-headers/core/object/class_db.h
+          test -f /tmp/shadowborn-godot-headers/core/config/engine.h
+
+      - name: Compile ShadowbornIOS Debug and Release XCFrameworks
+        run: |
+          set -euo pipefail
+          chmod +x native/ios/ShadowbornIOS/build_xcframework.sh
+          export PATH="$HOME/Library/Python/3.9/bin:$HOME/.local/bin:$PATH"
+          GODOT_HEADERS=/tmp/shadowborn-godot-headers \
+            OUT_DIR="$GITHUB_WORKSPACE/build/native-ios" \
+            ./native/ios/ShadowbornIOS/build_xcframework.sh
+          test -f build/native-ios/ShadowbornIOS.debug.xcframework/Info.plist
+          test -f build/native-ios/ShadowbornIOS.release.xcframework/Info.plist
+          test -f build/native-ios/ShadowbornIOS.gdip
+          grep -Fq 'godot_version=4.4.1-stable' build/native-ios/native-bridge-manifest.txt
+          find build/native-ios -maxdepth 3 -type f -print | sort
+
+      - name: Upload ShadowbornIOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadowborn-ios-native-bridge
+          path: |
+            build/native-ios/ShadowbornIOS.debug.xcframework
+            build/native-ios/ShadowbornIOS.release.xcframework
+            build/native-ios/ShadowbornIOS.gdip
+            build/native-ios/native-bridge-manifest.txt
+          if-no-files-found: error
+          retention-days: 7
 
   android-qa-apk:
     needs: headless-act0
@@ -435,6 +506,7 @@ jobs:
           grep -Fq "iphone-ipad-minimum-performance-a12" /tmp/iphone-required-capabilities.txt
           ! grep -Fq "iphone-performance-gaming-tier" /tmp/iphone-required-capabilities.txt
           test -f "$APP/PrivacyInfo.xcprivacy"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSSupportsGameMode' "$APP/Info.plist")" = "true"
           if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
             echo "Unexpected second device family: build is not iPhone-only" >&2
             exit 1
@@ -479,6 +551,7 @@ jobs:
           grep -Fq "iphone-ipad-minimum-performance-a12" /tmp/iphone-release-required-capabilities.txt
           ! grep -Fq "iphone-performance-gaming-tier" /tmp/iphone-release-required-capabilities.txt
           test -f "$RELEASE_APP/PrivacyInfo.xcprivacy"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSSupportsGameMode' "$RELEASE_APP/Info.plist")" = "true"
 
       - name: Package iPhone QA Xcode artifact
         run: |
