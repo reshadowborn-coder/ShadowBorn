@@ -328,6 +328,28 @@ func _test_save_recovery()->void:
 	var room3_resume:=Act0Layout.catacomb_room_resume_position(3)
 	_check(cat_recovery.checkpoint_position==SaveManager._vector3_array(room3_resume) and str(cat_recovery.checkpoint)=="cat_r2_hound_cleared","corrupt Catacomb checkpoint recovers immediately before the current room")
 
+	var bad_hound_resume:=SaveManager.default_state()
+	bad_hound_resume.cleared_encounters=["hound"]
+	bad_hound_resume.checkpoint="awakening"
+	bad_hound_resume.checkpoint_position=[999.0,999.0,999.0]
+	var hound_resume:=SaveManager._migrate(bad_hound_resume)
+	_check(str(hound_resume.checkpoint)=="hound_cleared","corrupt exterior resume after Hound repairs to the Hound clear checkpoint")
+	_check(hound_resume.checkpoint_position==SaveManager._vector3_array(Vector3(Act0Layout.HOUND_TRIGGER.x,0.9,Act0Layout.HOUND_TRIGGER.z)),"corrupt exterior resume after Hound repairs to the Hound route anchor")
+
+	var bad_armless_resume:=SaveManager.default_state()
+	bad_armless_resume.cleared_encounters=["hound","armless"]
+	bad_armless_resume.checkpoint="awakening"
+	bad_armless_resume.checkpoint_position=[999.0,999.0,999.0]
+	var armless_resume:=SaveManager._migrate(bad_armless_resume)
+	_check(str(armless_resume.checkpoint)=="armless_cleared","corrupt exterior resume after Armless repairs to the Armless clear checkpoint")
+	_check(armless_resume.checkpoint_position==SaveManager._vector3_array(Vector3(Act0Layout.ARMLESS_TRIGGER.x,0.9,Act0Layout.ARMLESS_TRIGGER.z)),"corrupt exterior resume after Armless repairs to the Ruins/Temple approach anchor")
+
+	var bad_reveal_resume:=bad_armless_resume.duplicate(true)
+	bad_reveal_resume.temple_reveal_seen=true
+	var reveal_resume:=SaveManager._migrate(bad_reveal_resume)
+	_check(str(reveal_resume.checkpoint)=="temple_reveal_seen","corrupt exterior resume after Temple reveal repairs to the reveal checkpoint")
+	_check(reveal_resume.checkpoint_position==SaveManager._vector3_array(Vector3(Act0Layout.TEMPLE_REVEAL_TRIGGER.x,0.9,Act0Layout.TEMPLE_REVEAL_TRIGGER.z)),"corrupt exterior resume after Temple reveal repairs to the Shield approach anchor")
+
 	var bad_temple:=SaveManager.default_state()
 	bad_temple.cleared_encounters=["hound","armless","shield_boss"]
 	bad_temple.temple_reveal_seen=true
