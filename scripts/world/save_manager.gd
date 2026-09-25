@@ -382,6 +382,11 @@ static func create_new_game(identity:String)->bool:
 		return false
 	var state:=default_state()
 	state.shadow_identity=identity
+	# First promotion replaces the old game. The second identical promotion
+	# seeds the retained backup with the new game too, so corruption cannot
+	# resurrect progress the player explicitly replaced.
+	if not save_state(state):
+		return false
 	return save_state(state)
 
 static func set_identity_on_existing_save(identity:String)->bool:
