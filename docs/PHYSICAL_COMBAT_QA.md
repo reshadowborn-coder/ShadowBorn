@@ -103,3 +103,19 @@ The quiet trace still completes rows in memory through `row_completed`; only con
 Do not accept a contact-latency or frame-pacing conclusion if enabling live console output introduces additional missed/repeated presents or a new hitch cluster that is absent in the quiet baseline. In that case, treat live logging as intrusive and use buffered/quiet evidence plus external Perfetto/SurfaceFlinger capture.
 
 CI now runs `tests/combat_frame_trace_tests.gd` to prove that trace rows preserve payload/context, bind pending events to the next eligible engine frame, capture state projection/recovery, and do not mutate observed combat state. This is schema/invariant evidence only; it does not replace the physical A/B.
+
+
+## Build provenance gate
+
+Before any physical result is accepted, open `qa-build-manifest.txt` from the same GitHub Actions artifact as the installed APK and record:
+
+- `git_sha`;
+- `workflow_run_id`;
+- `godot_version`;
+- `android_package`;
+- `android_abi`;
+- `apk_sha256`.
+
+Verify the installed/downloaded APK SHA-256 matches the manifest before the first measured session. Never merge measurements from different `git_sha` values into one 30/60 comparison.
+
+If gameplay changes land on `main` after the artifact was built, that does not invalidate the old measurement, but the evidence must remain labeled with the older SHA and must not be described as validation of newer code.
