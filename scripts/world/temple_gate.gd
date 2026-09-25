@@ -41,5 +41,6 @@ func _enter(body:Node)->void:
 	if not game.act0.faded_sigil_activated:
 		game.story_toast.show_message("A faded sigil stirs before the sealed threshold.")
 		return
-	used=true
-	game.enter_temple()
+	if game.enter_temple():
+		used=true
+		monitoring=false
