@@ -73,15 +73,7 @@ static func _expected_checkpoint_id(state:Dictionary)->String:
 		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
 			return "temple_entry"
 		Act0Contract.STAGE_CATACOMBS:
-			var room:=clampi(int(state.get("catacomb_room",0)),0,5)
-			if room==0:
-				return "temple_entry"
-			match room:
-				1: return "catacombs_entry"
-				2: return "cat_r1_skeleton_cleared"
-				3: return "cat_r2_hound_cleared"
-				4: return "cat_r3_guard_cleared"
-				5: return "cat_r4_revenant_cleared"
+			return Act0Contract.catacomb_checkpoint_id(int(state.get("catacomb_room",0)))
 		Act0Contract.STAGE_ROOM5_RETURN:
 			return "room5_return"
 		Act0Contract.STAGE_ROOM5_REMATCH:
