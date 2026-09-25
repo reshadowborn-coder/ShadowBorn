@@ -304,6 +304,7 @@ jobs:
             2>&1 | tee /tmp/iphone-xcode-export.log
           ! grep -Fq "SCRIPT ERROR:" /tmp/iphone-xcode-export.log
           ! grep -Fq "Project export for preset \"iPhone QA\" failed" /tmp/iphone-xcode-export.log
+          ! grep -Fq "Storing File: res://tests/" /tmp/iphone-xcode-export.log
           test -f build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj/project.pbxproj
           test -f build/ios/Shadowborn-Act0-iPhone-QA/Shadowborn-Act0-iPhone-QA-Info.plist
 
@@ -364,6 +365,9 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
           test "$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' "$APP/Info.plist")" = "Launch Screen"
+          /usr/libexec/PlistBuddy -c 'Print :UIRequiredDeviceCapabilities' "$APP/Info.plist" | tee /tmp/iphone-required-capabilities.txt
+          grep -Fq "iphone-ipad-minimum-performance-a12" /tmp/iphone-required-capabilities.txt
+          ! grep -Fq "iphone-performance-gaming-tier" /tmp/iphone-required-capabilities.txt
           test -f "$APP/PrivacyInfo.xcprivacy"
           if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
             echo "Unexpected second device family: build is not iPhone-only" >&2
@@ -381,6 +385,7 @@ jobs:
             2>&1 | tee /tmp/iphone-release-export.log
           ! grep -Fq "SCRIPT ERROR:" /tmp/iphone-release-export.log
           ! grep -Fq "Project export for preset \"iPhone QA\" failed" /tmp/iphone-release-export.log
+          ! grep -Fq "Storing File: res://tests/" /tmp/iphone-release-export.log
           XCODEPROJ="build/ios-release/Shadowborn-Act0-iPhone-Release.xcodeproj"
           test -f "$XCODEPROJ/project.pbxproj"
           SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
@@ -404,6 +409,9 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$RELEASE_APP/Info.plist")" = "org.shadowborn.chapter0.qa"
           test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$RELEASE_APP/Info.plist")" = "16.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$RELEASE_APP/Info.plist")" = "1"
+          /usr/libexec/PlistBuddy -c 'Print :UIRequiredDeviceCapabilities' "$RELEASE_APP/Info.plist" | tee /tmp/iphone-release-required-capabilities.txt
+          grep -Fq "iphone-ipad-minimum-performance-a12" /tmp/iphone-release-required-capabilities.txt
+          ! grep -Fq "iphone-performance-gaming-tier" /tmp/iphone-release-required-capabilities.txt
           test -f "$RELEASE_APP/PrivacyInfo.xcprivacy"
 
       - name: Package iPhone QA Xcode artifact
