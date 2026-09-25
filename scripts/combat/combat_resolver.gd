@@ -6,6 +6,12 @@ const MAX_SAFE_DAMAGE:=1000000.0
 static func _finite(value:float)->bool:
 	return value==value and not is_inf(value)
 
+static func _number(value,default_value:float=0.0)->float:
+	if typeof(value) not in [TYPE_INT,TYPE_FLOAT]:
+		return default_value
+	var number:=float(value)
+	return number if _finite(number) else default_value
+
 static func damage(atk: float, coeff: float, defense: float, state_mult: float = 1.0) -> float:
 	if not _finite(atk) or not _finite(coeff) or not _finite(defense) or not _finite(state_mult):
 		return 0.0
@@ -19,11 +25,10 @@ static func damage(atk: float, coeff: float, defense: float, state_mult: float =
 	return clampf(result,0.0,MAX_SAFE_DAMAGE)
 
 static func resolve_a1(attacker: Dictionary, defender: Dictionary) -> Dictionary:
-	var dmg := damage(attacker.atk, 1.0, defender.def)
+	var dmg := damage(_number(attacker.get("atk")),1.0,_number(defender.get("def")))
 	return {"damage": dmg, "apply_fray": true}
 
 static func resolve_a2(attacker: Dictionary, defender: Dictionary) -> Dictionary:
-	var mult := 1.0
-	if defender.get("guard", false): mult = 0.55
-	var dmg := damage(attacker.atk, 1.30, defender.def, mult)
+	var mult := 0.55 if defender.get("guard",false) is bool and bool(defender.get("guard",false)) else 1.0
+	var dmg := damage(_number(attacker.get("atk")),1.30,_number(defender.get("def")),mult)
 	return {"damage": dmg, "veil": 0.15, "cooldown": 3}
