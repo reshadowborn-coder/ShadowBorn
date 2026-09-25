@@ -105,7 +105,7 @@ func _ambient_root(name:String,role:String,p:Vector3,parent:Node3D,style:int,pha
 	parent.add_child(r)
 	return r
 
-func _add_humanoid_core(r:Node3D,body_color:Color,body_size:=Vector3(.78,1.55,.52),head_y:=1.95)->void:
+func _add_humanoid_core(r:Node3D,body_color:Color,body_size:Vector3=Vector3(.78,1.55,.52),head_y:float=1.95)->void:
 	box("Body",Vector3(0,1.0,0),body_size,body_color,r)
 	box("Head",Vector3(0,head_y,0),Vector3(.48,.55,.45),SKIN,r)
 
