@@ -309,7 +309,7 @@ func play_world_reveal(id:String)->bool:
 
 	mobile_controls.set_enabled(false)
 	shadow.set_physics_process(false)
-	camera_rig.enter_reveal(Vector3(0,5.5,-70.0))
+	camera_rig.enter_reveal(Act0Layout.TEMPLE_REVEAL_CAMERA_TARGET)
 	await get_tree().create_timer(0.45 if reduced_motion else 1.65).timeout
 	camera_rig.exit_reveal()
 	if not reduced_motion:
