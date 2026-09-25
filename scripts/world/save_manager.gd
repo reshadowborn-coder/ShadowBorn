@@ -266,6 +266,8 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.route_index=Chapter00Director.ROUTE.find("temple_reveal")
 	elif hound_cleared:
 		state.route_index=Chapter00Director.ROUTE.find("ruins")
+	else:
+		state.route_index=Chapter00Director.ROUTE.find("awakening")
 
 	# Validate a committed forge before trusting downstream Catacomb state.
 	if forged:
@@ -279,6 +281,16 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 			state.first_forge_done=false
 			state.forged_item={}
 			state.silver=maxi(1,state.silver)
+
+	# Act 0 has exactly one Silver source (Shield) and the scripted first forge
+	# consumes it. Treat currency as derived progression evidence, not arbitrary
+	# JSON input.
+	if not shield_cleared:
+		state.silver=0
+	elif forged:
+		state.silver=0
+	else:
+		state.silver=1
 
 	if not covenant:
 		state.weapon_family=""
