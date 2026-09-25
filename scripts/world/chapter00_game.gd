@@ -692,6 +692,7 @@ func _resolve_room5_solo_limit()->void:
 			_restore_runtime_snapshot(before_state)
 			story_toast.show_message("The retreat could not be anchored. Room 5 remains uncommitted.")
 			return
+		_apply_threshold_visual_state()
 		if not act0_flow.commit_solo_limit_presentation():
 			push_error("Committed Room 5 solo-limit could not emit presentation")
 		story_toast.show_message("One shadow was not enough. Return to the Keeper.")
@@ -747,6 +748,9 @@ func _apply_threshold_visual_state()->void:
 	var door:=get_parent().get_node_or_null("Graybox/VisualGeometry/TempleDoor") as Node3D
 	if door:
 		door.visible=not act0.faded_sigil_activated
+	for memory_visual in get_tree().get_nodes_in_group("temple_memory_room5_failure"):
+		if memory_visual is Node3D:
+			(memory_visual as Node3D).visible=catacombs.room5_solo_limit_seen
 	for companion_visual in get_tree().get_nodes_in_group("story_companion_visual"):
 		if companion_visual is Node3D:
 			(companion_visual as Node3D).visible=catacombs.summon_unlocked
