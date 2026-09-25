@@ -12,12 +12,14 @@ var actor_labels: Dictionary = {}
 var actor_busy: Dictionary = {}
 var battle_camera: Camera3D
 var clock := 0.0
+var presentation_speed := 1.0
 
 func _ready() -> void:
 	_build_environment()
 	set_process(true)
 
 func apply_state(snapshot: Dictionary) -> void:
+	presentation_speed = clampf(float(snapshot.get("speed",1.0)),1.0,2.0)
 	var units: Array = snapshot.get("units",[])
 	for unit_variant in units:
 		var unit: Dictionary = unit_variant
@@ -31,40 +33,51 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 		return
 	actor_busy[attacker_id] = true
 	var attacker: Node3D = actor_nodes[attacker_id]
-	var target: Node3D = actor_nodes[target_id]
-	CharacterFactory.play_named_animation(attacker,["attack","Attack","Attack_01","Basic_Attack"])
-
 	var home: Vector3 = actor_home[attacker_id]
 	var target_home: Vector3 = actor_home[target_id]
 	var direction := (target_home-home).normalized()
-	var distance := 1.18
-	if skill_id == "shadow_lunge":
-		distance = 1.88
-	elif skill_id == "hound_rend":
-		distance = 1.42
 
+	if attacker_id == "shadow":
+		CharacterFactory.play_shadow_attack(attacker,presentation_speed)
+	else:
+		CharacterFactory.play_hound_attack(attacker,presentation_speed)
+
+	var distance := 1.12
+	if skill_id == "shadow_lunge":
+		distance = 1.72
+	elif skill_id == "hound_rend":
+		distance = 1.34
+
+	# Root travel complements the skeleton animation instead of replacing it.
 	var anticipation := create_tween()
-	anticipation.tween_property(attacker,"position",home-direction*0.18,0.09)
-	anticipation.tween_property(attacker,"position",home+direction*distance,0.16 if skill_id!="shadow_lunge" else 0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	anticipation.set_speed_scale(presentation_speed)
+	anticipation.tween_property(attacker,"position",home-direction*0.12,0.11)
+	anticipation.tween_property(attacker,"position",home+direction*distance,0.26 if skill_id!="shadow_lunge" else 0.31).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 	if skill_id == "shadow_lunge":
 		var cam := create_tween()
+		cam.set_speed_scale(presentation_speed)
 		cam.set_parallel(true)
-		cam.tween_property(battle_camera,"position",CAMERA_HOME+Vector3(0.65,-0.22,-0.70),0.18).set_trans(Tween.TRANS_SINE)
-		cam.tween_property(battle_camera,"fov",34.0,0.18)
+		cam.tween_property(battle_camera,"position",CAMERA_HOME+Vector3(0.62,-0.20,-0.65),0.24).set_trans(Tween.TRANS_SINE)
+		cam.tween_property(battle_camera,"fov",33.5,0.24)
 
 func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: int,effect: String) -> void:
 	if not actor_nodes.has(target_id):
 		return
 	var target: Node3D = actor_nodes[target_id]
 	var home: Vector3 = actor_home[target_id]
-	CharacterFactory.play_named_animation(target,["hit","Hit","Damage","Hit_01"])
+
+	if target_id == "shadow":
+		CharacterFactory.play_shadow_hit(target,presentation_speed)
+	else:
+		CharacterFactory.play_hound_hit(target,presentation_speed)
 
 	var attacker_home: Vector3 = actor_home.get(attacker_id,Vector3.ZERO)
 	var away := (home-attacker_home).normalized()
 	var hit := create_tween()
-	hit.tween_property(target,"position",home+away*0.28+Vector3(0,0.05,0),0.055)
-	hit.tween_property(target,"position",home,0.14).set_trans(Tween.TRANS_BACK)
+	hit.set_speed_scale(presentation_speed)
+	hit.tween_property(target,"position",home+away*0.22+Vector3(0,0.04,0),0.07)
+	hit.tween_property(target,"position",home,0.17).set_trans(Tween.TRANS_BACK)
 	_spawn_impact_flash(target.global_position+Vector3(0,1.0,0))
 	_spawn_damage_text(target.global_position+Vector3(0,2.15,0),damage,effect)
 
@@ -72,45 +85,51 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		var attacker: Node3D = actor_nodes[attacker_id]
 		var a_home: Vector3 = actor_home[attacker_id]
 		var recover := create_tween()
-		recover.tween_interval(0.07)
-		recover.tween_property(attacker,"position",a_home,0.23).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+		recover.set_speed_scale(presentation_speed)
+		recover.tween_interval(0.12)
+		recover.tween_property(attacker,"position",a_home,0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 		recover.tween_callback(func():
 			actor_busy[attacker_id] = false
-			CharacterFactory.play_named_animation(attacker,["idle","Idle","Idle_Combat"])
+			if attacker_id == "shadow":
+				CharacterFactory.play_shadow_idle(attacker,presentation_speed)
+			else:
+				CharacterFactory.play_hound_idle(attacker,presentation_speed)
 		)
 
 	if skill_id == "shadow_lunge":
 		var cam_back := create_tween()
+		cam_back.set_speed_scale(presentation_speed)
 		cam_back.set_parallel(true)
-		cam_back.tween_property(battle_camera,"position",CAMERA_HOME,0.28)
-		cam_back.tween_property(battle_camera,"fov",37.0,0.28)
+		cam_back.tween_property(battle_camera,"position",CAMERA_HOME,0.34)
+		cam_back.tween_property(battle_camera,"fov",37.0,0.34)
 
 func play_death(actor_id: String) -> void:
 	if not actor_nodes.has(actor_id):
 		return
 	var actor: Node3D = actor_nodes[actor_id]
 	actor_busy[actor_id] = true
-	if CharacterFactory.play_named_animation(actor,["death","Death","Die"]):
+	if CharacterFactory.play_death(actor,presentation_speed):
 		return
 	var home: Vector3 = actor_home[actor_id]
 	var t := create_tween()
+	t.set_speed_scale(presentation_speed)
 	t.set_parallel(true)
 	t.tween_property(actor,"rotation_degrees:z",-78.0 if home.x>0 else 78.0,0.42).set_trans(Tween.TRANS_QUAD)
 	t.tween_property(actor,"position",home+Vector3(0,-0.12,0.14),0.42)
 
 func _process(delta: float) -> void:
-	clock += delta
+	clock += delta * presentation_speed
+	# Skeletal idle clips now provide the body motion. Only a tiny root drift remains
+	# to keep emergency fallback models from looking completely frozen.
 	for id_variant in actor_nodes.keys():
 		var id := str(id_variant)
 		if bool(actor_busy.get(id,false)):
 			continue
 		var actor: Node3D = actor_nodes[id]
-		var home: Vector3 = actor_home[id]
-		var phase := float(abs(id.hash()%100))*0.071
-		actor.position = home+Vector3(0,sin(clock*1.48+phase)*0.022,0)
-		var visual := actor.get_node_or_null("Visual") as Node3D
-		if visual:
-			visual.rotation_degrees.z = sin(clock*0.88+phase)*0.45
+		if CharacterFactory.animation_names(actor).is_empty():
+			var home: Vector3 = actor_home[id]
+			var phase := float(abs(id.hash()%100))*0.071
+			actor.position = home+Vector3(0,sin(clock*1.48+phase)*0.018,0)
 
 func _build_environment() -> void:
 	var world := WorldEnvironment.new()
@@ -213,11 +232,18 @@ func _spawn_actor(unit: Dictionary) -> void:
 	var visual := Node3D.new()
 	visual.name = "Visual"
 	root.add_child(visual)
+
 	var model := CharacterFactory.create_shadow(true) if id=="shadow" else CharacterFactory.create_hound()
-	if id=="grave_hound":
-		model.scale = Vector3(1.12,1.12,1.12)
+	if id=="shadow":
+		model.scale = Vector3(1.05,1.05,1.05)
+	else:
+		model.scale = Vector3(1.18,1.18,1.18)
 	visual.add_child(model)
-	CharacterFactory.play_named_animation(model,["idle","Idle","Idle_Combat"])
+
+	if id=="shadow":
+		CharacterFactory.play_shadow_idle(model,presentation_speed)
+	else:
+		CharacterFactory.play_hound_idle(model,presentation_speed)
 
 	# Face the opponent across the diagonal lane.
 	var opponent := ENEMY_HOME if id=="shadow" else PLAYER_HOME
@@ -226,7 +252,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 	root.rotation_degrees.z = 0
 
 	var label := Label3D.new()
-	label.position = Vector3(0,2.65,0) if id=="shadow" else Vector3(0,1.72,0)
+	label.position = Vector3(0,2.55,0) if id=="shadow" else Vector3(0,1.72,0)
 	label.font_size = 28
 	label.outline_size = 9
 	root.add_child(label)
