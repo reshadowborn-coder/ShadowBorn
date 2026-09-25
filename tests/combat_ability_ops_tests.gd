@@ -90,10 +90,19 @@ func _test_target_resolution_and_planning()->void:
 	]
 	var plan:=CombatAbilityPlanner.build(steps,context)
 	_check(bool(plan.ok),"validated ability steps build a deterministic execution plan")
-	_check(CombatAbilityPlanner.operation_count(plan,"damage")==3,"per-target conditions expand only the matching poisoned target")
+	_check(CombatAbilityPlanner.operation_count(plan,"damage")==4,"planner retains conditional operations for execution-time evaluation")
+	_check(CombatAbilityPlanner.preview_operation_count(plan,"damage")==3,"current-state preview still counts only presently eligible damage operations")
 	var operations:Array=plan.operations
 	_check(str(operations[0].target_actor_id)=="rat_a" and str(operations[1].target_actor_id)=="rat_b","multi-target operation ordering is deterministic")
 	_check(str(operations[2].target_actor_id)=="rat_b" and str(operations[2].op)=="turn_meter","highest-TM selector resolves into one explicit operation")
+	_check(bool(operations[3].preview_condition_passed) and not bool(operations[4].preview_condition_passed),"per-target condition previews do not delete later operations")
+	var future_context:=context.duplicate(true)
+	var future_actors:Dictionary=future_context["actors"]
+	var future_rat_b:Dictionary=future_actors["rat_b"]
+	future_rat_b["tags"]=["Status.Poison"]
+	future_actors["rat_b"]=future_rat_b
+	future_context["actors"]=future_actors
+	_check(CombatAbilityPlanner.operation_conditions_pass(operations[4],future_context),"execution-time condition can become true after an earlier step changes state")
 	var invalid:=CombatAbilityPlanner.build([{"op":"mystery","target":"self"}],context)
 	_check(not bool(invalid.ok) and not (invalid.errors as Array).is_empty(),"planner fails closed before executing invalid combat data")
 
