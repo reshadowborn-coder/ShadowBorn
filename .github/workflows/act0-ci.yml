@@ -329,6 +329,13 @@ jobs:
           EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
           test -n "$EXECUTABLE"
           test -f "$APP/$EXECUTABLE"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
+          if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
+            echo "Unexpected second device family: build is not iPhone-only" >&2
+            exit 1
+          fi
 
       - name: Package iPhone QA Xcode artifact
         run: |
