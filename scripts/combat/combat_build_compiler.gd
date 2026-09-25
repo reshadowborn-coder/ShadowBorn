@@ -40,13 +40,15 @@ static func compile(
 					granted_passive_ids.append(passive_id)
 			for patch_value in talent.skill_patches:
 				if typeof(patch_value)!=TYPE_DICTIONARY:
-					continue
+					return {"ok":false,"errors":["talent patch is not a dictionary: "+str(talent.id)]}
 				var patch:Dictionary=patch_value
 				var skill_id:=str(patch.get("skill_id",""))
 				var spec_value=specs.get(skill_id)
-				if spec_value is CombatSkillSpec:
-					for _i in range(rank):
-						(spec_value as CombatSkillSpec).apply_external_patch(patch)
+				if not (spec_value is CombatSkillSpec):
+					return {"ok":false,"errors":["talent patch references missing skill: "+skill_id]}
+				for _i in range(rank):
+					if not (spec_value as CombatSkillSpec).apply_external_patch(patch):
+						return {"ok":false,"errors":["talent patch rejected for skill %s from talent %s"%[skill_id,str(talent.id)]]}
 
 	return {
 		"ok":true,

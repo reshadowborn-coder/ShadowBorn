@@ -57,6 +57,11 @@ func apply_external_patch(patch:Dictionary)->bool:
 	var op:=str(patch.get("op",""))
 	if op not in ["add","multiply_bp","set","cooldown_delta","add_tag"]:
 		return false
+	var key:=str(patch.get("key",""))
+	if op in ["add","multiply_bp","set"] and (key.is_empty() or not runtime_values.has(key)):
+		return false
+	if op=="add_tag" and str(patch.get("value","")).is_empty():
+		return false
 	_apply_patch(patch)
 	cooldown_remaining=clampi(cooldown_remaining,0,cooldown_max())
 	return true

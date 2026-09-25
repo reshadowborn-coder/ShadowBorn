@@ -17,6 +17,7 @@ func _run()->void:
 	_test_status_application_pipeline()
 	_test_aura_scope_and_lifetime()
 	_test_talent_build_compilation()
+	_test_invalid_talent_patch_fail_closed()
 	print("Combat build and status rules tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -107,3 +108,24 @@ func _test_talent_build_compilation()->void:
 	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"ghost.talent":1},99,-1).ok),"compiler rejects unknown talent IDs from corrupted save data")
 	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"test.edge":1},1,-1).ok),"compiler enforces level gate even when purchase UI is bypassed")
 	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"test.edge":2},99,1).ok),"compiler enforces supplied point budget")
+
+
+func _test_invalid_talent_patch_fail_closed()->void:
+	var kit:=ShadowAbilityCatalog.kit_for_weapon("sword_shield")
+	var bad_skill_graph:=CombatTalentGraph.new()
+	var bad_skill:=CombatTalentDefinition.new()
+	bad_skill.id=&"test.bad_skill"
+	bad_skill.display_name="Bad Skill Ref"
+	bad_skill.branch=&"offense"
+	bad_skill.skill_patches=[{"skill_id":"shadow.sword_shield.missing","key":"coeff","op":"add","value":1.0}]
+	_check(bad_skill_graph.add_definition(bad_skill),"invalid patch fixture talent itself is structurally valid")
+	_check(not bool(CombatBuildCompiler.compile(kit,bad_skill_graph,{"test.bad_skill":1}).ok),"talent compiler rejects patch to missing skill ID")
+
+	var bad_key_graph:=CombatTalentGraph.new()
+	var bad_key:=CombatTalentDefinition.new()
+	bad_key.id=&"test.bad_key"
+	bad_key.display_name="Bad Runtime Key"
+	bad_key.branch=&"offense"
+	bad_key.skill_patches=[{"skill_id":"shadow.sword_shield.a2","key":"coedf","op":"add","value":1.0}]
+	_check(bad_key_graph.add_definition(bad_key),"typoed runtime-key fixture registers")
+	_check(not bool(CombatBuildCompiler.compile(kit,bad_key_graph,{"test.bad_key":1}).ok),"talent compiler rejects typoed runtime value keys")
