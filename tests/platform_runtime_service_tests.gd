@@ -52,21 +52,21 @@ func _run()->void:
 	_check(service.effective_reason=="user_battery","explicit battery mode records a user-battery effective reason")
 
 	service.set_requested_mode(PlatformRuntimeService.MODE_SMOOTH_60)
-	var state_events:=0
-	var callback:=func(_domain:String,_label:String,_metadata:Dictionary): state_events+=1
+	var state_counter:={"count":0}
+	var callback:=func(_domain:String,_label:String,_metadata:Dictionary): state_counter["count"]=int(state_counter["count"])+1
 	service.reportable_state_changed.connect(callback)
 	service.report_state("com.shadowborn.test","temple",{"quality":"smooth60"})
 	service.report_state("com.shadowborn.test","temple",{"quality":"smooth60"})
 	service.report_state("com.shadowborn.test","combat",{"quality":"smooth60"})
-	_check(state_events==2,"reportable state transitions deduplicate identical state/metadata pairs")
+	_check(int(state_counter["count"])==2,"reportable state transitions deduplicate identical state/metadata pairs")
 	_check(str(service.current_reported_state("com.shadowborn.test").get("label",""))=="combat","latest reportable state is retained for diagnostics")
 	service.reportable_state_changed.disconnect(callback)
 
-	var memory_events:=0
-	var memory_callback:=func(_count:int): memory_events+=1
+	var memory_counter:={"count":0}
+	var memory_callback:=func(_count:int): memory_counter["count"]=int(memory_counter["count"])+1
 	service.memory_pressure.connect(memory_callback)
 	service._notification(NOTIFICATION_OS_MEMORY_WARNING)
-	_check(memory_events==1,"OS memory warning is centralized through PlatformRuntime")
+	_check(int(memory_counter["count"])==1,"OS memory warning is centralized through PlatformRuntime")
 	service.memory_pressure.disconnect(memory_callback)
 
 	var chapter_source:=_read("res://scripts/world/chapter00_game.gd")
