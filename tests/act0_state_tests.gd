@@ -224,6 +224,8 @@ func _test_combat_math()->void:
 	_check(CombatResolver.damage(8.0,-1.0,4.0)==0.0,"negative coefficient is rejected")
 	_check(CombatResolver.damage(8.0,1.0,4.0,-1.0)==0.0,"negative state multiplier is rejected")
 	_check(CombatResolver.damage(1.0e308,1.0e308,0.0)==CombatResolver.MAX_SAFE_DAMAGE,"finite overflow is capped instead of producing infinity")
+	_check(float(CombatResolver.resolve_a1({},{}).damage)==0.0,"A1 resolver tolerates incomplete combat dictionaries")
+	_check(float(CombatResolver.resolve_a2({"atk":"bad"},{"def":[],"guard":"yes"}).damage)==0.0,"A2 resolver rejects malformed combat dictionary values without throwing")
 
 	var invalid_profile:={"id":"bad","hp":10.0,"def":4.0,"damage":INF}
 	_check(not MultiEnemyEncounter._valid_profile(invalid_profile),"Room 5 rejects infinite encounter damage")
