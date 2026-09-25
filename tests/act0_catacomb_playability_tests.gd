@@ -17,7 +17,7 @@ func _run()->void:
 		var family:=str(family_value)
 		for room in range(1,5):
 			await _probe_single_room(family,room)
-		_probe_room5_rematch(family)
+		await _probe_room5_rematch(family)
 	print("Act 0 Catacomb playability probe complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -47,6 +47,7 @@ func _probe_single_room(family:String,room:int)->void:
 func _probe_room5_rematch(family:String)->void:
 	var profiles:=CatacombEncounterPlan.enemies(5)
 	var combat:=MultiEnemyEncounter.new()
+	root.add_child(combat)
 	combat.set_loadout(family)
 	combat.start(profiles,true,false)
 	var turns:=0
@@ -54,7 +55,11 @@ func _probe_room5_rematch(family:String)->void:
 		var skill:="A2" if combat.a2_cd==0 else "A1"
 		combat.shadow_action(skill)
 		turns+=1
+		if combat.active and combat.action_locked:
+			await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.03).timeout
 	_check(not combat.active and combat._all_dead(),
 		"%s can resolve the Room 5 story-companion rematch"%family)
 	_check(combat.shadow_hp>0.0,
 		"%s survives the Room 5 story-companion rematch"%family)
+	combat.queue_free()
+	await process_frame

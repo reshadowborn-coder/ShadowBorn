@@ -98,6 +98,27 @@ func _run()->void:
 	for surface in liquid_surfaces:
 		_check(surface is MeshInstance3D and (surface as MeshInstance3D).cast_shadow==GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,"liquid overlay does not cast an artificial directional shadow")
 
+	var pack_hud:=chapter.get_node_or_null("Game/MultiTargetHUD") as MultiTargetHUD
+	if pack_hud:
+		var lock_fixture:={
+			"enemies":[{"id":"rat_a","label":"Rat A","current_hp":10.0},{"id":"rat_b","label":"Rat B","current_hp":10.0}],
+			"selected":0,
+			"action_locked":true,
+			"a2_cd":0,
+			"loadout":{},
+			"shadow_hp":20.0,
+			"limit_reached":false,
+			"companion_active":false,
+			"solo_limit_mode":true,
+			"fray":false,
+			"veil":0.0
+		}
+		pack_hud.render(lock_fixture)
+		_check(pack_hud.a1.disabled and pack_hud.a2.disabled and pack_hud.target_a.disabled and pack_hud.target_b.disabled,"pack HUD disables actions and target switching during model action lock")
+		lock_fixture.action_locked=false
+		pack_hud.render(lock_fixture)
+		_check(not pack_hud.a1.disabled and not pack_hud.a2.disabled and not pack_hud.target_a.disabled and not pack_hud.target_b.disabled,"pack HUD re-enables valid controls after action lock")
+
 	var watch:=chapter.get_node_or_null("Game/TempleWatchMenu") as TempleWatchMenu
 	if watch:
 		_check(watch.join_button.custom_minimum_size.y>=80.0,"Temple Watch JOIN keeps an iPhone-sized touch target")

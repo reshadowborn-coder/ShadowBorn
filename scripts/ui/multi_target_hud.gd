@@ -28,17 +28,18 @@ func render(data:Dictionary)->void:
 	if es.size()<2:
 		return
 	var s:=int(data.get("selected",0))
+	var locked:=bool(data.get("action_locked",false))
 	target_a.text=("%s  %.0f HP%s"%[es[0].get("label",es[0].id),es[0].current_hp,"  <" if s==0 else ""])
 	target_b.text=("%s  %.0f HP%s"%[es[1].get("label",es[1].id),es[1].current_hp,"  <" if s==1 else ""])
-	target_a.disabled=float(es[0].current_hp)<=0.0
-	target_b.disabled=float(es[1].current_hp)<=0.0
+	target_a.disabled=locked or float(es[0].current_hp)<=0.0
+	target_b.disabled=locked or float(es[1].current_hp)<=0.0
 
 	var loadout:Dictionary=data.get("loadout",{})
 	var a1_name:=str(loadout.get("a1_name","Basic Attack")).to_upper()
 	var a2_name:=str(loadout.get("a2_name","Shadow Lunge")).to_upper()
 	var cd:=int(data.get("a2_cd",0))
 	a1.text="A1  "+a1_name
-	a2.disabled=cd>0
+	a2.disabled=locked or cd>0
 	a2.text="A2  "+a2_name if cd==0 else "A2  %s  [CD %d]"%[a2_name,cd]
 
 	if bool(data.get("limit_reached",false)):
@@ -46,8 +47,10 @@ func render(data:Dictionary)->void:
 		a1.disabled=true
 		a2.disabled=true
 		return
-	a1.disabled=false
+	a1.disabled=locked
 	var tags:Array[String]=[]
+	if locked:
+		tags.append("RECOVER")
 	if bool(data.get("companion_active",false)):
 		tags.append("ALLY ACTIVE")
 	elif bool(data.get("solo_limit_mode",false)):

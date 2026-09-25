@@ -80,9 +80,15 @@ func _run()->void:
 	pack.shadow_action("A1")
 	_check(pack_shadow_presentations.size()==1 and int(pack_shadow_presentations[0][0])==0 and str(pack_shadow_presentations[0][1])=="A1","pack combat emits a target-specific Shadow presentation event")
 	_check(pack_enemy_presentations.size()==2 and int(pack_enemy_presentations[0][0])==0 and int(pack_enemy_presentations[1][0])==1,"both living pack enemies emit presentation events each enemy phase")
-	_check(pack.active,"Act 1 pack survives first solo round regardless of future damage balance")
+	_check(pack.active and pack.action_locked,"Act 1 pack survives first solo round and locks rapid follow-up input")
+	var round_after_first:=pack.rounds
+	var presentations_after_first:=pack_shadow_presentations.size()
 	pack.shadow_action("A1")
-	_check(not pack.active and pack.limit_reached,"Act 1 pack forces the authored defeat at the fixed round limit")
+	_check(pack.rounds==round_after_first and pack_shadow_presentations.size()==presentations_after_first and not pack.limit_reached,"rapid double-tap cannot consume the second scripted pack round")
+	await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.05).timeout
+	_check(not pack.action_locked,"Act 1 pack unlocks after the presentation window")
+	pack.shadow_action("A1")
+	_check(not pack.active and pack.limit_reached,"Act 1 pack forces the authored defeat after the second accepted round")
 	for enemy in pack.enemies:
 		_check(float(enemy.current_hp)>=1.0,"Act 1 pack rats cannot be killed during first-contact story limit")
 

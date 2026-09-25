@@ -83,3 +83,12 @@ For the current iPhone-first slice:
 - disable shadow casting on floor marks and liquid overlays that do not need to contribute to the directional shadow map;
 - continue measuring node, mesh, collision, light and render-surface budgets in CI;
 - revisit MultiMesh only when repeated same-mesh populations become large enough that reduced draw/setup cost outweighs its coarser per-node culling.
+
+
+## Multi-enemy input pacing
+
+Two-enemy combat accepts at most one player command per presentation window.
+
+The lock belongs to MultiEnemyEncounter, not to a specific touch HUD. This prevents rapid touch input from consuming multiple authored rounds and keeps the rule identical for touch, future controller input and automated callers.
+
+Target switching is locked during the same committed-action window. Terminal outcomes release the lock immediately; non-terminal rounds release it after the bounded presentation interval. Delayed unlocks are generation-guarded so a timer from an older encounter cannot unlock a newly started encounter.

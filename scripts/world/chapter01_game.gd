@@ -276,7 +276,7 @@ func _on_pack_enemy_attack_visual(enemy_index:int,_damage:float)->void:
 	if enemy_index>=0 and enemy_index<visuals.size():
 		var attacker:=visuals[enemy_index]
 		if is_instance_valid(attacker) and attacker.has_method("play_attack_cue"):
-			attacker.play_attack_cue()
+			attacker.play_attack_cue(float(enemy_index)*0.10)
 
 func _resolve_pack_defeat()->void:
 	if not pack_active and progression.stage!=Act1Contract.STAGE_SEWER_ROOM3:

@@ -23,7 +23,7 @@ func _run()->void:
 	_test_combat_math()
 	_test_save_recovery()
 	_test_resume_transition_matrix()
-	_test_room5_limit_contract()
+	await _test_room5_limit_contract()
 	print("Act 0 state tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -528,6 +528,7 @@ func _test_room5_limit_contract()->void:
 	_check(profiles.size()==2,"Room 5 remains a two-enemy encounter")
 
 	var clean_a2:=MultiEnemyEncounter.new()
+	root.add_child(clean_a2)
 	clean_a2.set_loadout("sword_shield")
 	clean_a2.start(profiles,false,false)
 	var hp_before:=clean_a2.shadow_hp
@@ -537,28 +538,45 @@ func _test_room5_limit_contract()->void:
 	var expected_hp:=20.0-(2.6*(1.0-0.30))-2.6
 	_check(absf(clean_a2.shadow_hp-expected_hp)<0.0001,"Room 5 clean A2 applies Veil to the first enemy response")
 	_check(clean_a2.a2_cd==3,"Room 5 clean A2 enters configured cooldown without requiring prior Fray")
+	_check(clean_a2.action_locked,"Room 5 locks touch commands while the committed round is presenting")
 	var rounds_after_a2:=clean_a2.rounds
+	clean_a2.shadow_action("A1")
+	_check(clean_a2.rounds==rounds_after_a2,"Room 5 rejects a rapid second command during presentation lock")
+	await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.05).timeout
+	_check(not clean_a2.action_locked,"Room 5 command lock releases after the presentation window")
 	clean_a2.shadow_action("A2")
-	_check(clean_a2.rounds==rounds_after_a2,"Room 5 blocks A2 while cooldown is active")
+	_check(clean_a2.rounds==rounds_after_a2,"Room 5 still blocks A2 while cooldown is active after presentation unlock")
 
 	var empty:=MultiEnemyEncounter.new()
 	empty.start([],false,false)
 	_check(not empty.active,"Room 5 combat refuses an empty encounter plan")
 
 	var multi:=MultiEnemyEncounter.new()
+	root.add_child(multi)
 	multi.set_loadout("two_hand_axe")
 	multi.start(profiles,false,true)
 	multi.shadow_action("A2")
 	_check(multi.active and not multi._all_dead(),"solo-limit attempt cannot be won on the first action")
+	var solo_rounds:=multi.rounds
 	multi.shadow_action("A1")
-	_check(multi.limit_reached and not multi.active,"solo-limit resolves deterministically after the authored round limit")
+	_check(multi.rounds==solo_rounds and not multi.limit_reached,"rapid double-tap cannot consume the second authored solo-limit round")
+	await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.05).timeout
+	multi.shadow_action("A1")
+	_check(multi.limit_reached and not multi.active,"solo-limit resolves deterministically after two accepted authored rounds")
 
 	var lethal_profiles:=CatacombEncounterPlan.enemies(5)
 	for enemy in lethal_profiles:
 		enemy["damage"]=999.0
 	var damage_proof:=MultiEnemyEncounter.new()
+	root.add_child(damage_proof)
 	damage_proof.start(lethal_profiles,false,true)
 	damage_proof.shadow_action("A1")
 	_check(damage_proof.active and damage_proof.rounds==1 and damage_proof.shadow_hp>=1.0,"solo-limit cannot end one round early because of future damage tuning")
+	await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.05).timeout
 	damage_proof.shadow_action("A1")
-	_check(damage_proof.limit_reached and damage_proof.rounds==2,"solo-limit timing remains the fixed two-round story contract under lethal tuning")
+	_check(damage_proof.limit_reached and damage_proof.rounds==2,"solo-limit timing remains the fixed two-accepted-round story contract under lethal tuning")
+
+	clean_a2.queue_free()
+	multi.queue_free()
+	damage_proof.queue_free()
+	await process_frame

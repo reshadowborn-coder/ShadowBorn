@@ -18,6 +18,7 @@ var head_scale:=Vector3.ONE
 var player:Node3D
 var reduced_motion:=false
 var attack_timer:=0.0
+var attack_delay_timer:=0.0
 var hit_timer:=0.0
 var threat_timer:=0.0
 const ACTIVE_RADIUS_SQUARED:=1600.0
@@ -50,10 +51,20 @@ func _bind_player()->void:
 
 func set_reduced_motion(value:bool)->void:
 	reduced_motion=value
+	if reduced_motion:
+		attack_timer=0.0
+		attack_delay_timer=0.0
+		hit_timer=0.0
+		threat_timer=0.0
 
-func play_attack_cue()->void:
-	if not reduced_motion:
+func play_attack_cue(delay_seconds:float=0.0)->void:
+	if reduced_motion:
+		return
+	if delay_seconds<=0.0:
+		attack_delay_timer=0.0
 		attack_timer=ATTACK_CUE_SECONDS
+	else:
+		attack_delay_timer=maxf(attack_delay_timer,delay_seconds)
 
 func play_hit_cue()->void:
 	if not reduced_motion:
@@ -74,6 +85,10 @@ func _process(delta:float)->void:
 
 	elapsed=fmod(elapsed+delta,120.0)
 	attack_timer=maxf(0.0,attack_timer-delta)
+	if attack_delay_timer>0.0:
+		attack_delay_timer=maxf(0.0,attack_delay_timer-delta)
+		if attack_delay_timer<=0.0:
+			attack_timer=ATTACK_CUE_SECONDS
 	hit_timer=maxf(0.0,hit_timer-delta)
 	threat_timer=maxf(0.0,threat_timer-delta)
 	var t:=elapsed+phase

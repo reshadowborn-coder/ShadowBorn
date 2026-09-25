@@ -5,18 +5,22 @@ signal state_changed(state:Dictionary)
 signal shadow_attack_presented(target_index:int,skill:String,damage:float)
 signal enemy_attack_presented(enemy_index:int,damage:float)
 signal companion_attack_presented(target_index:int,damage:float)
+signal command_committed(skill:String)
 signal finished
 signal failed
 signal solo_limit_reached
 
 const FRAY_BONUS := 1.15
 const SOLO_LIMIT_ROUNDS := 2
+const ACTION_LOCK_SECONDS := 0.42
 
 var enemies:Array=[]
 var selected:=0
 var shadow_hp:=20.0
 var companion_active:=false
 var active:=false
+var action_locked:=false
+var encounter_generation:=0
 var a2_cd:=0
 var rounds:=0
 var solo_limit_mode:=false
@@ -63,9 +67,11 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool
 	enemies=profiles.duplicate(true)
 	for e in enemies:
 		e["current_hp"]=float(e.hp)
+	encounter_generation+=1
 	selected=0
 	shadow_hp=20.0
 	companion_active=with_companion
+	action_locked=false
 	a2_cd=0
 	rounds=0
 	solo_limit_mode=force_solo_limit
@@ -77,17 +83,19 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool
 	return true
 
 func select_target(index:int)->void:
-	if not active or index<0 or index>=enemies.size() or float(enemies[index].current_hp)<=0:
+	if not active or action_locked or index<0 or index>=enemies.size() or float(enemies[index].current_hp)<=0:
 		return
 	selected=index
 	_emit()
 
 func shadow_action(skill:String)->void:
-	if not active or skill not in ["A1","A2"]:
+	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if skill=="A2" and a2_cd>0:
 		return
 
+	action_locked=true
+	command_committed.emit(skill)
 	var e:Dictionary=enemies[selected]
 	var coeff:=float(loadout.get("a1_coeff",1.0))
 	var guard_mult:=float(loadout.get("a1_guard_mult",0.65))
@@ -122,6 +130,7 @@ func shadow_action(skill:String)->void:
 
 	if _all_dead():
 		active=false
+		action_locked=false
 		_emit()
 		finished.emit()
 		return
@@ -133,6 +142,7 @@ func shadow_action(skill:String)->void:
 
 	if solo_limit_mode and rounds>=SOLO_LIMIT_ROUNDS:
 		active=false
+		action_locked=false
 		limit_reached=true
 		_emit()
 		solo_limit_reached.emit()
@@ -140,12 +150,14 @@ func shadow_action(skill:String)->void:
 
 	if shadow_hp<=0.0:
 		active=false
+		action_locked=false
 		_emit()
 		failed.emit()
 		return
 
 	_select_living()
 	_emit()
+	_schedule_action_unlock()
 
 func _companion_assist()->void:
 	_select_living()
@@ -175,6 +187,22 @@ func _enemy_phase()->void:
 			# Shadow before the fixed round limit is reached.
 			shadow_hp=maxf(1.0,shadow_hp)
 
+func _schedule_action_unlock()->void:
+	if not active:
+		action_locked=false
+		return
+	if not is_inside_tree():
+		action_locked=false
+		_emit()
+		return
+	var generation:=encounter_generation
+	get_tree().create_timer(ACTION_LOCK_SECONDS,false).timeout.connect(func():
+		if generation!=encounter_generation or not active:
+			return
+		action_locked=false
+		_emit()
+	)
+
 func _all_dead()->bool:
 	for e in enemies:
 		if float(e.current_hp)>0.0:
@@ -193,6 +221,7 @@ func _emit()->void:
 	state_changed.emit({
 		"shadow_hp":shadow_hp,
 		"enemies":enemies.duplicate(true),
+		"action_locked":action_locked,
 		"selected":selected,
 		"companion_active":companion_active,
 		"a2_cd":a2_cd,
