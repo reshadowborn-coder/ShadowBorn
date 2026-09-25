@@ -90,7 +90,7 @@ func _build_crypt() -> void:
 	var floor := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(13.5,10.5)
-	plane.material = _mat(Color(0.040,0.044,0.052),0.94,0.0)
+	plane.material = _cobblestone_material()
 	floor.mesh = plane
 	add_child(floor)
 
@@ -135,6 +135,8 @@ func _build_crypt() -> void:
 	_add_box(Vector3(1.25,0.26,-0.55),Vector3(2.7,0.44,1.25),Color(0.078,0.082,0.090))
 	_add_box(Vector3(1.15,0.57,-0.58),Vector3(2.2,0.18,0.95),Color(0.11,0.112,0.118))
 
+	_build_grave_markers()
+	_build_autumn_leaves()
 	_build_brazier(Vector3(4.2,0,-1.6))
 
 func _build_shadow_and_sword() -> void:
@@ -209,83 +211,71 @@ func _build_overlay() -> void:
 
 func _play_sequence() -> void:
 	var fade := create_tween()
-	fade.tween_interval(0.30)
-	fade.tween_property(fade_rect,"color:a",0.0,1.20).set_trans(Tween.TRANS_SINE)
+	fade.tween_interval(0.18)
+	fade.tween_property(fade_rect,"color:a",0.0,0.62).set_trans(Tween.TRANS_SINE)
 	await fade.finished
 	if skipping: return
 
-	# First shot deliberately holds on a lifeless body. No UI explanation.
+	# Read the corpse immediately; no long exposition beat.
 	subtitle.text = ""
-	await get_tree().create_timer(1.55).timeout
+	await get_tree().create_timer(0.58).timeout
 	if skipping: return
 
-	# Move closer before the first skeletal movement.
 	subtitle.text = "Something returns."
 	var wake_cam := create_tween()
 	wake_cam.set_parallel(true)
-	wake_cam.tween_property(camera,"position",Vector3(-0.10,1.62,3.55),0.90).set_trans(Tween.TRANS_SINE)
-	wake_cam.tween_property(camera,"fov",30.5,0.90)
+	wake_cam.tween_property(camera,"position",Vector3(-0.10,1.62,3.55),0.42).set_trans(Tween.TRANS_SINE)
+	wake_cam.tween_property(camera,"fov",30.5,0.42)
 	await wake_cam.finished
 	camera.look_at(Vector3(-2.12,1.02,-3.10),Vector3.UP)
 	if skipping: return
 
-	# The development character now uses a real skeleton. Reversing the death
-	# clip creates an unnatural resurrection motion that fits the scene.
 	var rising := CharacterFactory.play_resurrection(shadow_visual)
 	var rise_root := create_tween()
 	rise_root.set_parallel(true)
-	rise_root.tween_property(shadow_visual,"rotation_degrees",Vector3.ZERO,2.00).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise_root.tween_property(shadow_visual,"position",Vector3.ZERO,2.00).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise_root.tween_property(shadow_root,"position",Vector3(-1.90,0.0,-2.92),2.00).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise_root.tween_property(camera,"position",Vector3(0.95,2.12,5.02),2.00).set_trans(Tween.TRANS_CUBIC)
-	if rising:
-		await get_tree().create_timer(2.05).timeout
-	else:
-		await get_tree().create_timer(1.55).timeout
+	rise_root.tween_property(shadow_visual,"rotation_degrees",Vector3.ZERO,1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(shadow_visual,"position",Vector3.ZERO,1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(shadow_root,"position",Vector3(-1.90,0.0,-2.92),1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(camera,"position",Vector3(0.95,2.12,5.02),1.18).set_trans(Tween.TRANS_CUBIC)
+	await get_tree().create_timer(1.20 if rising else 1.00).timeout
 	CharacterFactory.pose_standing(shadow_visual)
 	if skipping: return
 	camera.look_at(Vector3(-1.55,1.20,-2.20),Vector3.UP)
 
-	# Give the player a beat to read the now-standing, still unarmed Shadow.
-	subtitle.text = ""
-	await get_tree().create_timer(0.45).timeout
+	await get_tree().create_timer(0.16).timeout
 	if skipping: return
 
-	# Reveal the weapon as a separate world object.
 	var sword_reveal := create_tween()
 	sword_reveal.set_parallel(true)
-	sword_reveal.tween_property(camera,"position",Vector3(0.34,1.36,3.02),0.75).set_trans(Tween.TRANS_SINE)
-	sword_reveal.tween_property(camera,"fov",32.0,0.75)
+	sword_reveal.tween_property(camera,"position",Vector3(0.34,1.36,3.02),0.32).set_trans(Tween.TRANS_SINE)
+	sword_reveal.tween_property(camera,"fov",32.0,0.32)
 	await sword_reveal.finished
 	camera.look_at(sword_prop.global_position+Vector3(0,0.17,0),Vector3.UP)
-	await get_tree().create_timer(0.50).timeout
+	await get_tree().create_timer(0.18).timeout
 	if skipping: return
 
-	# Interact is a real skeletal clip. The prop approaches the hand during it,
-	# then becomes bone-attached to Wrist.R and follows all future animations.
 	subtitle.text = "A blade remembers its hand."
-	CharacterFactory.play_pickup(shadow_visual,0.82)
+	CharacterFactory.play_pickup(shadow_visual,1.05)
 	var pickup := create_tween()
 	pickup.set_parallel(true)
-	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.44),0.90).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	pickup.tween_property(sword_prop,"position",Vector3(-1.44,0.98,-2.36),0.90).set_trans(Tween.TRANS_QUAD)
-	pickup.tween_property(sword_prop,"rotation_degrees",Vector3(0,0,-10),0.90)
-	await get_tree().create_timer(0.78).timeout
+	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.44),0.62).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	pickup.tween_property(sword_prop,"position",Vector3(-1.44,0.98,-2.36),0.62).set_trans(Tween.TRANS_QUAD)
+	pickup.tween_property(sword_prop,"rotation_degrees",Vector3(0,0,-10),0.62)
+	await get_tree().create_timer(0.50).timeout
 	CharacterFactory.attach_sword(shadow_visual)
 	sword_prop.visible = false
-	await get_tree().create_timer(0.40).timeout
+	await get_tree().create_timer(0.18).timeout
 	CharacterFactory.play_shadow_idle(shadow_visual)
 	if skipping: return
 
-	# Final shot already approaches the battle-side composition.
 	var hero_shot := create_tween()
 	hero_shot.set_parallel(true)
-	hero_shot.tween_property(camera,"position",Vector3(-4.55,2.50,4.12),0.95).set_trans(Tween.TRANS_SINE)
-	hero_shot.tween_property(camera,"fov",35.0,0.95)
+	hero_shot.tween_property(camera,"position",Vector3(-4.55,2.50,4.12),0.42).set_trans(Tween.TRANS_SINE)
+	hero_shot.tween_property(camera,"fov",35.0,0.42)
 	await hero_shot.finished
 	camera.look_at(Vector3(-0.25,1.08,-2.0),Vector3.UP)
 	subtitle.text = ""
-	await get_tree().create_timer(0.65).timeout
+	await get_tree().create_timer(0.20).timeout
 	if skipping: return
 
 	_finish_sequence()
@@ -302,6 +292,101 @@ func _finish_sequence() -> void:
 	await out.finished
 	finished.emit()
 
+func _cobblestone_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+void fragment() {
+	vec2 uv = UV * vec2(12.0, 8.0);
+	float row = mod(floor(uv.y),2.0);
+	uv.x += row * 0.5;
+	vec2 cell = floor(uv);
+	vec2 f = fract(uv);
+	float edge = min(min(f.x,1.0-f.x),min(f.y,1.0-f.y));
+	float stone_mask = smoothstep(0.035,0.10,edge);
+	float rnd = fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453);
+	float grain = 0.5+0.5*sin(UV.x*91.0+sin(UV.y*69.0)*1.8);
+	vec3 stone = mix(vec3(0.040,0.043,0.048),vec3(0.092,0.083,0.071),rnd*0.72);
+	stone *= mix(0.80,1.05,grain*0.34);
+	ALBEDO = mix(vec3(0.017,0.019,0.020),stone,stone_mask);
+	ROUGHNESS = mix(1.0,0.90,stone_mask);
+	METALLIC = 0.0;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+func _stone_material(base_color: Color) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+uniform vec4 base_color : source_color = vec4(0.08,0.085,0.095,1.0);
+void fragment() {
+	float grain = 0.5+0.5*sin(UV.x*79.0+sin(UV.y*57.0)*2.2);
+	float damp = 0.5+0.5*sin(UV.y*13.0+UV.x*7.0);
+	vec3 col = base_color.rgb*mix(0.72,1.10,grain*0.44);
+	col *= mix(0.79,1.02,damp*0.34);
+	ALBEDO = col;
+	ROUGHNESS = 0.95;
+	METALLIC = 0.0;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("base_color",base_color)
+	return mat
+
+func _build_grave_markers() -> void:
+	for i in range(6):
+		var root := Node3D.new()
+		var side := -1.0 if i%2==0 else 1.0
+		root.position = Vector3(side*(4.45+0.28*(i%3)),0,-2.75+1.05*i)
+		root.rotation_degrees = Vector3(0,-13.0+7.0*i,-4.0+float((i*5)%9))
+		add_child(root)
+
+		var base := _box_node(Vector3(0.92,0.16,0.42),Color(0.067,0.071,0.078))
+		base.position.y = 0.08
+		root.add_child(base)
+
+		var marker := _box_node(Vector3(0.52,0.88+0.08*(i%2),0.16),Color(0.078,0.083,0.092))
+		marker.position.y = 0.52
+		root.add_child(marker)
+
+		var cap := _box_node(Vector3(0.62,0.14,0.20),Color(0.085,0.089,0.097))
+		cap.position.y = 0.98+0.04*(i%2)
+		cap.rotation_degrees.z = -3.0+2.0*i
+		root.add_child(cap)
+
+func _build_autumn_leaves() -> void:
+	var palettes := [
+		Color(0.30,0.095,0.022),
+		Color(0.48,0.18,0.032),
+		Color(0.34,0.24,0.050)
+	]
+	for p in range(palettes.size()):
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(0.13,0.008,0.062)
+		mesh.material = _mat(palettes[p],0.98,0.0)
+
+		var multi := MultiMesh.new()
+		multi.transform_format = MultiMesh.TRANSFORM_3D
+		multi.mesh = mesh
+		multi.instance_count = 20
+
+		for i in range(20):
+			var seed := i+p*23
+			var x := -5.8+float((seed*37)%116)/10.0
+			var z := -4.0+float((seed*61)%80)/10.0
+			var yaw := deg_to_rad(float((seed*47)%360))
+			var basis := Basis(Vector3.UP,yaw)
+			multi.set_instance_transform(i,Transform3D(basis,Vector3(x,0.018+0.003*(seed%3),z)))
+
+		var instance := MultiMeshInstance3D.new()
+		instance.multimesh = multi
+		add_child(instance)
+
 func _mat(color: Color,rough: float,metal: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
@@ -313,7 +398,7 @@ func _box_node(size: Vector3,color: Color) -> MeshInstance3D:
 	var n := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	mesh.material = _mat(color,0.90,0.0)
+	mesh.material = _stone_material(color)
 	n.mesh = mesh
 	return n
 
