@@ -422,10 +422,11 @@ func temple_interact(kind:String) -> void:
 			var before_checkpoint:=checkpoint_position
 			var before_checkpoint_id:=director.checkpoint
 			if act0_flow.enter_catacombs():
-				checkpoint_position=Act0Layout.CATACOMB_ENTRY_CHECKPOINT
+				var current_room:=clampi(catacombs.room,1,5)
+				checkpoint_position=Act0Layout.catacomb_room_resume_position(current_room)
 				shadow.global_position=checkpoint_position
 				shadow.velocity=Vector3.ZERO
-				director.set_checkpoint("catacombs_entry")
+				director.set_checkpoint(Act0Contract.catacomb_checkpoint_id(current_room))
 				if _save_progress():
 					story_toast.show_message("The lower passage opens. The air below carries old bone-dust.")
 				else:
