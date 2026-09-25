@@ -1,16 +1,33 @@
-# ShadowBorn
+# Shadowborn — Checkpoint 01
 
-Mobile-first dark-fantasy RPG prototype in Godot.
+The reboot branch is deliberately restricted to two things:
 
-## Current target
+1. Awakening cinematic.
+2. First battle against the Grave Hound.
 
-Act 0 is implemented end-to-end as a gameplay prototype: ruined cemetery/Temple exterior, Temple safe hub, Forgotten Covenant weapon choice, atomic first forge/equip, Catacombs Rooms 1-5, scripted solo-limit 1v2, first story team slot, Room 5 rematch, save/retry/resume and recovery checks.
+Nothing else should expand until this checkpoint is tested and approved.
 
-The current hardening pass separates fixed progression rules from mutable layout/balance values and tests physical route containment as well as state integrity.
+## Test flow
 
-See:
-- `docs/ACT0_SCOPE.md` for the completion contract;
-- `docs/ACT0_ARCHITECTURE_CONTRACT.md` for fixed vs tunable structure;
-- `docs/ACT0_CLOSEOUT.md` for the verified gameplay boundary.
+Title → BEGIN → awakening cinematic → first battle → checkpoint result → replay/title.
 
-Production art/audio, physical Android/iOS QA and store packaging remain outside gameplay-complete status.
+## Controls
+
+- Tap/click during the awakening cinematic to skip.
+- A1: Basic Slash.
+- A2: Shadow Lunge.
+- AUTO: on/off.
+- x1/x2 battle speed.
+
+## Final-art hooks
+
+The runtime automatically looks for:
+
+- `assets/characters/shadow/shadow.glb`
+- `assets/characters/grave_hound/grave_hound.glb`
+
+If present, those skinned assets replace the procedural development stand-ins.
+
+## Target
+
+Godot 4.4.1, iPhone-first, iPhone 13 Pro baseline, 60 FPS target.
