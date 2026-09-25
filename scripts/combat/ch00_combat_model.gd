@@ -19,7 +19,7 @@ var enemy := {}
 var encounter_beats: Array = []
 
 static func damage(atk: float, coeff: float, defense: float, state_mult: float = 1.0) -> float:
-	return atk * coeff * (K_DEF / (K_DEF + maxf(defense, 0.0))) * state_mult
+	return CombatResolver.damage(atk,coeff,defense,state_mult)
 
 func setup(script_id: String, veil: float) -> bool:
 	var profile := _profile(script_id)
