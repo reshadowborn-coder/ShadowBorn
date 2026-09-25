@@ -44,9 +44,23 @@ func reset_shadow() -> void:
 	pre_temple_model = null
 	pre_temple_mode = false
 
-func start_encounter(id: String, profile: Dictionary) -> void:
-	if active:
-		return
+static func _valid_legacy_profile(profile:Dictionary)->bool:
+	for key in ["hp","def","damage"]:
+		var value=profile.get(key)
+		if typeof(value) not in [TYPE_INT,TYPE_FLOAT]:
+			return false
+		var number:=float(value)
+		if number!=number:
+			return false
+	if float(profile.get("hp",0.0))<=0.0 or float(profile.get("def",0.0))<0.0 or float(profile.get("damage",0.0))<0.0:
+		return false
+	if profile.has("guard") and typeof(profile.get("guard"))!=TYPE_BOOL:
+		return false
+	return true
+
+func start_encounter(id: String, profile: Dictionary) -> bool:
+	if active or id.is_empty():
+		return false
 	encounter_id = id
 	pre_temple_mode = PRE_TEMPLE_SCRIPTS.has(id)
 	action_locked = false
@@ -58,9 +72,14 @@ func start_encounter(id: String, profile: Dictionary) -> void:
 			push_error("Failed to initialize pre-Temple combat script: "+script_id)
 			pre_temple_model = null
 			pre_temple_mode = false
-			return
+			encounter_id = ""
+			return false
 		_sync_pre_temple_snapshot()
 	else:
+		if not _valid_legacy_profile(profile):
+			push_error("Rejected invalid encounter profile: "+id)
+			encounter_id = ""
+			return false
 		reset_shadow()
 		encounter_id = id
 		enemy = profile.duplicate(true)
@@ -72,6 +91,7 @@ func start_encounter(id: String, profile: Dictionary) -> void:
 	active = true
 	emit_signal("encounter_started",id)
 	_emit_state()
+	return true
 
 func shadow_action(skill: String) -> void:
 	if not active or action_locked or skill not in ["A1","A2"]:
