@@ -30,6 +30,7 @@ func setup(script_id: String, veil: float) -> bool:
 	veil_strength = veil
 	decision = 0
 	terminal = "CONTINUE"
+	pending_enemy_response.clear()
 	shadow = {
 		"hp": float(profile["shadow_hp"]),
 		"max_hp": float(profile["shadow_hp"]),
