@@ -209,70 +209,83 @@ func _build_overlay() -> void:
 
 func _play_sequence() -> void:
 	var fade := create_tween()
-	fade.tween_interval(0.35)
-	fade.tween_property(fade_rect,"color:a",0.0,1.25).set_trans(Tween.TRANS_SINE)
+	fade.tween_interval(0.30)
+	fade.tween_property(fade_rect,"color:a",0.0,1.20).set_trans(Tween.TRANS_SINE)
 	await fade.finished
 	if skipping: return
 
-	# Hold on the corpse. No narration for the first beat.
+	# First shot deliberately holds on a lifeless body. No UI explanation.
 	subtitle.text = ""
-	await get_tree().create_timer(1.75).timeout
+	await get_tree().create_timer(1.55).timeout
 	if skipping: return
 
+	# Move closer before the first skeletal movement.
 	subtitle.text = "Something returns."
 	var wake_cam := create_tween()
 	wake_cam.set_parallel(true)
-	wake_cam.tween_property(camera,"position",Vector3(-0.25,1.68,3.65),1.10).set_trans(Tween.TRANS_SINE)
-	wake_cam.tween_property(camera,"fov",31.5,1.10)
+	wake_cam.tween_property(camera,"position",Vector3(-0.10,1.62,3.55),0.90).set_trans(Tween.TRANS_SINE)
+	wake_cam.tween_property(camera,"fov",30.5,0.90)
 	await wake_cam.finished
-	camera.look_at(Vector3(-2.15,1.10,-3.12),Vector3.UP)
+	camera.look_at(Vector3(-2.12,1.02,-3.10),Vector3.UP)
 	if skipping: return
 
-	CharacterFactory.play_named_animation(shadow_visual,["wake","Wake","Awaken","awakening"])
-	await get_tree().create_timer(0.85).timeout
-	if skipping: return
-
-	# He forces the body upright, still unarmed.
-	subtitle.text = ""
-	var rise := create_tween()
-	rise.set_parallel(true)
-	rise.tween_property(shadow_root,"position",Vector3(-1.92,0.0,-2.95),1.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise.tween_property(camera,"position",Vector3(1.10,2.15,5.10),1.45).set_trans(Tween.TRANS_CUBIC)
-	await get_tree().create_timer(0.62).timeout
+	# The development character now uses a real skeleton. Reversing the death
+	# clip creates an unnatural resurrection motion that fits the scene.
+	var rising := CharacterFactory.play_resurrection(shadow_visual)
+	var rise_root := create_tween()
+	rise_root.set_parallel(true)
+	rise_root.tween_property(shadow_visual,"rotation_degrees",Vector3.ZERO,2.00).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(shadow_visual,"position",Vector3.ZERO,2.00).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(shadow_root,"position",Vector3(-1.90,0.0,-2.92),2.00).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(camera,"position",Vector3(0.95,2.12,5.02),2.00).set_trans(Tween.TRANS_CUBIC)
+	if rising:
+		await get_tree().create_timer(2.05).timeout
+	else:
+		await get_tree().create_timer(1.55).timeout
 	CharacterFactory.pose_standing(shadow_visual)
-	await get_tree().create_timer(0.83).timeout
 	if skipping: return
-	camera.look_at(Vector3(-1.55,1.18,-2.15),Vector3.UP)
+	camera.look_at(Vector3(-1.55,1.20,-2.20),Vector3.UP)
 
-	# The camera deliberately reveals the sword before he reaches for it.
+	# Give the player a beat to read the now-standing, still unarmed Shadow.
 	subtitle.text = ""
-	var sword_reveal := create_tween()
-	sword_reveal.tween_property(camera,"position",Vector3(0.45,1.42,3.15),0.82).set_trans(Tween.TRANS_SINE)
-	await sword_reveal.finished
-	camera.look_at(sword_prop.global_position+Vector3(0,0.18,0),Vector3.UP)
-	await get_tree().create_timer(0.65).timeout
+	await get_tree().create_timer(0.45).timeout
 	if skipping: return
 
+	# Reveal the weapon as a separate world object.
+	var sword_reveal := create_tween()
+	sword_reveal.set_parallel(true)
+	sword_reveal.tween_property(camera,"position",Vector3(0.34,1.36,3.02),0.75).set_trans(Tween.TRANS_SINE)
+	sword_reveal.tween_property(camera,"fov",32.0,0.75)
+	await sword_reveal.finished
+	camera.look_at(sword_prop.global_position+Vector3(0,0.17,0),Vector3.UP)
+	await get_tree().create_timer(0.50).timeout
+	if skipping: return
+
+	# Interact is a real skeletal clip. The prop approaches the hand during it,
+	# then becomes bone-attached to Wrist.R and follows all future animations.
 	subtitle.text = "A blade remembers its hand."
+	CharacterFactory.play_pickup(shadow_visual,0.82)
 	var pickup := create_tween()
 	pickup.set_parallel(true)
-	pickup.tween_property(shadow_root,"position",Vector3(-1.55,0,-2.45),0.58).set_trans(Tween.TRANS_QUAD)
-	pickup.tween_property(sword_prop,"position",Vector3(-1.40,0.95,-2.35),0.58).set_trans(Tween.TRANS_QUAD)
-	pickup.tween_property(sword_prop,"rotation_degrees",Vector3(0,0,-16),0.58)
-	await pickup.finished
+	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.44),0.90).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	pickup.tween_property(sword_prop,"position",Vector3(-1.44,0.98,-2.36),0.90).set_trans(Tween.TRANS_QUAD)
+	pickup.tween_property(sword_prop,"rotation_degrees",Vector3(0,0,-10),0.90)
+	await get_tree().create_timer(0.78).timeout
 	CharacterFactory.attach_sword(shadow_visual)
 	sword_prop.visible = false
-	CharacterFactory.play_named_animation(shadow_visual,["draw_sword","Draw_Sword","ready","Ready","Idle_Combat"])
+	await get_tree().create_timer(0.40).timeout
+	CharacterFactory.play_shadow_idle(shadow_visual)
 	if skipping: return
 
+	# Final shot already approaches the battle-side composition.
 	var hero_shot := create_tween()
 	hero_shot.set_parallel(true)
-	hero_shot.tween_property(camera,"position",Vector3(-4.6,2.45,4.15),1.00).set_trans(Tween.TRANS_SINE)
-	hero_shot.tween_property(camera,"fov",35.0,1.00)
+	hero_shot.tween_property(camera,"position",Vector3(-4.55,2.50,4.12),0.95).set_trans(Tween.TRANS_SINE)
+	hero_shot.tween_property(camera,"fov",35.0,0.95)
 	await hero_shot.finished
-	camera.look_at(Vector3(-0.3,1.05,-2.0),Vector3.UP)
+	camera.look_at(Vector3(-0.25,1.08,-2.0),Vector3.UP)
 	subtitle.text = ""
-	await get_tree().create_timer(0.80).timeout
+	await get_tree().create_timer(0.65).timeout
 	if skipping: return
 
 	_finish_sequence()
