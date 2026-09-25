@@ -15,6 +15,7 @@ extends Node
 @onready var story_toast:StoryToast=$StoryToast
 @onready var iphone_ui_layout:IPhoneUILayout=$IPhoneUILayout
 @onready var watch_menu:TempleWatchMenu=$TempleWatchMenu
+@onready var platform_runtime:PlatformRuntimeService=get_node("/root/PlatformRuntime") as PlatformRuntimeService
 
 var progression:=Act1Progression.new()
 var cleared_encounters:Array[String]=[]
@@ -41,6 +42,7 @@ func _ready()->void:
 	_apply_identity_and_equipment(state)
 	_apply_world_state(state)
 	_connect_runtime()
+	_report_gameplay_state()
 	_show_resume_objective()
 
 func _connect_runtime()->void:
@@ -51,7 +53,7 @@ func _connect_runtime()->void:
 	pack_combat.set_presentation_timeline_enabled(true)
 	pack_combat.set_turn_meter_mode_enabled(true)
 	hud.skill_pressed.connect(_on_skill)
-	encounter.encounter_started.connect(func(id:String): hud.show_combat(id))
+	encounter.encounter_started.connect(_on_single_started)
 	encounter.combat_state_changed.connect(hud.render_state)
 	encounter.shadow_attack_presented.connect(presenter.play_shadow_attack)
 	encounter.enemy_attack_presented.connect(presenter.play_enemy_attack)
@@ -73,6 +75,9 @@ func _connect_runtime()->void:
 	settings_menu.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	settings_menu.menu_opened.connect(_refresh_navigation)
 	settings_menu.menu_closed.connect(_refresh_navigation)
+	if not platform_runtime.memory_pressure.is_connected(_on_platform_memory_pressure):
+		platform_runtime.memory_pressure.connect(_on_platform_memory_pressure)
+	platform_runtime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	watch_menu.accepted.connect(_accept_temple_watch)
 	watch_menu.menu_opened.connect(_refresh_navigation)
 	watch_menu.menu_closed.connect(_refresh_navigation)
@@ -153,6 +158,24 @@ func enter_sewer_room(room:int)->void:
 	elif room==3 and enemies.size()==2:
 		_start_pack(enemies)
 
+func _on_single_started(id:String)->void:
+	hud.show_combat(id)
+	platform_runtime.report_state("com.shadowborn.encounter","single",{"id":id})
+
+func _report_gameplay_state()->void:
+	var in_temple:=progression.stage in [
+		Act1Contract.STAGE_TEMPLE_RETURN,
+		Act1Contract.STAGE_KEEPER_BRIEFING,
+		Act1Contract.STAGE_SMITH_HANDOFF,
+		Act1Contract.STAGE_GUARD_COVENANT,
+		Act1Contract.STAGE_ACT1_1_COMPLETE
+	]
+	platform_runtime.report_state(
+		"com.shadowborn.gameplay",
+		"temple" if in_temple else "act1_sewer",
+		{"chapter":"act1"}
+	)
+
 func _start_single(_room:int,profile:Dictionary)->void:
 	var id:=str(profile.get("id",""))
 	if id in cleared_encounters:
@@ -197,6 +220,7 @@ func _room_for_enemy(id:String)->int:
 	return 0
 
 func _on_single_finished(id:String)->void:
+	platform_runtime.report_state("com.shadowborn.encounter","none",{})
 	var room:=_room_for_enemy(id)
 	if room==0: return
 	var before:=_build_save_state()
@@ -230,6 +254,7 @@ func _on_single_finished(id:String)->void:
 	_refresh_navigation()
 
 func _on_single_failed(_id:String)->void:
+	platform_runtime.report_state("com.shadowborn.encounter","none",{})
 	hud.hide_combat()
 	camera_rig.exit_combat()
 	_restore_single_visual()
@@ -257,6 +282,7 @@ func _start_pack(enemies:Array)->void:
 	if not pack_combat.start(enemies,false,true):
 		return
 	pack_active=true
+	platform_runtime.report_state("com.shadowborn.encounter","pack",{"id":"a1_room3_pack"})
 	shadow.set_physics_process(false)
 	shadow.global_position=Act1Layout.ROOM3_SHADOW_POSITION
 	for v in _pack_visuals():
@@ -312,6 +338,7 @@ func _on_pack_semantic_contact(actor:String,index:int,_action:String)->void:
 func _resolve_pack_defeat()->void:
 	if not pack_active and progression.stage!=Act1Contract.STAGE_SEWER_ROOM3:
 		return
+	platform_runtime.report_state("com.shadowborn.encounter","none",{})
 	var before:=_build_save_state()
 	pack_hud.close()
 	pack_active=false
@@ -332,6 +359,7 @@ func _resolve_pack_defeat()->void:
 		shadow.global_position=checkpoint_position
 		shadow.velocity=Vector3.ZERO
 		story_toast.show_message("Two rats move as one pack. You cannot hold them alone. Return to the Keeper.",4.5)
+	_report_gameplay_state()
 	shadow.set_physics_process(true)
 	_refresh_navigation()
 
@@ -476,6 +504,7 @@ func _on_performance_mode_changed(mode:String)->void:
 	_apply_performance_mode()
 	if combat_trace:
 		combat_trace.set_context(performance_mode,reduced_motion)
+	platform_runtime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	_save_progress()
 
 func _on_reduced_motion_changed(value:bool)->void:
@@ -483,10 +512,11 @@ func _on_reduced_motion_changed(value:bool)->void:
 	_apply_presentation_settings()
 	if combat_trace:
 		combat_trace.set_context(performance_mode,reduced_motion)
+	platform_runtime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	_save_progress()
 
 func _apply_performance_mode()->void:
-	Engine.max_fps=30 if performance_mode=="battery30" else 60
+	platform_runtime.set_requested_mode(performance_mode)
 
 func _apply_presentation_settings()->void:
 	camera_rig.set_reduced_motion(reduced_motion)
@@ -507,8 +537,11 @@ func _notification(what:int)->void:
 				push_error("iOS suspend save failed; last committed Act 1 state remains in memory")
 	elif what in [NOTIFICATION_APPLICATION_FOCUS_IN,NOTIFICATION_APPLICATION_RESUMED]:
 		if is_node_ready(): _queue_mobile_reflow()
-	elif what==NOTIFICATION_OS_MEMORY_WARNING:
-		pack_visual_cache.clear()
+
+func _on_platform_memory_pressure(_count:int)->void:
+	# PlatformRuntime owns the OS notification. Act 1 only releases its own
+	# reconstructible visual lookup cache.
+	pack_visual_cache.clear()
 
 func _queue_mobile_reflow()->void:
 	if mobile_reflow_pending: return
