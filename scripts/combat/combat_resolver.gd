@@ -29,6 +29,7 @@ static func resolve_a1(attacker: Dictionary, defender: Dictionary) -> Dictionary
 	return {"damage": dmg, "apply_fray": true}
 
 static func resolve_a2(attacker: Dictionary, defender: Dictionary) -> Dictionary:
-	var mult := 0.55 if defender.get("guard",false) is bool and bool(defender.get("guard",false)) else 1.0
+	var guard_value=defender.get("guard",false)
+	var mult := 0.55 if typeof(guard_value)==TYPE_BOOL and bool(guard_value) else 1.0
 	var dmg := damage(_number(attacker.get("atk")),1.30,_number(defender.get("def")),mult)
 	return {"damage": dmg, "veil": 0.15, "cooldown": 3}
