@@ -19,6 +19,7 @@ func _run()->void:
 	_test_all_weapon_families()
 	_test_catacomb_progression()
 	_test_catacomb_reentry_contract()
+	_test_committed_orchestrator_signals()
 	_test_combat_math()
 	_test_save_recovery()
 	_test_resume_transition_matrix()
@@ -170,6 +171,40 @@ func _test_catacomb_reentry_contract()->void:
 	state.room5_rematch_ready=true
 	flow.restore(state)
 	_check(flow.enter_catacombs() and cat.room==5,"Room 5 rematch re-entry preserves Room 5 instead of restarting Catacombs")
+
+func _test_committed_orchestrator_signals()->void:
+	var temple:=Act0Progression.new()
+	var cat:=CatacombProgression.new()
+	var flow:=Act0Orchestrator.new()
+	var state:=SaveManager.default_state()
+	state.covenant_joined=true
+	state.weapon_family="bow"
+	state.first_forge_done=true
+	state.forged_item=Act0Progression.canonical_first_forge_item("bow")
+	state.act0_stage=Act0Contract.STAGE_CATACOMBS
+	state.catacomb_room=5
+	flow.setup(temple,cat)
+	flow.restore(state)
+
+	var counts:={"return":0,"companion":0,"complete":0}
+	flow.temple_return.connect(func(_reason:String): counts["return"]=int(counts["return"])+1)
+	flow.companion_ready.connect(func(_profile:Dictionary): counts["companion"]=int(counts["companion"])+1)
+	flow.act0_finished.connect(func(): counts["complete"]=int(counts["complete"])+1)
+
+	_check(flow.room5_first_contact(),"Room 5 solo-limit state transition succeeds before commit")
+	_check(int(counts["return"])==0,"solo-limit outward signal is deferred until save commit")
+	_check(flow.commit_solo_limit_presentation(),"committed solo-limit presentation can be emitted")
+	_check(int(counts["return"])==1,"solo-limit outward signal emits only after commit")
+
+	_check(flow.temple_story_handoff(),"story summon state transition succeeds before commit")
+	_check(int(counts["companion"])==0,"companion outward signal is deferred until save commit")
+	_check(flow.commit_story_handoff_presentation(),"committed companion presentation can be emitted")
+	_check(int(counts["companion"])==1,"companion outward signal emits only after commit")
+
+	_check(flow.room_cleared(5),"Room 5 completion state transition succeeds before commit")
+	_check(int(counts["complete"])==0,"Act 0 completion signal is deferred until save commit")
+	_check(flow.commit_act0_completion_presentation(),"committed Act 0 completion presentation can be emitted")
+	_check(int(counts["complete"])==1,"Act 0 completion signal emits only after commit")
 
 func _test_combat_math()->void:
 	var base:=CombatResolver.damage(8.0,1.30,4.0)
