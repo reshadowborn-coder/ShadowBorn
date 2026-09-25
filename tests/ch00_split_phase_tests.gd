@@ -41,6 +41,7 @@ func _run()->void:
 		"Shield HOLD V20"
 	)
 	_test_pending_guard()
+	_test_pending_visibility_boundary()
 	print("Chapter 0 split-phase tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -113,3 +114,28 @@ func _test_pending_guard()->void:
 	_check(not model.has_pending_enemy_opportunity(),"pending flag clears after enemy resolution")
 	var extra:Dictionary=model.resolve_enemy_opportunity()
 	_check(str(extra.get("error",""))=="no_enemy_opportunity_pending","duplicate enemy opportunity is rejected")
+
+func _test_pending_visibility_boundary()->void:
+	var hound:=Ch00CombatModel.new()
+	_check(hound.setup("ENC_HOUND_A1A2_V01",0.15),"visibility Hound setup")
+	var d1:Dictionary=hound.step("A1")
+	_check(not d1.has("error"),"visibility Hound D1 resolves")
+	var d2:Dictionary=hound.begin_shadow_action("A1")
+	_check(not d2.has("error"),"visibility Hound D2 Shadow phase resolves")
+	var before_prep:Dictionary=hound.snapshot()
+	var before_enemy:Dictionary=before_prep.get("enemy",{})
+	_check(str(before_enemy.get("intent","")).is_empty(),"next Rush intent is not leaked before RUSH_PREP enemy opportunity resolves")
+	var prep:Dictionary=hound.resolve_enemy_opportunity()
+	_check(not prep.has("error"),"visibility Hound RUSH_PREP opportunity resolves")
+	var after_prep:Dictionary=hound.snapshot()
+	var after_enemy:Dictionary=after_prep.get("enemy",{})
+	_check(str(after_enemy.get("intent",""))=="RUSH PREP","Rush intent appears only after the prep opportunity resolves")
+
+	var shield:=Ch00CombatModel.new()
+	_check(shield.setup("ENC_SHIELD_BRACE_V02_HP87_ATK20",0.15),"visibility Shield setup")
+	var hold:Dictionary=shield.begin_shadow_action("A1")
+	_check(not hold.has("error"),"visibility Shield D1 Shadow phase resolves")
+	_check(bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard remains visible until BRACE_EXIT enemy opportunity resolves")
+	var exit:Dictionary=shield.resolve_enemy_opportunity()
+	_check(not exit.has("error"),"visibility Shield BRACE_EXIT resolves")
+	_check(not bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard clears only after BRACE_EXIT resolves")
