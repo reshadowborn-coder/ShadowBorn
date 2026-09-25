@@ -133,6 +133,14 @@ func _test_chapter_scene()->void:
 		_check(not game.room5_active,"Room 5 is inactive on fresh load")
 
 		var cat_gate_runtime:=triggers.get_node_or_null("CatacombsEntry") if triggers else null
+		if cat_gate_runtime and cat_gate_runtime.has_method("_should_trigger_interaction"):
+			var shadow:=chapter.get_node_or_null("Shadow") as Node3D
+			if shadow:
+				shadow.global_position=cat_gate_runtime.global_position+Vector3(0,0,1.0)
+				_check(cat_gate_runtime._should_trigger_interaction(shadow),"Temple-side Catacomb threshold crossing activates descent/resume")
+				shadow.global_position=cat_gate_runtime.global_position+Vector3(0,0,-1.0)
+				_check(not cat_gate_runtime._should_trigger_interaction(shadow),"Catacomb-side threshold crossing allows free return to the Temple")
+
 		if cat_gate_runtime and cat_gate_runtime.has_method("_sync_catacomb_blocker"):
 			game.act0.first_forge_done=true
 			game.act0.stage=Act0Contract.STAGE_CATACOMBS
