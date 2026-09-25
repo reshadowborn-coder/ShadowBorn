@@ -29,6 +29,7 @@ var enemy := {}
 var loadout: Dictionary = ShadowLoadout.profile("")
 var pre_temple_mode := false
 var pre_temple_model = null
+var pre_temple_turn_meter_profile:Dictionary = {}
 var reduced_motion := false
 var turn_meter_mode_enabled := false
 var turn_timeline := CombatTurnTimeline.new()
@@ -54,6 +55,29 @@ func set_reduced_motion(value: bool) -> void:
 
 func set_turn_meter_mode_enabled(value: bool) -> void:
 	turn_meter_mode_enabled = value
+
+func set_pre_temple_turn_meter_profile(
+	shadow_speed:int,
+	enemy_speed:int,
+	shadow_initial_gauge:int,
+	enemy_initial_gauge:int
+) -> bool:
+	if shadow_speed<=0 or enemy_speed<=0:
+		return false
+	if shadow_initial_gauge<0 or shadow_initial_gauge>CombatTurnTimeline.MAX_GAUGE:
+		return false
+	if enemy_initial_gauge<0 or enemy_initial_gauge>CombatTurnTimeline.MAX_GAUGE:
+		return false
+	pre_temple_turn_meter_profile={
+		"shadow_speed":shadow_speed,
+		"enemy_speed":enemy_speed,
+		"shadow_initial_gauge":shadow_initial_gauge,
+		"enemy_initial_gauge":enemy_initial_gauge
+	}
+	return true
+
+func clear_pre_temple_turn_meter_profile()->void:
+	pre_temple_turn_meter_profile.clear()
 
 func _next_effect_transaction_id()->int:
 	_effect_transaction_id+=1
@@ -197,21 +221,36 @@ func start_encounter(id: String, profile: Dictionary) -> bool:
 			enemy.guard = true
 			enemy.guard_phase = "brace"
 
+	if turn_meter_mode_enabled:
+		if pre_temple_mode:
+			if not _setup_pre_temple_turn_meter():
+				push_error("Pre-Temple turn meter requires an explicit validated Speed/gauge profile")
+				pre_temple_model=null
+				pre_temple_mode=false
+				encounter_id=""
+				return false
+		else:
+			_setup_turn_meter()
+		action_locked=true
+
 	active = true
-	if turn_meter_mode_enabled and not pre_temple_mode:
-		_setup_turn_meter()
-		action_locked = true
 	emit_signal("encounter_started",id)
 	_emit_state()
-	if turn_meter_mode_enabled and not pre_temple_mode:
-		call_deferred("_advance_turn_meter",encounter_generation)
+	if turn_meter_mode_enabled:
+		if pre_temple_mode:
+			call_deferred("_advance_pre_temple_turn_meter",encounter_generation)
+		else:
+			call_deferred("_advance_turn_meter",encounter_generation)
 	return true
 
 func shadow_action(skill: String) -> void:
 	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if pre_temple_mode:
-		_shadow_action_pre_temple(skill)
+		if turn_meter_mode_enabled:
+			_shadow_action_pre_temple_turn_meter(skill)
+		else:
+			_shadow_action_pre_temple(skill)
 		return
 	if turn_meter_mode_enabled:
 		_shadow_action_turn_meter(skill)
