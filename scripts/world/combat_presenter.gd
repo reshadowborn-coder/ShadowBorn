@@ -8,6 +8,8 @@ var enemy_visual: Node3D
 var shadow_origin := Vector3.ZERO
 var enemy_origin := Vector3.ZERO
 var reduced_motion:=false
+var _impact_mesh_normal:SphereMesh
+var _impact_mesh_guarded:SphereMesh
 
 func bind_combatants(shadow: Node3D, enemy: Node3D) -> void:
 	shadow_visual = shadow
@@ -62,15 +64,28 @@ func play_enemy_death() -> void:
 	t.tween_property(enemy_visual, "position:y", enemy_visual.position.y - 0.55, 0.28)
 	t.tween_property(enemy_visual, "scale", Vector3(0.86,0.55,0.86), 0.28)
 
+func _impact_mesh(guarded:bool)->SphereMesh:
+	var cached:=_impact_mesh_guarded if guarded else _impact_mesh_normal
+	if cached!=null:
+		return cached
+	var sphere:=SphereMesh.new()
+	sphere.radius=0.12 if guarded else 0.09
+	sphere.height=sphere.radius*2.0
+	var mat:=StandardMaterial3D.new()
+	mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color=Color(0.75,0.68,0.46,0.95) if guarded else Color(0.72,0.78,0.88,0.92)
+	sphere.material=mat
+	if guarded:
+		_impact_mesh_guarded=sphere
+	else:
+		_impact_mesh_normal=sphere
+	return sphere
+
 func _impact_flash(target: Node3D, guarded: bool) -> void:
 	if not is_instance_valid(target): return
 	var flash := MeshInstance3D.new()
 	flash.name = "ImpactFlash"
-	var sphere := SphereMesh.new(); sphere.radius = 0.12 if guarded else 0.09; sphere.height = sphere.radius * 2.0
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.75,0.68,0.46,0.95) if guarded else Color(0.72,0.78,0.88,0.92)
-	sphere.material = mat; flash.mesh = sphere
+	flash.mesh=_impact_mesh(guarded)
 	target.add_child(flash); flash.position = Vector3(0,1.1,-0.45)
 	var target_side := "shadow" if target == shadow_visual else "enemy"
 	emit_signal("impact_presented",target_side,guarded)
