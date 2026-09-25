@@ -13,6 +13,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate CharacterRecipe v0.1 fixtures
+        run: |
+          python3 -m unittest discover tools/character_generator/tests -p 'test_*.py'
+          python3 tools/character_generator/validate_recipe.py \
+            tools/character_generator/recipes/mvp/neutral_sword_shield.json \
+            tools/character_generator/recipes/mvp/tall_lean_sword_shield.json \
+            tools/character_generator/recipes/mvp/stocky_sword_shield.json \
+            --registry tools/character_generator/registries/mvp_profile_registry_v0_1.json \
+            --print-hash
+
       - name: Install Godot 4.4.1
         run: |
           curl -L --fail --retry 3             -o /tmp/godot.zip             https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip

@@ -1,0 +1,21 @@
+{
+  "recipe_version": "character_recipe_v0.1",
+  "recipe_id": "cg_mvp_stocky_sword_shield_v0",
+  "seed": 1003,
+  "skeleton_profile_id": "SKEL_HUMANOID_CANONICAL_V0",
+  "body_profile_id": "BODY_STOCKY",
+  "armor_recipe_id": "CG_MVP_ARMOR_GAMBESON_V0",
+  "weapon_module_ids": [
+    "WPN_SWORD_1H",
+    "WPN_SHIELD"
+  ],
+  "material_preset_ids": [
+    "MAT_CLOTH_FAMILY",
+    "MAT_LEATHER_FAMILY",
+    "MAT_METAL_FAMILY"
+  ],
+  "animation_profile_id": "CG_MVP_ANIM_SWORD_SHIELD_V0",
+  "platform_target": "IOS_TARGET_60",
+  "quality_target": "LOD1_COMBAT",
+  "notes": "Character Generator MVP fixture. Visual build data only; no gameplay stats or School data."
+}

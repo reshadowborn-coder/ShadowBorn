@@ -1,0 +1,85 @@
+{
+  "registry_version": "cg_mvp_registry_v0.1",
+  "skeleton_profile_ids": [
+    "SKEL_HUMANOID_CANONICAL_V0"
+  ],
+  "body_profile_ids": [
+    "BODY_NEUTRAL",
+    "BODY_TALL_LEAN",
+    "BODY_STOCKY"
+  ],
+  "face_profile_ids": [],
+  "hair_ids": [],
+  "armor_recipe_ids": [
+    "CG_MVP_ARMOR_GAMBESON_V0"
+  ],
+  "weapon_module_ids": [
+    "WPN_SWORD_1H",
+    "WPN_SHIELD"
+  ],
+  "required_weapon_module_ids": [
+    "WPN_SWORD_1H",
+    "WPN_SHIELD"
+  ],
+  "material_preset_ids": [
+    "MAT_CLOTH_FAMILY",
+    "MAT_LEATHER_FAMILY",
+    "MAT_METAL_FAMILY"
+  ],
+  "animation_profile_ids": [
+    "CG_MVP_ANIM_SWORD_SHIELD_V0"
+  ],
+  "platform_targets": [
+    "IOS_TARGET_60"
+  ],
+  "quality_targets": [
+    "LOD1_COMBAT"
+  ],
+  "body_fit_classes": {
+    "BODY_NEUTRAL": "FIT_STANDARD",
+    "BODY_TALL_LEAN": "FIT_TALL_NARROW",
+    "BODY_STOCKY": "FIT_STOCKY"
+  },
+  "armor_recipes": {
+    "CG_MVP_ARMOR_GAMBESON_V0": {
+      "module_ids": [
+        "ARMOR_GAMBESON_BASE"
+      ],
+      "allowed_fit_classes": [
+        "FIT_STANDARD",
+        "FIT_TALL_NARROW",
+        "FIT_STOCKY"
+      ]
+    }
+  },
+  "animation_profiles": {
+    "CG_MVP_ANIM_SWORD_SHIELD_V0": {
+      "required_clips": [
+        "Idle",
+        "Walk",
+        "A1_Sword",
+        "Block",
+        "Equip",
+        "Stow"
+      ]
+    }
+  },
+  "source_notes": {
+    "master_sheet_body_profiles": [
+      "BODY_NEUTRAL",
+      "BODY_TALL_LEAN",
+      "BODY_STOCKY"
+    ],
+    "master_sheet_weapon_modules": [
+      "WPN_SWORD_1H",
+      "WPN_SHIELD"
+    ],
+    "master_sheet_armor_module": "ARMOR_GAMBESON_BASE",
+    "tooling_only_ids": [
+      "SKEL_HUMANOID_CANONICAL_V0",
+      "CG_MVP_ARMOR_GAMBESON_V0",
+      "CG_MVP_ANIM_SWORD_SHIELD_V0",
+      "LOD1_COMBAT"
+    ]
+  }
+}
