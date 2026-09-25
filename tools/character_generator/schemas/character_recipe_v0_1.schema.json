@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shadowborn://character_recipe_v0.1",
+  "title": "Shadowborn CharacterRecipe v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recipe_version",
+    "recipe_id",
+    "seed",
+    "skeleton_profile_id",
+    "body_profile_id",
+    "armor_recipe_id",
+    "weapon_module_ids",
+    "material_preset_ids",
+    "animation_profile_id",
+    "platform_target",
+    "quality_target"
+  ],
+  "properties": {
+    "recipe_version": {
+      "const": "character_recipe_v0.1"
+    },
+    "recipe_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "skeleton_profile_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "body_profile_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "face_profile_id_optional": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "hair_id_optional": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "armor_recipe_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "weapon_module_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 96
+      }
+    },
+    "material_preset_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 96
+      }
+    },
+    "animation_profile_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "platform_target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "quality_target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 500
+    }
+  }
+}
