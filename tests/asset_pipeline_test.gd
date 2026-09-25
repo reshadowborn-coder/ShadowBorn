@@ -4,7 +4,7 @@ const Factory = preload("res://scripts/presentation/character_factory.gd")
 
 func _init() -> void:
 	var failures := 0
-	failures += _check_scene("res://assets/vendor/quaternius/shadow_adventurer.gltf",["Idle_Sword","Sword_Slash","HitRecieve","Death","Interact"],"Shadow dev asset")
+	failures += _check_scene("res://assets/vendor/quaternius/shadow_adventurer.gltf",["Idle_Sword","Sword_Slash","Roll","HitRecieve","Death","Interact"],"Shadow dev asset")
 	failures += _check_scene("res://assets/vendor/quaternius/grave_wolf.gltf",["Idle","Attack","Idle_HitReact1","Death"],"Hound dev asset")
 	failures += _check_resource("res://assets/vendor/quaternius/shadow_sword.gltf","Sword dev asset")
 
