@@ -60,6 +60,7 @@ func _build_proxy() -> void:
 
 func set_weapon_family(family:String)->void:
 	if weapon_root:
+		weapon_root.visible=false
 		weapon_root.queue_free()
 		weapon_root=null
 	if family.is_empty():
