@@ -275,6 +275,16 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	var rematch:=_strict_bool(state.get("room5_rematch_ready",false))
 	var complete:=_strict_bool(state.get("act0_complete",false))
 
+	# Canonicalize persisted boolean fields immediately. Local strict flags
+	# protect progression logic, but returning the raw malformed value would
+	# leak string/int pseudo-booleans back into runtime and the next save.
+	state.covenant_joined=covenant
+	state.first_forge_done=forged
+	state.room5_solo_limit_seen=solo_seen
+	state.story_summon_unlocked=summon
+	state.room5_rematch_ready=rematch
+	state.act0_complete=complete
+
 	# Any downstream state proves the exterior route had already completed.
 	# Recover forward rather than replaying irreversible rewards.
 	var later_progress: bool = (
