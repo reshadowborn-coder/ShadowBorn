@@ -732,6 +732,7 @@ func _catacomb_room_for_encounter(id:String)->int:
 func _on_companion_ready(_profile:Dictionary)->void:
 	# This signal is emitted only after the story-handoff save commits.
 	team.unlock_story_slot()
+	_apply_threshold_visual_state()
 
 func _restore_act0_position()->void:
 	if act0.stage in [Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH]:
@@ -746,6 +747,9 @@ func _apply_threshold_visual_state()->void:
 	var door:=get_parent().get_node_or_null("Graybox/VisualGeometry/TempleDoor") as Node3D
 	if door:
 		door.visible=not act0.faded_sigil_activated
+	for companion_visual in get_tree().get_nodes_in_group("story_companion_visual"):
+		if companion_visual is Node3D:
+			(companion_visual as Node3D).visible=catacombs.summon_unlocked
 
 func _apply_equipment_state()->void:
 	var family:=""
