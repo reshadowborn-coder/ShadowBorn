@@ -101,6 +101,16 @@ func _run()->void:
 	for surface in liquid_surfaces:
 		_check(surface is MeshInstance3D and (surface as MeshInstance3D).cast_shadow==GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,"liquid overlay does not cast an artificial directional shadow")
 
+	if game:
+		var pack_visuals:=game._pack_visuals()
+		_check(pack_visuals.size()==2,"Act 1 pack exposes exactly two presentation visuals")
+		if pack_visuals.size()==2:
+			game._on_pack_shadow_attack_presented(0,"A1",1.0)
+			_check(game.presenter.shadow_visual==game.shadow and game.presenter.enemy_visual==pack_visuals[0],"pack Shadow attack reuses the shared 1v1 CombatPresenter")
+			game._on_pack_enemy_attack_visual(1,1.0)
+			_check(game.presenter.shadow_visual==game.shadow and game.presenter.enemy_visual==pack_visuals[1],"pack enemy response rebinds the shared presenter to the acting rat")
+			game.presenter.clear()
+
 	var pack_hud:=chapter.get_node_or_null("Game/MultiTargetHUD") as MultiTargetHUD
 	if pack_hud:
 		var lock_fixture:={

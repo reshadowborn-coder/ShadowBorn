@@ -60,6 +60,7 @@ func _connect_runtime()->void:
 	pack_combat.failed.connect(_resolve_pack_defeat)
 	pack_combat.solo_limit_reached.connect(_resolve_pack_defeat)
 	pack_combat.state_changed.connect(pack_hud.render)
+	pack_combat.shadow_attack_presented.connect(_on_pack_shadow_attack_presented)
 	pack_combat.enemy_attack_presented.connect(_on_pack_enemy_attack_visual)
 	pack_combat.semantic_contact.connect(_on_pack_semantic_contact)
 	pack_hud.target_selected.connect(_select_pack_target)
@@ -277,12 +278,25 @@ func _pack_action(skill:String)->void:
 	if pack_active and not _ui_modal_open():
 		pack_combat.shadow_action(skill)
 
-func _on_pack_enemy_attack_visual(enemy_index:int,_damage:float)->void:
+func _on_pack_shadow_attack_presented(target_index:int,skill:String,damage:float)->void:
+	var visuals:=_pack_visuals()
+	if target_index<0 or target_index>=visuals.size():
+		return
+	var target:=visuals[target_index]
+	if not is_instance_valid(target):
+		return
+	presenter.bind_combatants(shadow,target)
+	presenter.play_shadow_attack(skill,damage,false)
+
+func _on_pack_enemy_attack_visual(enemy_index:int,damage:float)->void:
 	var visuals:=_pack_visuals()
 	if enemy_index>=0 and enemy_index<visuals.size():
 		var attacker:=visuals[enemy_index]
-		if is_instance_valid(attacker) and attacker.has_method("play_attack_cue"):
-			attacker.play_attack_cue()
+		if is_instance_valid(attacker):
+			presenter.bind_combatants(shadow,attacker)
+			presenter.play_enemy_attack(damage)
+			if attacker.has_method("play_attack_cue"):
+				attacker.play_attack_cue()
 
 func _on_pack_semantic_contact(actor:String,index:int,_action:String)->void:
 	if actor not in ["shadow","companion"]:
@@ -300,6 +314,7 @@ func _resolve_pack_defeat()->void:
 	pack_hud.close()
 	pack_active=false
 	camera_rig.exit_combat()
+	presenter.clear()
 	if not progression.commit_pack_defeat():
 		shadow.set_physics_process(true)
 		_refresh_navigation()
