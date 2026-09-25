@@ -15,6 +15,7 @@ func _check(condition:bool,message:String)->void:
 func _run()->void:
 	_test_valid_step_vocabulary()
 	_test_condition_vocabulary()
+	_test_target_resolution_and_planning()
 	_test_invalid_steps_fail_closed()
 	_test_definitions_use_step_validator()
 	print("Combat ability operation tests complete. failures=%d"%failures)
@@ -67,6 +68,34 @@ func _test_condition_vocabulary()->void:
 	_check(not CombatConditionEvaluator.validate([deep]).is_empty(),"condition nesting is hard-bounded")
 	var conditional_step:Dictionary={"op":"damage","target":"primary_target","coeff":1.4,"conditions":[nested]}
 	_check(CombatAbilityOps.validate_step(conditional_step).is_empty(),"ability effect step accepts validated reusable conditions")
+
+func _test_target_resolution_and_planning()->void:
+	var context:Dictionary={
+		"self_id":"shadow",
+		"actors":{
+			"shadow":{"team":"ally","alive":true,"hp":20.0,"max_hp":20.0,"turn_meter_bp":2500,"tags":[],"resources":{}},
+			"keeper":{"team":"ally","alive":true,"hp":4.0,"max_hp":20.0,"turn_meter_bp":9000,"tags":[],"resources":{}},
+			"rat_a":{"team":"enemy","alive":true,"hp":8.0,"max_hp":10.0,"turn_meter_bp":7000,"tags":["Status.Poison"],"resources":{}},
+			"rat_b":{"team":"enemy","alive":true,"hp":10.0,"max_hp":10.0,"turn_meter_bp":9500,"tags":[],"resources":{}},
+			"dead_rat":{"team":"enemy","alive":false,"hp":0.0,"max_hp":10.0,"turn_meter_bp":10000,"tags":[],"resources":{}}
+		}
+	}
+	_check(CombatTargetResolver.resolve("lowest_hp_ally",context)==[&"keeper"],"target resolver chooses lowest-HP living ally deterministically")
+	_check(CombatTargetResolver.resolve("highest_turn_meter_enemy",context)==[&"rat_b"],"target resolver ignores dead actors and chooses highest-TM enemy")
+	_check(CombatTargetResolver.resolve("all_enemies",context)==[&"rat_a",&"rat_b"],"all-enemy target order is stable and excludes dead actors")
+	var steps:Array=[
+		{"op":"damage","target":"all_enemies","coeff":1.0},
+		{"op":"turn_meter","target":"highest_turn_meter_enemy","value_bp":-1500},
+		{"op":"damage","target":"all_enemies","coeff":0.5,"conditions":[{"op":"has_tag","subject":"primary_target","tag":"Status.Poison"}]}
+	]
+	var plan:=CombatAbilityPlanner.build(steps,context)
+	_check(bool(plan.ok),"validated ability steps build a deterministic execution plan")
+	_check(CombatAbilityPlanner.operation_count(plan,"damage")==3,"per-target conditions expand only the matching poisoned target")
+	var operations:Array=plan.operations
+	_check(str(operations[0].target_actor_id)=="rat_a" and str(operations[1].target_actor_id)=="rat_b","multi-target operation ordering is deterministic")
+	_check(str(operations[2].target_actor_id)=="rat_b" and str(operations[2].op)=="turn_meter","highest-TM selector resolves into one explicit operation")
+	var invalid:=CombatAbilityPlanner.build([{"op":"mystery","target":"self"}],context)
+	_check(not bool(invalid.ok) and not (invalid.errors as Array).is_empty(),"planner fails closed before executing invalid combat data")
 
 func _test_invalid_steps_fail_closed()->void:
 	_check(not CombatAbilityOps.validate_step({"op":"turnmeter","target":"self","value_bp":1000}).is_empty(),"unknown operation typo is rejected")
