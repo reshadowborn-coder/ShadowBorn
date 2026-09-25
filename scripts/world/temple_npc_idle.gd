@@ -6,6 +6,8 @@ extends Node3D
 
 var reduced_motion:=false
 var elapsed:=0.0
+var reaction_remaining:=0.0
+const REACTION_DURATION:=1.25
 var body:Node3D
 var head:Node3D
 var arm_l:Node3D
@@ -50,6 +52,7 @@ func set_reduced_motion(value:bool)->void:
 
 func _process(delta:float)->void:
 	elapsed=fmod(elapsed+delta,120.0)
+	reaction_remaining=maxf(0.0,reaction_remaining-delta)
 	var scale:=0.30 if reduced_motion else 1.0
 	var t:=elapsed+phase
 	match motion_profile:
@@ -61,6 +64,31 @@ func _process(delta:float)->void:
 			_animate_engraver(t,scale)
 		_:
 			_animate_keeper(t,scale)
+	if reaction_remaining>0.0:
+		_animate_reaction(scale)
+
+func play_interaction_reaction()->void:
+	reaction_remaining=REACTION_DURATION
+
+func _animate_reaction(scale:float)->void:
+	var progress:=1.0-(reaction_remaining/REACTION_DURATION)
+	var pulse:=sin(progress*PI)
+	match motion_profile:
+		"smith":
+			_set_rotation(head,head_basis,Vector3(deg_to_rad(-4.0*pulse)*scale,deg_to_rad(18.0*pulse)*scale,0))
+			_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-22.0)*scale,0,deg_to_rad(-8.0)*scale))
+			_set_rotation(tool,tool_basis,Vector3(deg_to_rad(-18.0)*scale,0,0))
+		"merchant":
+			_set_rotation(head,head_basis,Vector3(deg_to_rad(-3.0*pulse)*scale,deg_to_rad(-16.0*pulse)*scale,0))
+			_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-18.0*pulse)*scale,0,deg_to_rad(-16.0*pulse)*scale))
+			_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-18.0*pulse)*scale,0,deg_to_rad(16.0*pulse)*scale))
+		"engraver":
+			_set_rotation(head,head_basis,Vector3(deg_to_rad(-10.0*pulse)*scale,deg_to_rad(12.0*pulse)*scale,0))
+			_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-12.0)*scale,0,deg_to_rad(-4.0)*scale))
+			_set_rotation(tool,tool_basis,Vector3(deg_to_rad(-12.0)*scale,0,0))
+		_:
+			_set_rotation(head,head_basis,Vector3(deg_to_rad(7.0*pulse)*scale,0,0))
+			_set_rotation(body,body_basis,Vector3(0,0,deg_to_rad(1.5*pulse)*scale))
 
 func _set_rotation(node:Node3D,base:Basis,euler_delta:Vector3)->void:
 	if not is_instance_valid(node):
