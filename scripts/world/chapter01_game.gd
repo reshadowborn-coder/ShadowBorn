@@ -40,7 +40,7 @@ func _ready()->void:
 	_apply_identity_and_equipment(state)
 	_apply_world_state(state)
 	_connect_runtime()
-	story_toast.show_message("ACT 1 — Beneath the Temple. The sewer air moves ahead.",3.6)
+	_show_resume_objective()
 
 func _connect_runtime()->void:
 	encounter.reset_shadow()
@@ -50,6 +50,7 @@ func _connect_runtime()->void:
 	encounter.combat_state_changed.connect(hud.render_state)
 	encounter.shadow_attack_presented.connect(presenter.play_shadow_attack)
 	encounter.enemy_attack_presented.connect(presenter.play_enemy_attack)
+	encounter.enemy_attack_presented.connect(_on_enemy_attack_visual)
 	encounter.encounter_finished.connect(_on_single_finished)
 	encounter.encounter_failed.connect(_on_single_failed)
 	pack_combat.finished.connect(_on_pack_unexpected_finish)
@@ -101,8 +102,9 @@ func _build_save_state()->Dictionary:
 	state.cleared_encounters=cleared_encounters.duplicate()
 	state.performance_mode=performance_mode
 	state.reduced_motion=reduced_motion
-	for key in progression.snapshot():
-		state[key]=progression.snapshot()[key]
+	var progression_state:=progression.snapshot()
+	for key in progression_state:
+		state[key]=progression_state[key]
 	return state
 
 func _save_progress()->bool:
@@ -181,7 +183,6 @@ func _on_single_finished(id:String)->void:
 	if room==0: return
 	var before:=_build_save_state()
 	var defeated:=active_enemy_visual
-	presenter.play_enemy_death()
 	hud.hide_combat()
 	camera_rig.exit_combat()
 	if not progression.room_cleared(room):
@@ -199,6 +200,8 @@ func _on_single_finished(id:String)->void:
 		story_toast.show_message("The sewer checkpoint could not be saved. The room remains unresolved.")
 	else:
 		last_committed_state=SaveManager._migrate(candidate.duplicate(true))
+		presenter.play_enemy_death()
+		await get_tree().create_timer(.08 if reduced_motion else .30).timeout
 		if is_instance_valid(defeated): defeated.visible=false
 		story_toast.show_message("A fouler scent drifts from the next chamber." if room==1 else "Scratching multiplies beyond the next arch.")
 	active_enemy_visual=null
@@ -348,6 +351,32 @@ func _accept_temple_watch()->void:
 	watch_menu.close()
 	_refresh_navigation()
 
+func _on_enemy_attack_visual(_damage:float)->void:
+	if is_instance_valid(active_enemy_visual) and active_enemy_visual.has_method("play_attack_cue"):
+		active_enemy_visual.play_attack_cue()
+
+func _show_resume_objective()->void:
+	var message:=""
+	match progression.stage:
+		Act1Contract.STAGE_SEWER_ROOM1:
+			message="ACT 1 — Beneath the Temple. Follow the gutter to the first chamber."
+		Act1Contract.STAGE_SEWER_ROOM2:
+			message="The air has turned sour. The next chamber is tainted."
+		Act1Contract.STAGE_SEWER_ROOM3:
+			message="Scratching multiplies ahead. Something is moving as a pack."
+		Act1Contract.STAGE_TEMPLE_RETURN:
+			message="The pack forced you back. Speak with the Keeper."
+		Act1Contract.STAGE_KEEPER_BRIEFING:
+			message="The Keeper has warned you. Take her message to the Smith."
+		Act1Contract.STAGE_SMITH_HANDOFF:
+			message="Steel alone will not hold. Find the Temple Guard."
+		Act1Contract.STAGE_GUARD_COVENANT:
+			message="The Temple Watch oath is waiting at the Guard."
+		Act1Contract.STAGE_ACT1_1_COMPLETE:
+			message="The Temple Watch oath is sealed. The next descent is not yet open."
+	if not message.is_empty():
+		story_toast.show_message(message,4.2)
+
 func _ui_modal_open()->bool:
 	return settings_menu.panel.visible or watch_menu.visible
 
@@ -386,6 +415,8 @@ func _apply_presentation_settings()->void:
 	encounter.set_reduced_motion(reduced_motion)
 	for npc in get_tree().get_nodes_in_group("temple_npc_idle"):
 		if npc.has_method("set_reduced_motion"): npc.set_reduced_motion(reduced_motion)
+	for rat in get_tree().get_nodes_in_group("act1_rat_visual"):
+		if rat.has_method("set_reduced_motion"): rat.set_reduced_motion(reduced_motion)
 
 func _notification(what:int)->void:
 	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT,NOTIFICATION_APPLICATION_PAUSED]:

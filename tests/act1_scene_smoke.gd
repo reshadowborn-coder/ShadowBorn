@@ -54,6 +54,8 @@ func _run()->void:
 	await process_frame
 
 	_check(chapter.get_node_or_null("Sewer/SewerCollision") is StaticBody3D,"Act 1 sewer collision is generated")
+	for marker in ["Room1DryThreshold","Room2ToxicRunoff","Room2Overflow","Room3FloodL","Room3FloodR","Room3OutflowCross"]:
+		_check(chapter.get_node_or_null("Sewer/SewerVisual/"+marker) is MeshInstance3D,"Act 1 chamber readability marker exists: "+marker)
 	_check(chapter.get_node_or_null("TempleInterior/TempleCollision") is StaticBody3D,"Act 1 reuses the safe Temple hub")
 	_check(chapter.get_node_or_null("TempleInterior/TempleVisual/TempleGuard") is TempleNpcIdle,"Temple Guard is present as an animated NPC")
 	_check(chapter.get_node_or_null("Game/TempleWatchMenu") is TempleWatchMenu,"Temple Watch covenant confirmation UI is mounted")
@@ -79,6 +81,11 @@ func _run()->void:
 	for node in get_nodes_in_group("encounter_visual"):
 		if str(node.get_meta("encounter_id",""))=="a1_r2_poison_rat": poison_visual=node as Node3D
 	_check(poison_visual is SewerRatVisual and str((poison_visual as SewerRatVisual).variant)=="poison","Poison Rat uses the poison visual variant")
+	if poison_visual:
+		poison_visual.scale=Vector3.ONE*1.08
+		await process_frame
+		_check(poison_visual.scale.is_equal_approx(Vector3.ONE*1.08),"rat idle animation preserves root scale owned by combat/target selection")
+		_check(poison_visual.has_method("play_attack_cue") and poison_visual.has_method("set_reduced_motion"),"rat visual exposes lightweight combat/accessibility animation hooks")
 
 	var watch:=chapter.get_node_or_null("Game/TempleWatchMenu") as TempleWatchMenu
 	if watch:

@@ -9,6 +9,9 @@ const IRON:=Color(.12,.13,.125)
 const RAT:=Color(.20,.17,.15)
 const RAT_DARK:=Color(.11,.095,.085)
 const POISON:=Color(.18,.48,.20)
+const TOXIC_WET:=Color(.10,.30,.12)
+const WET_STONE:=Color(.055,.070,.062)
+const TRACK:=Color(.13,.105,.085)
 const RAT_SCRIPT:=preload("res://scripts/world/sewer_rat_visual.gd")
 var mats:Dictionary={}
 var glow_mats:Dictionary={}
@@ -91,6 +94,39 @@ func _build()->void:
 		box("Room%02dArchL"%room,p+Vector3(-4.2,2.0,-1.0),Vector3(.55,4.0,.7),STONE,visual)
 		box("Room%02dArchR"%room,p+Vector3(4.2,2.0,-1.0),Vector3(.55,4.0,.7),STONE,visual)
 		box("Room%02dArchTop"%room,p+Vector3(0,3.75,-1.0),Vector3(8.9,.55,.7),STONE,visual)
+
+	# Give each chamber one strong silhouette/readability cue instead of filling
+	# the whole corridor with detail. These are static meshes: no extra lights,
+	# particles or water physics are introduced.
+	box("Room1DryThreshold",Vector3(30,.10,-88.6),Vector3(1.9,.05,2.4),WET_STONE,visual)
+	box("Room1CollapsedPipe",Vector3(34.7,1.15,-88.2),Vector3(.28,2.3,.28),IRON,visual).rotation_degrees.z=14.0
+	for i in range(3):
+		var scratch:=box("Room1Scratch%02d"%i,Vector3(24.86,1.35+float(i)*.22,-87.4-float(i)*.30),Vector3(.05,.07,.90),TRACK,visual)
+		scratch.rotation_degrees.x=8.0+float(i)*4.0
+
+	var toxic_gutter:=box("Room2ToxicRunoff",Vector3(30,.075,-102.5),Vector3(2.10,.07,8.0),TOXIC_WET,visual)
+	toxic_gutter.material_override=_glow(Color(.10,.32,.11))
+	box("Room2Overflow",Vector3(27.55,.085,-102.6),Vector3(2.5,.05,2.7),TOXIC_WET,visual)
+	box("Room2LeakPipe",Vector3(25.05,2.7,-101.0),Vector3(.30,2.4,.30),IRON,visual)
+	box("Room2LeakStain",Vector3(25.38,1.25,-101.0),Vector3(.08,2.35,.70),TOXIC_WET,visual)
+	for i in range(4):
+		box("Room2DrainBar%02d"%i,Vector3(24.90,1.15+float(i)*.42,-104.2),Vector3(.12,.12,1.65),IRON,visual)
+
+	# Room 3 is visually more dangerous: the gutter has overflowed onto both
+	# walks and an old barred outflow closes the far end behind the pack.
+	box("Room3FloodL",Vector3(27.65,.085,-118.4),Vector3(2.55,.05,7.2),WATER,visual)
+	box("Room3FloodR",Vector3(32.35,.085,-118.4),Vector3(2.55,.05,7.2),WATER,visual)
+	box("Room3UpperPipe",Vector3(30,3.05,-119.4),Vector3(9.4,.30,.30),IRON,visual)
+	for i in range(5):
+		box("Room3OutflowBar%02d"%i,Vector3(28.0+float(i),1.45,-123.0),Vector3(.16,2.7,.16),IRON,visual)
+	box("Room3OutflowCross",Vector3(30,1.45,-123.0),Vector3(5.0,.16,.16),IRON,visual)
+
+	# Sparse paired tracks lead forward without turning the floor into noise.
+	for i in range(6):
+		var track_z:=-80.5-float(i)*6.1
+		var track_x:=28.15 if i%2==0 else 31.85
+		var track:=box("RatTrack%02d"%i,Vector3(track_x,.125,track_z),Vector3(.18,.025,.42),TRACK,visual)
+		track.rotation_degrees.y=18.0 if i%2==0 else -16.0
 
 	# Sparse props: readable at phone scale, no clutter in the centre lane.
 	for i in range(5):

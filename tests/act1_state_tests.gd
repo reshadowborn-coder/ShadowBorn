@@ -80,6 +80,45 @@ func _run()->void:
 	for enemy in pack.enemies:
 		_check(float(enemy.current_hp)>=1.0,"Act 1 pack rats cannot be killed during first-contact story limit")
 
+	# Save/resume matrix: every committed Act 1.1 stage must converge to a
+	# canonical checkpoint even if the raw checkpoint payload is stale/corrupt.
+	var resume_cases:Array=[
+		{"name":"room1","stage":Act1Contract.STAGE_SEWER_ROOM1,"room":1,"flags":[],"checkpoint":"act1_sewer_entry","position":Act1Layout.SEWER_ENTRY},
+		{"name":"room2","stage":Act1Contract.STAGE_SEWER_ROOM2,"room":2,"flags":[],"checkpoint":"act1_room1_cleared","position":Act1Layout.room_checkpoint(2)},
+		{"name":"room3","stage":Act1Contract.STAGE_SEWER_ROOM3,"room":3,"flags":[],"checkpoint":"act1_room2_cleared","position":Act1Layout.room_checkpoint(3)},
+		{"name":"temple_return","stage":Act1Contract.STAGE_TEMPLE_RETURN,"room":0,"flags":["defeat"],"checkpoint":"act1_temple_return","position":Act1Layout.TEMPLE_RETURN},
+		{"name":"keeper","stage":Act1Contract.STAGE_KEEPER_BRIEFING,"room":0,"flags":["keeper"],"checkpoint":"act1_keeper_briefed","position":Act1Layout.TEMPLE_RETURN},
+		{"name":"smith","stage":Act1Contract.STAGE_SMITH_HANDOFF,"room":0,"flags":["smith"],"checkpoint":"act1_smith_handoff","position":Vector3(Act1Layout.SMITH_HANDOFF.x,.9,Act1Layout.SMITH_HANDOFF.z)},
+		{"name":"guard","stage":Act1Contract.STAGE_GUARD_COVENANT,"room":0,"flags":["watch"],"checkpoint":"act1_guard_covenant","position":Vector3(Act1Layout.GUARD_POSITION.x,.9,Act1Layout.GUARD_POSITION.z)},
+		{"name":"complete","stage":Act1Contract.STAGE_ACT1_1_COMPLETE,"room":0,"flags":["complete"],"checkpoint":"act1_guard_covenant","position":Vector3(Act1Layout.GUARD_POSITION.x,.9,Act1Layout.GUARD_POSITION.z)}
+	]
+	for resume_case in resume_cases:
+		var raw:=_completed_act0_state()
+		raw.act1_stage=resume_case["stage"]
+		raw.act1_sewer_room=resume_case["room"]
+		raw.checkpoint="stale_checkpoint"
+		raw.checkpoint_position=[999.0,999.0,999.0]
+		var flags:Array=resume_case["flags"]
+		if "defeat" in flags: raw.act1_sewer_defeat_seen=true
+		if "keeper" in flags: raw.act1_keeper_briefed=true
+		if "smith" in flags: raw.act1_smith_handoff_done=true
+		if "watch" in flags: raw.temple_watch_covenant_joined=true
+		if "complete" in flags: raw.act1_1_complete=true
+		var resumed:=SaveManager._migrate(raw)
+		var expected_position:Vector3=resume_case["position"]
+		var actual_position:=Vector3(float(resumed.checkpoint_position[0]),float(resumed.checkpoint_position[1]),float(resumed.checkpoint_position[2]))
+		_check(str(resumed.act1_stage)==str(resume_case["stage"]),"resume stage is canonical: "+str(resume_case["name"]))
+		_check(str(resumed.checkpoint)==str(resume_case["checkpoint"]),"resume checkpoint id is repaired: "+str(resume_case["name"]))
+		_check(actual_position.is_equal_approx(expected_position),"resume checkpoint position is repaired: "+str(resume_case["name"]))
+
+	var corrupt_handoff:=_completed_act0_state()
+	corrupt_handoff.act1_stage=Act1Contract.STAGE_SEWER_ROOM1
+	corrupt_handoff.act1_smith_handoff_done=true
+	var repaired_handoff:=SaveManager._migrate(corrupt_handoff)
+	_check(str(repaired_handoff.act1_stage)==Act1Contract.STAGE_SMITH_HANDOFF,"downstream Smith evidence repairs Act 1 stage forward")
+	_check(bool(repaired_handoff.act1_sewer_defeat_seen) and bool(repaired_handoff.act1_keeper_briefed),"downstream Smith evidence restores prerequisite handoffs")
+	_check(bool(repaired_handoff.covenant_joined) and not bool(repaired_handoff.temple_watch_covenant_joined),"Act 0 Forgotten Covenant remains separate from Temple Watch")
+
 	p.queue_free()
 	pack.queue_free()
 	await process_frame
