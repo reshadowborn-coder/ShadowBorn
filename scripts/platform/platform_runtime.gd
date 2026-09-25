@@ -138,11 +138,18 @@ func request_haptic(event_id:String, intensity:float=1.0)->bool:
 func _process(delta:float)->void:
 	if _memory_pressure_remaining>0.0:
 		_memory_pressure_remaining=maxf(0.0,_memory_pressure_remaining-delta)
-		if is_zero_approx(_memory_pressure_remaining):
-			_update_effective_pressure(delta,"memory_pressure_recovery")
+
+	# Recovery hysteresis must continue even on desktop/headless builds where
+	# no native iOS bridge exists. Otherwise a simulated/real memory warning
+	# could leave the service permanently stuck in SERIOUS pressure.
+	var desired_now:=compute_pressure(thermal_state,low_power_mode,_memory_floor())
+	if desired_now<effective_pressure:
+		_update_effective_pressure(delta,"pressure_recovery")
+	elif desired_now>effective_pressure:
+		_update_effective_pressure(delta,"runtime_pressure")
 
 	if _native_bridge==null:
-		if _memory_pressure_remaining<=0.0:
+		if _memory_pressure_remaining<=0.0 and desired_now>=effective_pressure:
 			set_process(false)
 		return
 
