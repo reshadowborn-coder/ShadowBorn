@@ -53,6 +53,39 @@ func set_presentation_timeline_enabled(value:bool)->void:
 func set_turn_meter_mode_enabled(value:bool)->void:
 	turn_meter_mode_enabled=value
 
+func apply_turn_control(actor_id:StringName,control_tag:StringName,turns:int,source_id:StringName=&"")->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_control(actor_id,control_tag,turns,source_id)
+
+func apply_turn_speed_modifier(actor_id:StringName,source_id:StringName,percent_bp:int,turns:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_speed_modifier(actor_id,source_id,percent_bp,turns)
+
+func apply_turn_silence(actor_id:StringName,source_id:StringName,turns:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_silence(actor_id,source_id,turns)
+
+func apply_turn_provoke(actor_id:StringName,source_actor_id:StringName,turns:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	var applied:=turn_timeline.apply_provoke(actor_id,source_actor_id,turns)
+	if applied and actor_id==&"shadow":
+		_enforce_shadow_forced_target()
+	return applied
+
+func adjust_turn_meter(actor_id:StringName,delta_bp:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.adjust_turn_meter(actor_id,delta_bp)
+
+func grant_extra_turn(actor_id:StringName,count:int=1)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.grant_extra_turn(actor_id,count)
+
 static func _valid_profile(profile)->bool:
 	if typeof(profile)!=TYPE_DICTIONARY:
 		return false
@@ -116,8 +149,24 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool
 func select_target(index:int)->void:
 	if not active or action_locked or index<0 or index>=enemies.size() or float(enemies[index].current_hp)<=0:
 		return
+	if turn_meter_mode_enabled:
+		var forced:=turn_timeline.forced_target_id(&"shadow")
+		if forced!=&"" and StringName(str((enemies[index] as Dictionary).get("id","")))!=forced:
+			_enforce_shadow_forced_target()
+			_emit()
+			return
 	selected=index
 	_emit()
+
+func _enforce_shadow_forced_target()->void:
+	if not turn_meter_mode_enabled:
+		return
+	var forced:=turn_timeline.forced_target_id(&"shadow")
+	if forced==&"":
+		return
+	var forced_index:=_enemy_index_for_actor(forced)
+	if forced_index>=0 and float((enemies[forced_index] as Dictionary).get("current_hp",0.0))>0.0:
+		selected=forced_index
 
 func _wait(duration:float)->void:
 	if duration<=0.0:
@@ -130,6 +179,10 @@ func _turn_valid(generation:int)->bool:
 func shadow_action(skill:String)->void:
 	if not active or action_locked or skill not in ["A1","A2"]:
 		return
+	if turn_meter_mode_enabled:
+		if skill!="A1" and turn_timeline.active_skills_blocked(&"shadow"):
+			return
+		_enforce_shadow_forced_target()
 	if skill=="A2" and a2_cd>0:
 		return
 	if turn_meter_mode_enabled:
@@ -269,6 +322,7 @@ func _advance_turn_meter(generation:int)->void:
 			continue
 
 		if actor_id==&"shadow":
+			_enforce_shadow_forced_target()
 			if solo_limit_pending:
 				_finish_solo_limit()
 				return

@@ -334,6 +334,16 @@ func apply_turn_speed_modifier(
 		return false
 	return turn_timeline.apply_speed_modifier(actor_id,source_id,percent_bp,turns)
 
+func apply_turn_silence(actor_id:StringName,source_id:StringName,turns:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_silence(actor_id,source_id,turns)
+
+func apply_turn_provoke(actor_id:StringName,source_actor_id:StringName,turns:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_provoke(actor_id,source_actor_id,turns)
+
 func adjust_turn_meter(actor_id:StringName,delta_bp:int)->bool:
 	if not turn_meter_mode_enabled:
 		return false
@@ -395,6 +405,8 @@ func _advance_turn_meter(generation:int)->void:
 
 func _shadow_action_turn_meter(skill:String)->void:
 	if StringName(current_turn.get("actor_id",&""))!=&"shadow":
+		return
+	if skill!="A1" and turn_timeline.active_skills_blocked(&"shadow"):
 		return
 	if skill=="A2" and int(shadow.get("a2_cd",0))>0:
 		return

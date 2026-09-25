@@ -45,6 +45,7 @@ func _run()->void:
 	await _test_single_rat_turn_order()
 	await _test_poison_ticks_on_shadow_turn()
 	await _test_control_skip_blocks_cooldown()
+	await _test_silence_blocks_active_skill()
 	print("Act 1 turn-meter integration tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -98,5 +99,21 @@ func _test_control_skip_blocks_cooldown()->void:
 	_check(controller.active and not controller.action_locked,"automatic loop consumes the stunned Shadow turn and eventually returns control")
 	_check(int(controller.shadow.a2_cd)==1,"cooldown advances only on the later actionable Shadow turn, not on the stunned skipped turn")
 	_check(int(controller.turn_timeline.actor_snapshot(&"shadow").resolve_stacks)==1,"stunned skipped turn grants Resolve in live single combat")
+	controller.queue_free()
+	await process_frame
+
+
+func _test_silence_blocks_active_skill()->void:
+	var controller:=_new_controller()
+	var profile:=Dictionary(SewerEncounterPlan.PROFILES["a1_r1_rat"]).duplicate(true)
+	_check(controller.start_encounter("a1_r1_rat",profile),"Silence fixture starts")
+	_check(await _wait_for_shadow(controller),"Silence fixture reaches Shadow")
+	var committed:Array[String]=[]
+	controller.command_committed.connect(func(skill:String):committed.append(skill))
+	_check(controller.apply_turn_silence(&"shadow",&"test_mage",1),"Silence can be applied through the live controller API")
+	controller.shadow_action("A2")
+	_check(committed.is_empty() and not controller.action_locked,"Silence rejects active A2 without consuming the turn")
+	controller.shadow_action("A1")
+	_check(committed.size()==1 and committed[0]=="A1","Silence preserves the default A1 action")
 	controller.queue_free()
 	await process_frame
