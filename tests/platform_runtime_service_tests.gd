@@ -26,23 +26,30 @@ func _run()->void:
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_NOMINAL,false)
 	service.set_requested_mode(PlatformRuntimeService.MODE_SMOOTH_60)
 	_check(service.target_fps==60 and service.effective_mode=="smooth60","nominal smooth mode targets 60 FPS")
+	_check(service.effective_reason=="nominal","nominal smooth mode records a nominal effective reason")
 	_check(Engine.max_fps==60,"PlatformRuntime is the single effective FPS owner")
 
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_FAIR,false)
 	_check(service.target_fps==60 and service.quality_pressure==1,"fair thermal state keeps 60 FPS but raises cosmetic pressure")
+	_check(service.effective_reason=="thermal_fair","fair thermal state records the correct policy reason")
 
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_SERIOUS,false)
 	_check(service.target_fps==30 and service.quality_pressure==2,"serious thermal state forces controlled 30 FPS fallback")
+	_check(service.effective_reason=="thermal_serious","serious thermal state records the correct policy reason")
 
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_CRITICAL,false)
 	_check(service.target_fps==30 and service.quality_pressure==3,"critical thermal state raises maximum quality pressure")
+	_check(service.effective_reason=="thermal_critical","critical thermal state records the correct policy reason")
 
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_NOMINAL,true)
 	_check(service.target_fps==30 and service.quality_pressure>=1,"Low Power Mode forces resilient 30 FPS without changing gameplay semantics")
+	_check(service.effective_reason=="low_power","Low Power Mode records a low-power effective reason")
 
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_NOMINAL,false)
 	service.set_requested_mode(PlatformRuntimeService.MODE_BATTERY_30)
 	_check(service.target_fps==30 and service.effective_mode=="battery30","explicit battery mode stays 30 FPS under nominal conditions")
+	_check(service.quality_pressure>=1,"explicit battery mode also reduces optional presentation cost")
+	_check(service.effective_reason=="user_battery","explicit battery mode records a user-battery effective reason")
 
 	service.set_requested_mode(PlatformRuntimeService.MODE_SMOOTH_60)
 	var state_events:=0
