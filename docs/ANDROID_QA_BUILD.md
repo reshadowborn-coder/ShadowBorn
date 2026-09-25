@@ -38,7 +38,7 @@ debug/shadowborn/combat_trace_console=true
 For the matched observer-effect baseline, set that project setting to `false` before exporting the quiet APK, or launch a supported local build with:
 
 ```
---shadowborn-trace-quiet
+-- --shadowborn-trace-quiet
 ```
 
 Do not compare a release build against a debug trace build for observer-effect conclusions; use equivalent QA/debug builds and change only trace console output.
@@ -54,3 +54,15 @@ A checked-in preset proves reproducible export configuration only. It does not p
 - frame pacing or readability passes.
 
 Those remain explicit execution evidence.
+
+
+## CI APK artifact
+
+The Act 0 workflow contains a separate `android-qa-apk` job after the strict headless suite. It installs the Godot 4.4.1 export templates and the Godot 4.4 Android toolchain requirements, exports the checked-in `Android QA` preset, and verifies:
+
+- package ID is `org.shadowborn.chapter0.qa`;
+- the APK contains ARM64 native libraries;
+- ARMv7, x86 and x86_64 native library folders are absent;
+- the APK has a recorded SHA-256.
+
+A successful job uploads `shadowborn-act0-android-qa` as a short-lived GitHub Actions artifact. This proves the repository can produce the QA APK from a clean CI checkout. It still does not prove install/start, physical frame pacing, touch feel or blind readability on a phone.
