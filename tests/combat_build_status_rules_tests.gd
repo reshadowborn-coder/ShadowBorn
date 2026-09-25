@@ -87,13 +87,14 @@ func _test_talent_build_compilation()->void:
 	offense.branch=&"offense"
 	offense.tier=1
 	offense.max_rank=2
+	offense.min_level=5
 	offense.stat_modifiers={"attack_bp":300}
 	offense.skill_patches=[
 		{"skill_id":"shadow.sword_shield.a2","key":"coeff","op":"multiply_bp","value":10500}
 	]
 	offense.granted_passive_ids=[&"passive.test.edge"]
 	_check(graph.add_definition(offense),"talent compiler fixture registers")
-	var compiled:=CombatBuildCompiler.compile(kit,graph,{"test.edge":2})
+	var compiled:=CombatBuildCompiler.compile(kit,graph,{"test.edge":2},5,2)
 	_check(bool(compiled.ok),"valid kit + talent graph compiles")
 	var specs:Dictionary=compiled.skill_specs
 	var a2:CombatSkillSpec=specs["shadow.sword_shield.a2"]
@@ -102,3 +103,7 @@ func _test_talent_build_compilation()->void:
 	_check(is_equal_approx(float(compiled.stat_modifiers.attack_bp),600.0),"ranked talent stat modifier scales by purchased rank")
 	_check((&"passive.test.edge") in (compiled.granted_passive_ids as Array),"talent compilation exposes granted passive IDs")
 	_check(is_equal_approx(float(ShadowLoadout.PROFILES["sword_shield"].a2_coeff),1.20),"talent compilation never mutates source loadout data")
+	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"test.edge":99},99,-1).ok),"compiler rejects corrupted over-max talent rank")
+	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"ghost.talent":1},99,-1).ok),"compiler rejects unknown talent IDs from corrupted save data")
+	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"test.edge":1},1,-1).ok),"compiler enforces level gate even when purchase UI is bypassed")
+	_check(not bool(CombatBuildCompiler.compile(kit,graph,{"test.edge":2},99,1).ok),"compiler enforces supplied point budget")

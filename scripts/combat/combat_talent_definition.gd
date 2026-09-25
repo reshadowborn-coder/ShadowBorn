@@ -8,6 +8,7 @@ extends Resource
 @export_range(1,99,1) var min_level:int=1
 @export_range(1,10,1) var max_rank:int=1
 @export_range(0,99,1) var point_cost_per_rank:int=1
+@export_range(0,999,1) var required_branch_points_before:int=0
 @export var prerequisite_ids:Array[StringName]=[]
 @export var exclusive_group:StringName=&""
 @export var stat_modifiers:Dictionary={}
@@ -22,7 +23,7 @@ func validate()->Array[String]:
 		errors.append("talent display name is empty")
 	if branch==&"":
 		errors.append("talent branch is empty")
-	if tier<1 or min_level<1 or max_rank<1 or point_cost_per_rank<0:
+	if tier<1 or min_level<1 or max_rank<1 or point_cost_per_rank<0 or required_branch_points_before<0:
 		errors.append("talent progression values are invalid")
 	if id in prerequisite_ids:
 		errors.append("talent cannot require itself")

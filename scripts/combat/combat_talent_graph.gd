@@ -50,6 +50,8 @@ func can_purchase(
 	for prereq in definition.prerequisite_ids:
 		if int(ranks.get(str(prereq),0))<=0:
 			return {"ok":false,"reason":"prerequisite"}
+	if spent_points_in_branch(ranks,definition.branch,definition.id)<definition.required_branch_points_before:
+		return {"ok":false,"reason":"branch_points"}
 	if definition.exclusive_group!=&"":
 		for raw_id in _definitions:
 			var other:CombatTalentDefinition=_definitions[raw_id]
@@ -61,6 +63,64 @@ func can_purchase(
 	if definition.branch not in branches and branches.size()>=maxi(1,max_active_branches):
 		return {"ok":false,"reason":"branch_limit"}
 	return {"ok":true,"reason":""}
+
+func validate_ranks(
+	ranks:Dictionary,
+	actor_level:int=999,
+	point_budget:int=-1,
+	max_active_branches:int=DEFAULT_MAX_ACTIVE_BRANCHES
+)->Array[String]:
+	var errors:Array[String]=[]
+	var selected_by_exclusive:Dictionary={}
+	for raw_key in ranks:
+		var id:=StringName(str(raw_key))
+		var raw_rank=ranks[raw_key]
+		if typeof(raw_rank) not in [TYPE_INT,TYPE_FLOAT]:
+			errors.append("talent rank is not numeric: "+str(id))
+			continue
+		var rank_float:=float(raw_rank)
+		if rank_float!=floor(rank_float):
+			errors.append("talent rank is fractional: "+str(id))
+			continue
+		var rank:=int(rank_float)
+		if rank==0:
+			continue
+		if not _definitions.has(id):
+			errors.append("unknown selected talent: "+str(id))
+			continue
+		var definition:CombatTalentDefinition=_definitions[id]
+		if rank<0 or rank>definition.max_rank:
+			errors.append("talent rank outside authored bounds: "+str(id))
+			continue
+		if actor_level<definition.min_level:
+			errors.append("talent selected below level gate: "+str(id))
+		for prereq in definition.prerequisite_ids:
+			if int(ranks.get(str(prereq),0))<=0:
+				errors.append("%s missing prerequisite %s"%[str(id),str(prereq)])
+		if spent_points_in_branch(ranks,definition.branch,definition.id)<definition.required_branch_points_before:
+			errors.append("talent selected before branch point gate: "+str(id))
+		if definition.exclusive_group!=&"":
+			var chosen:Array=selected_by_exclusive.get(definition.exclusive_group,[])
+			chosen.append(id)
+			selected_by_exclusive[definition.exclusive_group]=chosen
+	for raw_group in selected_by_exclusive:
+		if (selected_by_exclusive[raw_group] as Array).size()>1:
+			errors.append("mutually exclusive talents selected together: "+str(raw_group))
+	if active_branches(ranks).size()>maxi(1,max_active_branches):
+		errors.append("talent selection exceeds active branch cap")
+	if point_budget>=0 and total_spent_points(ranks)>point_budget:
+		errors.append("talent selection exceeds point budget")
+	return errors
+
+func spent_points_in_branch(ranks:Dictionary,branch:StringName,exclude_id:StringName=&"")->int:
+	var total:=0
+	for raw_id in _definitions:
+		var definition:CombatTalentDefinition=_definitions[raw_id]
+		if definition.branch!=branch or definition.id==exclude_id:
+			continue
+		var rank:=clampi(int(ranks.get(str(definition.id),0)),0,definition.max_rank)
+		total+=rank*definition.point_cost_per_rank
+	return total
 
 func active_branches(ranks:Dictionary)->Array[StringName]:
 	var branches:Array[StringName]=[]

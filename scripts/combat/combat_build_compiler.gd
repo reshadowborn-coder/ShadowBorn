@@ -4,13 +4,17 @@ extends RefCounted
 static func compile(
 	kit:CombatKitDefinition,
 	talent_graph:CombatTalentGraph,
-	talent_ranks:Dictionary
+	talent_ranks:Dictionary,
+	actor_level:int=999,
+	point_budget:int=-1,
+	max_active_branches:int=CombatTalentGraph.DEFAULT_MAX_ACTIVE_BRANCHES
 )->Dictionary:
 	if kit==null:
 		return {"ok":false,"errors":["missing kit"]}
 	var errors:=kit.validate()
 	if talent_graph!=null:
 		errors.append_array(talent_graph.validate_graph())
+		errors.append_array(talent_graph.validate_ranks(talent_ranks,actor_level,point_budget,max_active_branches))
 	if not errors.is_empty():
 		return {"ok":false,"errors":errors}
 
