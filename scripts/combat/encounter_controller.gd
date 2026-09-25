@@ -40,7 +40,7 @@ func set_reduced_motion(value: bool) -> void:
 	reduced_motion = value
 
 func reset_shadow() -> void:
-	shadow = {"hp":20.0,"max_hp":20.0,"atk":8.0,"def":4.0,"a2_cd":0,"veil":0.0,"fray":false}
+	shadow = {"hp":20.0,"max_hp":20.0,"atk":8.0,"def":4.0,"a2_cd":0,"veil":0.0,"fray":false,"poison_turns":0,"poison_damage":0.0}
 	pre_temple_model = null
 	pre_temple_mode = false
 
@@ -56,6 +56,20 @@ static func _valid_legacy_profile(profile:Dictionary)->bool:
 		return false
 	if profile.has("guard") and typeof(profile.get("guard"))!=TYPE_BOOL:
 		return false
+	if profile.has("poison_damage"):
+		var poison_damage=profile.get("poison_damage")
+		if typeof(poison_damage) not in [TYPE_INT,TYPE_FLOAT]:
+			return false
+		var poison_number:=float(poison_damage)
+		if poison_number!=poison_number or is_inf(poison_number) or poison_number<0.0 or poison_number>10.0:
+			return false
+	if profile.has("poison_turns"):
+		var poison_turns=profile.get("poison_turns")
+		if typeof(poison_turns) not in [TYPE_INT,TYPE_FLOAT]:
+			return false
+		var turns_number:=float(poison_turns)
+		if turns_number!=turns_number or is_inf(turns_number) or int(turns_number)<0 or int(turns_number)>10:
+			return false
 	return true
 
 func start_encounter(id: String, profile: Dictionary) -> bool:
@@ -189,6 +203,17 @@ func _shadow_action_legacy(skill: String) -> void:
 	if skill == "A2" and int(shadow.get("a2_cd",0)) > 0:
 		return
 
+	if int(shadow.get("poison_turns",0))>0:
+		shadow.hp=maxf(0.0,float(shadow.hp)-float(shadow.get("poison_damage",0.0)))
+		shadow.poison_turns=maxi(0,int(shadow.poison_turns)-1)
+		if int(shadow.poison_turns)==0:
+			shadow.poison_damage=0.0
+		_emit_state()
+		if float(shadow.hp)<=0.0:
+			active=false
+			emit_signal("encounter_failed",encounter_id)
+			return
+
 	action_locked = true
 	emit_signal("command_committed",skill)
 	_emit_state()
@@ -249,6 +274,11 @@ func _shadow_action_legacy(skill: String) -> void:
 
 	emit_signal("semantic_contact","enemy","ATTACK")
 	shadow.hp -= incoming
+	var poison_damage:=float(enemy.get("poison_damage",0.0))
+	var poison_turns:=int(enemy.get("poison_turns",0))
+	if poison_damage>0.0 and poison_turns>0 and shadow.hp>0.0:
+		shadow.poison_damage=maxf(float(shadow.get("poison_damage",0.0)),poison_damage)
+		shadow.poison_turns=maxi(int(shadow.get("poison_turns",0)),poison_turns)
 	if shadow.a2_cd > 0:
 		shadow.a2_cd -= 1
 	_emit_state()
