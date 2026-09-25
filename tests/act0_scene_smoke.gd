@@ -57,6 +57,10 @@ func _test_chapter_scene()->void:
 		_check(triggers.get_node_or_null("FadedSigil")!=null,"Faded Sigil threshold trigger exists")
 		var temple_gate:=triggers.get_node_or_null("TempleGate")
 		_check(temple_gate!=null and temple_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Temple has a physical progression blocker")
+		if temple_gate:
+			var gate_shape:=temple_gate.get_child(0) as CollisionShape3D
+			var gate_box:=gate_shape.shape as BoxShape3D
+			_check(gate_box!=null and gate_box.size.x>=27.5,"Temple gate trigger spans the entire exterior route after the blocker opens")
 		var cat_gate:=triggers.get_node_or_null("CatacombsEntry")
 		_check(cat_gate!=null and cat_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Catacombs are physically blocked before first forge")
 		if cat_gate:
@@ -90,6 +94,15 @@ func _test_chapter_scene()->void:
 		var reveal_shape:=reveal_trigger.get_child(0) as CollisionShape3D
 		var reveal_box:=reveal_shape.shape as BoxShape3D
 		_check(reveal_box!=null and reveal_box.size.x>=20.0,"Temple reveal trigger spans the exterior route")
+
+	var exterior_collision:=chapter.get_node_or_null("Graybox/GameplayCollision")
+	if exterior_collision:
+		for boundary_name in ["ExteriorStartBoundary","CemeteryRouteL","CemeteryRouteR","RuinRouteL","RuinRouteR","CemeteryToRuinLeftSeam","TempleExteriorRouteL","TempleExteriorRouteR"]:
+			_check(exterior_collision.get_node_or_null(boundary_name) is StaticBody3D,"exterior containment collider exists: %s"%boundary_name)
+
+	var nave_wall:=chapter.get_node_or_null("TempleInterior/TempleVisual/NaveWall") as MeshInstance3D
+	if nave_wall and nave_wall.mesh is BoxMesh:
+		_check((nave_wall.mesh as BoxMesh).size.z>=38.0,"Temple nave walls reach continuously to the rear wall")
 
 	var cat_wall:=chapter.get_node_or_null("Catacombs/CatacombVisual/Room01WallL") as MeshInstance3D
 	if cat_wall and cat_wall.mesh is BoxMesh:
