@@ -1,6 +1,8 @@
 class_name CombatPresenter
 extends Node
 
+signal impact_presented(target_side: String, guarded: bool)
+
 var shadow_visual: Node3D
 var enemy_visual: Node3D
 var shadow_origin := Vector3.ZERO
@@ -70,6 +72,8 @@ func _impact_flash(target: Node3D, guarded: bool) -> void:
 	mat.albedo_color = Color(0.75,0.68,0.46,0.95) if guarded else Color(0.72,0.78,0.88,0.92)
 	sphere.material = mat; flash.mesh = sphere
 	target.add_child(flash); flash.position = Vector3(0,1.1,-0.45)
+	var target_side := "shadow" if target == shadow_visual else "enemy"
+	emit_signal("impact_presented",target_side,guarded)
 	var t := create_tween(); t.set_parallel(true)
 	var flash_scale:=Vector3(2.0,2.0,2.0) if reduced_motion else Vector3(4.0,4.0,4.0)
 	var flash_time:=0.08 if reduced_motion else 0.14
