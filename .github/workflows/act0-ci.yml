@@ -117,6 +117,18 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/act1_scene_smoke.gd 2>&1 | tee /tmp/act1-scene.log
           ! grep -q "SCRIPT ERROR:" /tmp/act1-scene.log
 
+      - name: Run Act 1 Poison Rat behavior test
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act1_poison_behavior_tests.gd 2>&1 | tee /tmp/act1-poison.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act1-poison.log
+
+      - name: Enforce Act 1.1 iPhone runtime budgets
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act1_ios_runtime_budget_tests.gd 2>&1 | tee /tmp/act1-ios-runtime-budget.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act1-ios-runtime-budget.log
+
       - name: Enforce iPhone runtime scene budgets
         run: |
           set -o pipefail
