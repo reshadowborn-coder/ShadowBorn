@@ -15,6 +15,7 @@ func _check(condition:bool,message:String)->void:
 func _run()->void:
 	_test_priority_and_stability()
 	_test_duplicate_and_chain_guards()
+	_test_transaction_scoped_identity()
 	_test_reaction_is_not_a_turn()
 	print("Combat reaction queue tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
@@ -41,6 +42,18 @@ func _test_duplicate_and_chain_guards()->void:
 	for i in range(CombatReactionQueue.MAX_PENDING-1):
 		_check(queue.queue_reaction(StringName("actor_%d"%i),StringName("reaction_%d"%i),CombatReactionQueue.KIND_ASSIST),"bounded reaction slot accepts valid entry %d"%i)
 	_check(not queue.queue_reaction(&"overflow",&"overflow",CombatReactionQueue.KIND_ASSIST),"reaction queue has a hard per-window cap")
+
+func _test_transaction_scoped_identity()->void:
+	var queue:=CombatReactionQueue.new()
+	queue.begin_window(77)
+	var payload_a:Dictionary={"event":{"transaction_id":1001}}
+	var payload_b:Dictionary={"event":{"transaction_id":1002}}
+	_check(queue.queue_reaction(&"shadow",&"same_passive",CombatReactionQueue.KIND_FOLLOW_UP,0,0,payload_a),"reaction identity accepts first source action")
+	_check(not queue.queue_reaction(&"shadow",&"same_passive",CombatReactionQueue.KIND_FOLLOW_UP,0,0,payload_a),"same passive cannot duplicate inside one source action")
+	_check(queue.queue_reaction(&"shadow",&"same_passive",CombatReactionQueue.KIND_FOLLOW_UP,0,0,payload_b),"same passive may react to a distinct source action in the same natural turn")
+	var first:=queue.pop_next()
+	var second:=queue.pop_next()
+	_check(int(first.get("source_transaction_id",0))==1001 and int(second.get("source_transaction_id",0))==1002,"queued reactions preserve source action provenance")
 
 func _test_reaction_is_not_a_turn()->void:
 	var timeline:=CombatTurnTimeline.new()

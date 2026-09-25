@@ -37,7 +37,9 @@ func queue_reaction(
 	if _pending.size()>=MAX_PENDING:
 		return false
 
-	var key:="%s|%s|%s|%d"%[str(actor_id),str(reaction_id),str(kind),_window_serial]
+	var source_transaction_id:=_source_transaction_id(payload)
+	var source_scope:="tx:%d"%source_transaction_id if source_transaction_id>0 else "turn:%d"%_window_serial
+	var key:="%s|%s|%s|%s"%[str(actor_id),str(reaction_id),str(kind),source_scope]
 	if _seen.has(key):
 		return false
 	_seen[key]=true
@@ -49,6 +51,7 @@ func queue_reaction(
 		"priority":priority,
 		"chain_depth":chain_depth,
 		"source_turn_serial":_window_serial,
+		"source_transaction_id":source_transaction_id,
 		"payload":payload.duplicate(true),
 		"order":_insertion_counter
 	})
@@ -93,3 +96,13 @@ func snapshot()->Dictionary:
 		"pending":_pending.duplicate(true),
 		"count":_pending.size()
 	}
+
+
+static func _source_transaction_id(payload:Dictionary)->int:
+	var direct:=int(payload.get("source_transaction_id",0))
+	if direct>0:
+		return direct
+	var event_value=payload.get("event")
+	if typeof(event_value)==TYPE_DICTIONARY:
+		return maxi(0,int((event_value as Dictionary).get("transaction_id",0)))
+	return 0
