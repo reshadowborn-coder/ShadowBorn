@@ -232,9 +232,10 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	else:
 		var clean:Array=[]
 		var seen:Dictionary={}
+		var known_ids:=Act0Contract.all_encounter_ids()
 		for value in state.cleared_encounters:
 			var id:=str(value)
-			if id.is_empty() or seen.has(id):
+			if id.is_empty() or seen.has(id) or id not in known_ids:
 				continue
 			seen[id]=true
 			clean.append(id)
@@ -301,6 +302,12 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 				state.cleared_encounters.append(id)
 	elif "armless" in state.cleared_encounters and "hound" not in state.cleared_encounters:
 		state.cleared_encounters.append("hound")
+
+	# Catacomb clear IDs are never trusted as independent progress evidence.
+	# Room progress is authoritative. Remove the whole Catacomb ledger now and
+	# rebuild only the rooms proven complete by catacomb_room below.
+	for id in Act0Contract.all_catacomb_encounter_ids():
+		state.cleared_encounters.erase(id)
 
 	var hound_cleared:bool="hound" in state.cleared_encounters
 	var armless_cleared:bool="armless" in state.cleared_encounters
