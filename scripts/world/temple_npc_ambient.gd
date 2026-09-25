@@ -54,6 +54,14 @@ func _process(delta:float) -> void:
 func _wave(speed:float, phase:float=0.0) -> float:
 	return sin((_time + phase_offset + phase) * speed) * motion_scale
 
+func _phase(period:float) -> float:
+	return fposmod(_time + phase_offset, period)
+
+func _segment(value:float, start:float, end:float) -> float:
+	if end <= start:
+		return 0.0
+	return smoothstep(0.0, 1.0, clampf((value - start) / (end - start), 0.0, 1.0))
+
 func _update_keeper() -> void:
 	position = _base_position + Vector3(0.0, 0.012 * _wave(1.4), 0.0)
 	rotation_degrees = _base_rotation + Vector3(0.0, 1.2 * _wave(0.45), 0.35 * _wave(0.8))
@@ -62,41 +70,56 @@ func _update_keeper() -> void:
 		_head.rotation_degrees.x = 1.2 * _wave(0.55, 0.8)
 
 func _update_smith() -> void:
-	position = _base_position + Vector3(0.0, 0.008 * _wave(2.0), 0.0)
-	rotation_degrees = _base_rotation + Vector3(1.5 * _wave(1.1), 0.6 * _wave(0.55), 0.0)
+	position = _base_position + Vector3(0.0, 0.006 * _wave(1.2), 0.0)
+	rotation_degrees = _base_rotation + Vector3(0.8 * _wave(0.7), 0.4 * _wave(0.35), 0.0)
 	if _work_arm:
-		# Slow, deliberate working rhythm. The hammer stays parented to the hand.
-		var strike := (sin((_time + phase_offset) * 2.35) + 1.0) * 0.5
-		_work_arm.rotation_degrees.x = lerpf(-18.0, 28.0, strike) * motion_scale
+		# One authored work beat followed by a real rest, rather than a
+		# metronomic hammer loop. The prop remains parented to the hand.
+		var t := _phase(4.6)
+		var hammer_x := -18.0
+		if t < 0.55:
+			hammer_x = lerpf(-18.0, -42.0, _segment(t, 0.0, 0.55))
+		elif t < 0.76:
+			hammer_x = lerpf(-42.0, 30.0, _segment(t, 0.55, 0.76))
+		elif t < 1.18:
+			hammer_x = lerpf(30.0, -18.0, _segment(t, 0.76, 1.18))
+		_work_arm.rotation_degrees.x = hammer_x * motion_scale
 		_work_arm.rotation_degrees.z = -8.0 * motion_scale
 	if _off_arm:
-		_off_arm.rotation_degrees.x = -12.0 + 3.0 * _wave(1.15)
+		_off_arm.rotation_degrees.x = -12.0 + 2.0 * _wave(0.65)
 	if _head:
-		_head.rotation_degrees.x = 2.0 + 1.5 * _wave(0.9)
+		_head.rotation_degrees.x = 2.0 + 1.1 * _wave(0.48)
 
 func _update_merchant() -> void:
-	position = _base_position + Vector3(0.0, 0.01 * _wave(1.25), 0.0)
-	rotation_degrees = _base_rotation + Vector3(0.0, 1.0 * _wave(0.5), 0.0)
+	position = _base_position + Vector3(0.0, 0.008 * _wave(1.0), 0.0)
+	rotation_degrees = _base_rotation + Vector3(0.0, 0.7 * _wave(0.32), 0.0)
+	var inspect_t := _phase(7.2)
+	var inspecting := inspect_t < 2.2
 	if _head:
-		_head.rotation_degrees.y = 8.0 * _wave(0.28)
-		_head.rotation_degrees.x = 1.5 * _wave(0.7, 0.5)
+		var inspect_bias := -6.0 if inspecting else 0.0
+		_head.rotation_degrees.y = inspect_bias + 6.0 * _wave(0.24)
+		_head.rotation_degrees.x = (2.0 if inspecting else 0.0) + 1.0 * _wave(0.52, 0.5)
 	if _work_arm:
-		_work_arm.rotation_degrees.x = -14.0 + 6.0 * _wave(0.8)
-		_work_arm.rotation_degrees.z = 7.0 + 2.0 * _wave(0.55)
+		_work_arm.rotation_degrees.x = (-20.0 if inspecting else -12.0) + 3.0 * _wave(0.55)
+		_work_arm.rotation_degrees.z = 7.0 + 1.5 * _wave(0.38)
 	if _focus_prop:
-		_focus_prop.rotation_degrees.y = 9.0 * _wave(0.7)
-		_focus_prop.position.y = 1.18 + 0.012 * _wave(1.3)
+		var inspect_weight := 1.0 - _segment(inspect_t, 1.6, 2.2) if inspecting else 0.0
+		_focus_prop.rotation_degrees.y = 14.0 * _wave(0.55) * inspect_weight
+		_focus_prop.position.y = 1.18 + 0.018 * inspect_weight
 
 func _update_engraver() -> void:
-	position = _base_position + Vector3(0.0, 0.008 * _wave(1.0), 0.0)
-	rotation_degrees = _base_rotation + Vector3(1.0 * _wave(0.65), 0.5 * _wave(0.35), 0.0)
+	position = _base_position + Vector3(0.0, 0.006 * _wave(0.8), 0.0)
+	rotation_degrees = _base_rotation + Vector3(0.8 * _wave(0.5), 0.35 * _wave(0.28), 0.0)
+	var work_t := _phase(5.8)
+	var working := work_t < 2.7
 	if _head:
-		_head.rotation_degrees.x = 5.0 + 1.8 * _wave(0.75)
+		_head.rotation_degrees.x = (6.0 if working else 2.0) + 1.2 * _wave(0.6)
 	if _work_arm:
-		_work_arm.rotation_degrees.x = -32.0 + 5.0 * _wave(1.4)
-		_work_arm.rotation_degrees.z = -10.0 + 2.0 * _wave(0.9)
+		var scribble := _wave(2.4) if working else 0.0
+		_work_arm.rotation_degrees.x = -30.0 + 4.0 * scribble
+		_work_arm.rotation_degrees.z = -10.0 + 2.2 * scribble
 	if _off_arm:
-		_off_arm.rotation_degrees.x = -20.0 + 3.0 * _wave(1.1, 0.4)
+		_off_arm.rotation_degrees.x = -20.0 + (2.0 * _wave(0.75, 0.4) if working else 0.0)
 	if _focus_prop:
-		var pulse := 1.0 + 0.05 * maxf(0.0, _wave(1.8))
+		var pulse := 1.0 + (0.045 * maxf(0.0, _wave(1.9)) if working else 0.0)
 		_focus_prop.scale = Vector3.ONE * pulse
