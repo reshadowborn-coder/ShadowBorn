@@ -324,6 +324,26 @@ func _test_save_recovery()->void:
 	_check(int(huge_numeric_recovery.silver)==1,"huge numeric corruption still converges to the one canonical pre-forge Silver after late-progress repair")
 	_check(int(huge_numeric_recovery.catacomb_room)==0,"impossible future Catacomb room rolls back safely without forge evidence")
 
+	var structured_strings:=SaveManager.default_state()
+	structured_strings.checkpoint={"nested":"value"}
+	structured_strings.performance_mode=["smooth60"]
+	structured_strings.shadow_identity={"male":true}
+	structured_strings.act0_stage=["complete"]
+	structured_strings.weapon_family={"family":"bow"}
+	var noisy_clears:Array=[]
+	for i in range(256):
+		noisy_clears.append({"fake":i})
+	noisy_clears[0]="hound"
+	noisy_clears[1]="armless"
+	structured_strings.cleared_encounters=noisy_clears
+	var structured_recovery:=SaveManager._migrate(structured_strings)
+	_check(str(structured_recovery.performance_mode)=="smooth60","structured performance mode falls back without stringifying nested JSON")
+	_check(str(structured_recovery.shadow_identity).is_empty(),"structured identity falls back safely")
+	_check(str(structured_recovery.weapon_family).is_empty(),"structured weapon family falls back safely")
+	_check(str(structured_recovery.act0_stage)==Act0Contract.STAGE_EXTERIOR,"structured stage falls back to exterior")
+	_check(structured_recovery.cleared_encounters.size()<=Act0Contract.all_encounter_ids().size(),"oversized encounter ledger is bounded to canonical IDs")
+	_check(str(structured_recovery.checkpoint) in ["awakening","hound_cleared","armless_cleared"],"structured checkpoint is repaired from canonical progression evidence")
+
 	var malformed_flags:=SaveManager.default_state()
 	malformed_flags.covenant_joined="false"
 	malformed_flags.first_forge_done=1
