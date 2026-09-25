@@ -13,6 +13,7 @@ func _check(condition:bool,message:String)->void:
 		push_error("FAIL: "+message)
 
 func _run()->void:
+	_test_fixed_contract()
 	_test_temple_progression()
 	_test_all_weapon_families()
 	_test_catacomb_progression()
@@ -23,24 +24,46 @@ func _run()->void:
 	print("Act 0 state tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
+func _test_fixed_contract()->void:
+	_check(Act0Contract.STAGES.size()==8,"Act 0 exposes exactly eight canonical progression stages")
+	_check(not Act0Contract.can_transition(Act0Contract.STAGE_EXTERIOR,Act0Contract.STAGE_FIRST_FORGE),"fixed contract rejects stage skipping")
+	_check(Act0Contract.can_transition(Act0Contract.STAGE_EXTERIOR,Act0Contract.STAGE_TEMPLE_ENTRY),"fixed contract allows exterior -> Temple threshold")
+	_check(not Act0Contract.can_start_exterior_encounter("armless",[]),"Armless cannot start before Hound")
+	_check(Act0Contract.can_start_exterior_encounter("armless",["hound"]),"Armless unlocks after Hound")
+	_check(not Act0Contract.can_start_exterior_encounter("shield_boss",["hound"]),"Shield cannot start before Armless")
+	_check(Act0Contract.can_start_exterior_encounter("shield_boss",["hound","armless"]),"Shield unlocks only after both exterior prerequisites")
+	var weapon_keys:Array=Act0Progression.WEAPONS.keys()
+	_check(weapon_keys.size()==Act0Contract.WEAPON_FAMILIES.size(),"weapon data count matches fixed family contract")
+	for family in Act0Contract.WEAPON_FAMILIES:
+		_check(Act0Progression.WEAPONS.has(family),"fixed weapon family %s has progression data"%family)
+
 func _test_temple_progression()->void:
 	var state:=SaveManager.default_state()
 	_check(int(state.silver)==0,"new game starts with zero Silver")
 	_check(str(state.act0_stage)=="exterior","new game starts in exterior stage")
 	_check(not bool(state.reduced_motion),"Reduced Motion defaults off without affecting gameplay")
+	_check(not bool(state.hound_residual_absorbed) and not bool(state.faded_sigil_activated),"new game starts before one-shot exterior threshold beats")
 
 	var p:=Act0Progression.new()
 	p.restore(state)
 	_check(not p.join_covenant(),"Covenant cannot be joined before Temple entry")
-	p.stage="temple_entry"
-	_check(p.join_covenant(),"Covenant joins at Temple entry")
-	_check(p.stage=="weapon_choice","Covenant advances to weapon choice")
+	_check(p.mark_hound_residual_absorbed(),"Hound residual absorption is a one-shot exterior beat")
+	_check(not p.mark_hound_residual_absorbed(),"Hound residual absorption cannot duplicate")
+	p.stage=Act0Contract.STAGE_TEMPLE_ENTRY
+	_check(not p.join_covenant(),"Covenant remains locked until the Faded Sigil threshold")
+	_check(p.activate_faded_sigil(),"Faded Sigil activates once after Shield/Temple threshold")
+	_check(not p.activate_faded_sigil(),"Faded Sigil activation cannot duplicate")
+	_check(p.join_covenant(),"Covenant joins after the threshold is satisfied")
+	_check(p.stage==Act0Contract.STAGE_WEAPON_CHOICE,"Covenant advances to weapon choice")
 	_check(p.choose_weapon("sword_shield"),"valid weapon family can be selected")
 	_check(not p.choose_weapon("bow"),"weapon choice is irreversible after confirmation")
 	_check(not p.can_first_forge(),"forge is blocked without Silver")
 	p.silver=1
 	var candidate:=p.first_forge_candidate()
 	_check(not candidate.is_empty(),"forge candidate exists with one Silver")
+	var tampered:=candidate.duplicate(true)
+	tampered["level"]=1
+	_check(not p.apply_first_forge(tampered),"first forge rejects non-canonical item payloads")
 	_check(p.apply_first_forge(candidate),"first forge commits")
 	_check(p.silver==0,"first forge debits exactly one Silver")
 	_check(p.first_forge_done and p.stage=="catacombs","first forge advances to Catacombs")
@@ -50,8 +73,10 @@ func _test_all_weapon_families()->void:
 	for family_value in Act0Progression.WEAPONS.keys():
 		var family:=str(family_value)
 		var state:=SaveManager.default_state()
-		state.act0_stage="temple_entry"
-		state.cleared_encounters=["shield_boss"]
+		state.act0_stage=Act0Contract.STAGE_TEMPLE_ENTRY
+		state.cleared_encounters=["hound","armless","shield_boss"]
+		state.hound_residual_absorbed=true
+		state.faded_sigil_activated=true
 		state.silver=1
 		var p:=Act0Progression.new()
 		p.restore(state)
@@ -123,6 +148,19 @@ func _test_save_recovery()->void:
 	var ledger:=SaveManager._migrate(late_room)
 	_check("cat_r1_skeleton" in ledger.cleared_encounters and "cat_r4_revenant" in ledger.cleared_encounters,"room progress rebuilds missing encounter visual ledger")
 	_check(int(ledger.route_index)==Chapter00Director.ROUTE.size()-1,"Temple/Catacomb progress repairs exterior route index")
+	_check("hound" in ledger.cleared_encounters and "armless" in ledger.cleared_encounters and "shield_boss" in ledger.cleared_encounters,"later progress repairs the complete mandatory exterior encounter chain")
+	_check(bool(ledger.hound_residual_absorbed) and bool(ledger.faded_sigil_activated),"later progress repairs one-shot exterior threshold invariants")
+
+	var legacy:=SaveManager.default_state()
+	legacy.version=4
+	legacy.erase("hound_residual_absorbed")
+	legacy.erase("faded_sigil_activated")
+	legacy.cleared_encounters=["shield_boss"]
+	legacy.act0_stage=Act0Contract.STAGE_TEMPLE_ENTRY
+	legacy.silver=1
+	var legacy_resume:=SaveManager._migrate(legacy)
+	_check(bool(legacy_resume.hound_residual_absorbed) and bool(legacy_resume.faded_sigil_activated),"v4 saves migrate forward without replaying newly persisted one-shot beats")
+	_check("hound" in legacy_resume.cleared_encounters and "armless" in legacy_resume.cleared_encounters,"v4 Shield progress reconstructs skipped exterior prerequisites")
 
 func _test_resume_transition_matrix()->void:
 	var exterior:=SaveManager._migrate(SaveManager.default_state())
@@ -136,6 +174,7 @@ func _test_resume_transition_matrix()->void:
 	_check(str(temple_resume.act0_stage)=="temple_entry" and int(temple_resume.silver)>=1,"resume preserves Temple entry and first Silver")
 
 	var covenant:=temple.duplicate(true)
+	covenant.faded_sigil_activated=true
 	covenant.covenant_joined=true
 	covenant.act0_stage="weapon_choice"
 	var covenant_resume:=SaveManager._migrate(covenant)
@@ -178,6 +217,8 @@ func _test_resume_transition_matrix()->void:
 	var team:=TeamState.new()
 	team.restore(rematch_resume)
 	_check(StoryCompanion.ID in team.active_ids(),"resume restores the first story team slot")
+	team.restore(SaveManager.default_state())
+	_check(StoryCompanion.ID not in team.active_ids(),"team restore is idempotent and relocks slot 2 for an earlier state")
 
 	var complete:=rematch.duplicate(true)
 	complete.act0_complete=true
