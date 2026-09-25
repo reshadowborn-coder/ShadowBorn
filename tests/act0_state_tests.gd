@@ -179,6 +179,35 @@ func _test_save_recovery()->void:
 	_check(bool(legacy_resume.hound_residual_absorbed) and bool(legacy_resume.temple_reveal_seen) and bool(legacy_resume.faded_sigil_activated),"v4 saves migrate forward without replaying newly persisted one-shot beats")
 	_check("hound" in legacy_resume.cleared_encounters and "armless" in legacy_resume.cleared_encounters,"v4 Shield progress reconstructs skipped exterior prerequisites")
 
+	var bad_cat:=SaveManager.default_state()
+	bad_cat.cleared_encounters=["hound","armless","shield_boss"]
+	bad_cat.temple_reveal_seen=true
+	bad_cat.faded_sigil_activated=true
+	bad_cat.covenant_joined=true
+	bad_cat.weapon_family="bow"
+	bad_cat.first_forge_done=true
+	bad_cat.forged_item={"id":"shadow_bow_01","family":"bow","level":0,"bonus_unlocked":false,"equipped":true}
+	bad_cat.catacomb_room=3
+	bad_cat.act0_stage=Act0Contract.STAGE_CATACOMBS
+	bad_cat.checkpoint_position=[999.0,999.0,999.0]
+	var cat_recovery:=SaveManager._migrate(bad_cat)
+	_check(cat_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT),"corrupt Catacomb checkpoint recovers to the safe entry anchor")
+
+	var bad_temple:=SaveManager.default_state()
+	bad_temple.cleared_encounters=["hound","armless","shield_boss"]
+	bad_temple.temple_reveal_seen=true
+	bad_temple.act0_stage=Act0Contract.STAGE_TEMPLE_ENTRY
+	bad_temple.silver=1
+	bad_temple.checkpoint_position=[0.0,0.9,8.0]
+	var temple_recovery:=SaveManager._migrate(bad_temple)
+	var sigil_recovery:=Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z)
+	_check(temple_recovery.checkpoint_position==SaveManager._vector3_array(sigil_recovery),"pre-Sigil Temple state cannot resume outside the threshold zone")
+
+	var valid_cat:=bad_cat.duplicate(true)
+	valid_cat.checkpoint_position=[0.0,0.9,-150.0]
+	var valid_recovery:=SaveManager._migrate(valid_cat)
+	_check(valid_recovery.checkpoint_position==[0.0,0.9,-150.0],"valid in-stage checkpoint coordinates are preserved")
+
 func _test_resume_transition_matrix()->void:
 	var exterior:=SaveManager._migrate(SaveManager.default_state())
 	_check(str(exterior.act0_stage)=="exterior","resume preserves fresh exterior state")
