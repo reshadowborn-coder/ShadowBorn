@@ -510,6 +510,15 @@ func _show_room5_visuals(value:bool)->void:
 func _start_room5_solo_attempt(enemies:Array)->void:
 	if room5_active:
 		return
+	if not room5_combat.start(enemies,false,true):
+		room5_active=false
+		room5_solo_attempt=false
+		room5_hud.close()
+		camera_rig.exit_combat()
+		shadow.set_physics_process(true)
+		_refresh_navigation()
+		story_toast.show_message("The Room 5 encounter could not start safely. Try again.")
+		return
 	room5_active=true
 	room5_solo_attempt=true
 	shadow.set_physics_process(false)
@@ -517,10 +526,18 @@ func _start_room5_solo_attempt(enemies:Array)->void:
 	_stage_room5_scene()
 	_set_room5_target_visual(0)
 	room5_hud.open()
-	room5_combat.start(enemies,false,true)
 
 func _start_room5_rematch(enemies:Array) -> void:
 	if room5_active:
+		return
+	if not room5_combat.start(enemies,true,false):
+		room5_active=false
+		room5_solo_attempt=false
+		room5_hud.close()
+		camera_rig.exit_combat()
+		shadow.set_physics_process(true)
+		_refresh_navigation()
+		story_toast.show_message("The Room 5 rematch could not start safely. Try again.")
 		return
 	room5_active=true
 	room5_solo_attempt=false
@@ -529,7 +546,6 @@ func _start_room5_rematch(enemies:Array) -> void:
 	_stage_room5_scene()
 	_set_room5_target_visual(0)
 	room5_hud.open()
-	room5_combat.start(enemies,true,false)
 
 func room5_select_target(index:int) -> void:
 	if room5_active and not _ui_modal_open():
