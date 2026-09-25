@@ -181,9 +181,12 @@ jobs:
         run: |
           set -euo pipefail
           APK=build/android/Shadowborn-Act0-QA.apk
-          AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
-          "$AAPT" dump badging "$APK" | tee build/android/apk-badging.txt
-          grep -q "package: name='org.shadowborn.chapter0.qa'" build/android/apk-badging.txt
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$APKANALYZER"
+          PACKAGE_ID="$("$APKANALYZER" manifest application-id "$APK" | tr -d '\r\n')"
+          printf '%s\n' "$PACKAGE_ID" | tee build/android/apk-package-id.txt
+          test "$PACKAGE_ID" = "org.shadowborn.chapter0.qa"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" > build/android/apk-badging.txt 2>&1 || true
           zipinfo -1 "$APK" > build/android/apk-files.txt
           grep -q '^lib/arm64-v8a/' build/android/apk-files.txt
           ! grep -q '^lib/armeabi-v7a/' build/android/apk-files.txt
@@ -199,5 +202,6 @@ jobs:
             build/android/Shadowborn-Act0-QA.apk
             build/android/Shadowborn-Act0-QA.apk.sha256
             build/android/apk-badging.txt
+            build/android/apk-package-id.txt
           if-no-files-found: error
           retention-days: 7
