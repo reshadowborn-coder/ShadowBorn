@@ -62,6 +62,9 @@ func _run()->void:
 	var game:=chapter.get_node_or_null("Game") as Chapter01Game
 	_check(game!=null,"Chapter01Game coordinator is mounted")
 	if game:
+		if OS.is_debug_build():
+			_check(game.combat_trace is CombatFrameTrace,"Act 1 debug scene mounts the shared combat frame trace")
+			_check(game.combat_trace._multi_attached,"Act 1 combat trace observes multi-enemy encounters")
 		_check(game.progression.stage==Act1Contract.STAGE_SEWER_ROOM1,"Act 1 scene restores first sewer stage")
 		_check(game.shadow.global_position.is_equal_approx(Act1Layout.SEWER_ENTRY),"Act 1 scene restores the sewer entry checkpoint")
 		_check(str(game.shadow_proxy.weapon_root.name)=="WeaponVisual" if game.shadow_proxy.weapon_root else false,"Act 1 preserves the forged weapon visual")

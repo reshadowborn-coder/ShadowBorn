@@ -24,6 +24,7 @@ var reduced_motion:=false
 var active_enemy_visual:Node3D
 var pack_visual_cache:Array[Node3D]=[]
 var pack_active:=false
+var combat_trace:CombatFrameTrace
 var last_committed_state:Dictionary={}
 var mobile_reflow_pending:=false
 
@@ -70,6 +71,16 @@ func _connect_runtime()->void:
 	watch_menu.accepted.connect(_accept_temple_watch)
 	watch_menu.menu_opened.connect(_refresh_navigation)
 	watch_menu.menu_closed.connect(_refresh_navigation)
+	if OS.is_debug_build():
+		combat_trace=CombatFrameTrace.new()
+		var trace_console:=bool(ProjectSettings.get_setting("debug/shadowborn/combat_trace_console",true))
+		if "--shadowborn-trace-quiet" in OS.get_cmdline_user_args() or "--shadowborn-trace-quiet" in OS.get_cmdline_args():
+			trace_console=false
+		combat_trace.set_console_output(trace_console)
+		add_child(combat_trace)
+		combat_trace.attach(encounter,presenter,hud)
+		combat_trace.attach_multi(pack_combat)
+		combat_trace.set_context(performance_mode,reduced_motion)
 
 func _restore_state(state:Dictionary)->void:
 	cleared_encounters.assign(state.get("cleared_encounters",[]))
@@ -442,11 +453,15 @@ func _open_settings()->void:
 func _on_performance_mode_changed(mode:String)->void:
 	performance_mode=mode
 	_apply_performance_mode()
+	if combat_trace:
+		combat_trace.set_context(performance_mode,reduced_motion)
 	_save_progress()
 
 func _on_reduced_motion_changed(value:bool)->void:
 	reduced_motion=value
 	_apply_presentation_settings()
+	if combat_trace:
+		combat_trace.set_context(performance_mode,reduced_motion)
 	_save_progress()
 
 func _apply_performance_mode()->void:

@@ -10,7 +10,9 @@ var frame_pre_us := 0
 var _waiting_events: Array[Dictionary] = []
 var _frame_events: Array[Dictionary] = []
 var _last_state: Dictionary = {}
+var _last_multi_state: Dictionary = {}
 var _attached := false
+var _multi_attached := false
 var console_output := true
 
 func set_console_output(value: bool) -> void:
@@ -49,6 +51,24 @@ func attach(controller: EncounterController, presenter: CombatPresenter, hud: Co
 			"vfx":true,
 			"sfx":false,
 			"actual_present":"external_surfaceflinger_or_perfetto"
+		}))
+
+func attach_multi(controller: MultiEnemyEncounter) -> void:
+	if _multi_attached:
+		return
+	_multi_attached = true
+	controller.command_committed.connect(_on_multi_command_committed)
+	controller.shadow_attack_presented.connect(_on_multi_shadow_attack_presented)
+	controller.enemy_attack_presented.connect(_on_multi_enemy_attack_presented)
+	controller.companion_attack_presented.connect(_on_multi_companion_attack_presented)
+	controller.state_changed.connect(_on_multi_state_changed)
+	if console_output:
+		print("SB_TRACE " + JSON.stringify({
+			"event":"trace_capabilities_multi",
+			"ts_us":Time.get_ticks_usec(),
+			"multi_enemy":true,
+			"target_index":true,
+			"action_lock":true
 		}))
 
 func set_context(performance_mode: String, is_reduced_motion: bool) -> void:
@@ -121,6 +141,50 @@ func _on_hud_updated(player_hp_text: String, enemy_hp_text: String, state_text: 
 		"action_locked":action_locked,
 		"a2_cd":a2_cd
 	})
+
+func _on_multi_command_committed(skill:String)->void:
+	_mark("multi_command_committed",{"skill":skill})
+
+func _on_multi_shadow_attack_presented(target_index:int,skill:String,damage:float)->void:
+	_mark("multi_shadow_presentation_start",{"target_index":target_index,"action":skill,"damage":damage})
+
+func _on_multi_enemy_attack_presented(enemy_index:int,damage:float)->void:
+	_mark("multi_enemy_presentation_start",{"enemy_index":enemy_index,"action":"ATTACK","damage":damage})
+
+func _on_multi_companion_attack_presented(target_index:int,damage:float)->void:
+	_mark("multi_companion_presentation_start",{"target_index":target_index,"action":"A1","damage":damage})
+
+func _on_multi_state_changed(state:Dictionary)->void:
+	var current:=state.duplicate(true)
+	if _last_multi_state.is_empty():
+		_last_multi_state=current
+		_mark("multi_state_initial",_multi_state_summary(current))
+		return
+	var before_summary:=_multi_state_summary(_last_multi_state)
+	var after_summary:=_multi_state_summary(current)
+	if before_summary!=after_summary:
+		_mark("multi_state_projection",after_summary)
+	if bool(_last_multi_state.get("action_locked",false)) and not bool(current.get("action_locked",false)):
+		_mark("multi_recovery_unlock",after_summary)
+	_last_multi_state=current
+
+func _multi_state_summary(state:Dictionary)->Dictionary:
+	var enemy_hps:Array[float]=[]
+	for enemy_value in state.get("enemies",[]):
+		var enemy:Dictionary=enemy_value
+		enemy_hps.append(float(enemy.get("current_hp",enemy.get("hp",0.0))))
+	return {
+		"action_locked":bool(state.get("action_locked",false)),
+		"shadow_hp":float(state.get("shadow_hp",0.0)),
+		"enemy_hps":enemy_hps,
+		"selected":int(state.get("selected",0)),
+		"rounds":int(state.get("rounds",0)),
+		"a2_cd":int(state.get("a2_cd",0)),
+		"solo_limit_mode":bool(state.get("solo_limit_mode",false)),
+		"limit_reached":bool(state.get("limit_reached",false)),
+		"fray":bool(state.get("fray",false)),
+		"veil":float(state.get("veil",0.0))
+	}
 
 func _on_combat_state_changed(state: Dictionary) -> void:
 	var current := state.duplicate(true)
