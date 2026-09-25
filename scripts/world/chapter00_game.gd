@@ -407,16 +407,19 @@ func temple_interact(kind:String) -> void:
 			var before_state:=_build_save_state()
 			var before_position:=shadow.global_position
 			var before_checkpoint:=checkpoint_position
+			var before_checkpoint_id:=director.checkpoint
 			if act0_flow.enter_catacombs():
 				checkpoint_position=Act0Layout.CATACOMB_ENTRY_CHECKPOINT
 				shadow.global_position=checkpoint_position
 				shadow.velocity=Vector3.ZERO
+				director.set_checkpoint("catacombs_entry")
 				if _save_progress():
 					story_toast.show_message("The lower passage opens. The air below carries old bone-dust.")
 				else:
 					act0.restore(before_state)
 					catacombs.restore(before_state)
 					checkpoint_position=before_checkpoint
+					director.set_checkpoint(before_checkpoint_id)
 					shadow.global_position=before_position
 					shadow.velocity=Vector3.ZERO
 					story_toast.show_message("The lower passage closes again. Progress could not be saved.")
