@@ -11,7 +11,7 @@ func _init(seed_value:int=1)->void:
 	seed(seed_value)
 
 func seed(seed_value:int)->void:
-	var normalized:=abs(seed_value)%MODULUS
+	var normalized:int=absi(seed_value)%MODULUS
 	_state=1 if normalized==0 else normalized
 
 func next_u31()->int:
