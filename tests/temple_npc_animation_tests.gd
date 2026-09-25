@@ -28,7 +28,8 @@ func _run()->void:
 		"keeper":"TempleInterior/TempleVisual/Keeper",
 		"smith":"TempleInterior/TempleVisual/SmithStation/SmithNPC",
 		"merchant":"TempleInterior/TempleVisual/MerchantStation/MerchantNPC",
-		"engraver":"TempleInterior/TempleVisual/EngraverStation/EngraverNPC"
+		"engraver":"TempleInterior/TempleVisual/EngraverStation/EngraverNPC",
+		"warden":"TempleInterior/TempleVisual/GraveboundWarden"
 	}
 
 	for profile in paths:
@@ -81,6 +82,16 @@ func _run()->void:
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
+		var warden:=chapter.get_node_or_null(paths["warden"]) as TempleNpcIdle
+		if warden:
+			_check(not warden.visible,"story companion is absent from the fresh Temple")
+			game.catacombs.summon_unlocked=true
+			game._apply_threshold_visual_state()
+			_check(warden.visible,"committed story summon materializes the fixed companion in the Temple")
+			game.catacombs.summon_unlocked=false
+			game._apply_threshold_visual_state()
+			_check(not warden.visible,"rolling story state back hides the companion visual again")
+
 		var merchant:=chapter.get_node_or_null(paths["merchant"]) as TempleNpcIdle
 		if merchant:
 			merchant.reaction_remaining=0.0
