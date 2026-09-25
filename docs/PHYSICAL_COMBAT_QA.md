@@ -88,3 +88,18 @@ The current trace records HUD and VFX timing but reports `sfx=false` in `trace_c
 - Godot Time `get_ticks_usec()` monotonic timing
 - Android Logcat `monotonic` and `usec` modifiers
 - Android game frame-rate measurement with SurfaceFlinger / Android Performance Analyzer
+
+
+## Observer-effect control
+
+The trace is a measurement tool and must not be assumed free. Console JSON output can itself add CPU/I/O pressure.
+
+Before interpreting a device result, run a matched A/B on the same device and scene:
+- A: normal debug capture with `CombatFrameTrace.console_output = true`;
+- B: identical debug build/path with `console_output = false` while keeping the same gameplay/presentation code.
+
+The quiet trace still completes rows in memory through `row_completed`; only console serialization/output is removed.
+
+Do not accept a contact-latency or frame-pacing conclusion if enabling live console output introduces additional missed/repeated presents or a new hitch cluster that is absent in the quiet baseline. In that case, treat live logging as intrusive and use buffered/quiet evidence plus external Perfetto/SurfaceFlinger capture.
+
+CI now runs `tests/combat_frame_trace_tests.gd` to prove that trace rows preserve payload/context, bind pending events to the next eligible engine frame, capture state projection/recovery, and do not mutate observed combat state. This is schema/invariant evidence only; it does not replace the physical A/B.
