@@ -72,6 +72,19 @@ At each point below, send the app to background, wait a moment, then resume. Als
 
 Expected rule: Continue must resume from the last committed checkpoint. No duplicate Silver, Covenant choice, forge, story companion, Room 5 completion or outward story event is allowed.
 
+## Physical combat timing capture
+
+For the Hound / Armless / Shield 30/60 and Reduced Motion matrix, follow `docs/PHYSICAL_COMBAT_QA.md`.
+
+iPhone is the primary evidence path. The same measured run must preserve:
+- `SB_TRACE` console rows from the installed build;
+- a matching Instruments Game Performance / Metal System Trace capture;
+- the exact git SHA / QA artifact identity.
+
+The trace capability row must identify `platform=iOS` and direct physical-present evidence to Xcode Instruments / Metal tooling. A Godot engine frame is not accepted as proof that the frame was presented on the iPhone display.
+
+Shield D1 Guard recognition, HOLD-vs-A2 choice, and Veil 15% vs 20% remain human-readability gates even when the technical frame trace passes.
+
 ## Device observations to record
 
 For every physical-device run, record:
