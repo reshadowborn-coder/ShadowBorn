@@ -199,7 +199,8 @@ func _test_save_recovery()->void:
 	bad_cat.act0_stage=Act0Contract.STAGE_CATACOMBS
 	bad_cat.checkpoint_position=[999.0,999.0,999.0]
 	var cat_recovery:=SaveManager._migrate(bad_cat)
-	_check(cat_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT),"corrupt Catacomb checkpoint recovers to the safe entry anchor")
+	var room3_resume:=Act0Layout.catacomb_room_resume_position(3)
+	_check(cat_recovery.checkpoint_position==SaveManager._vector3_array(room3_resume) and str(cat_recovery.checkpoint)=="cat_r2_hound_cleared","corrupt Catacomb checkpoint recovers immediately before the current room")
 
 	var bad_temple:=SaveManager.default_state()
 	bad_temple.cleared_encounters=["hound","armless","shield_boss"]
@@ -228,13 +229,20 @@ func _test_save_recovery()->void:
 	wall_cat.checkpoint="cat_r2_hound_cleared"
 	wall_cat.checkpoint_position=[5.8,0.9,-150.0]
 	var wall_cat_recovery:=SaveManager._migrate(wall_cat)
-	_check(wall_cat_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT),"Catacomb checkpoint inside side-wall geometry is relocated to the safe entry anchor")
+	_check(wall_cat_recovery.checkpoint_position==SaveManager._vector3_array(room3_resume),"Catacomb checkpoint inside side-wall geometry is relocated before the current room")
 
 	var bad_checkpoint_id:=bad_cat.duplicate(true)
 	bad_checkpoint_id.checkpoint="room5_return"
 	bad_checkpoint_id.checkpoint_position=[0.0,0.9,-150.0]
 	var id_recovery:=SaveManager._migrate(bad_checkpoint_id)
-	_check(str(id_recovery.checkpoint)=="catacombs_entry" and id_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT),"checkpoint ID from another Act 0 stage cannot survive migration")
+	_check(str(id_recovery.checkpoint)=="cat_r2_hound_cleared" and id_recovery.checkpoint_position==SaveManager._vector3_array(room3_resume),"checkpoint ID from another Act 0 stage cannot survive migration")
+
+
+	var wrong_room_position:=bad_cat.duplicate(true)
+	wrong_room_position.checkpoint="cat_r2_hound_cleared"
+	wrong_room_position.checkpoint_position=[0.0,0.9,-171.0]
+	var wrong_room_recovery:=SaveManager._migrate(wrong_room_position)
+	_check(wrong_room_recovery.checkpoint_position==SaveManager._vector3_array(room3_resume),"Room 3 checkpoint cannot carry a physically valid Room 5 position")
 
 func _test_resume_transition_matrix()->void:
 	var exterior:=SaveManager._migrate(SaveManager.default_state())
