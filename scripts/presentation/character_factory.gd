@@ -103,8 +103,17 @@ static func pose_standing(root: Node3D) -> void:
 static func play_shadow_idle(root: Node3D,speed: float = 1.0) -> bool:
 	return play_named_animation(root,["Idle_Sword","Idle","Idle_Neutral"],speed,0.16)
 
-static func play_shadow_attack(root: Node3D,speed: float = 1.0) -> bool:
-	return play_named_animation(root,["Sword_Slash","Attack","Attack_01","Basic_Attack"],speed,0.10)
+static func play_shadow_basic(root: Node3D,speed: float = 1.0) -> bool:
+	# A1: compact, readable single sword cut.
+	return play_named_animation(root,["Sword_Slash","Attack","Attack_01","Basic_Attack"],speed,0.08)
+
+static func play_shadow_heavy_prep(root: Node3D,speed: float = 1.0) -> bool:
+	# A2 starts from a completely different body motion before the sword strike.
+	return play_named_animation(root,["Roll","Run"],speed,0.08)
+
+static func play_shadow_heavy_strike(root: Node3D,speed: float = 1.0) -> bool:
+	# The second phase is deliberately slower/heavier than A1.
+	return play_named_animation(root,["Sword_Slash","Attack","Attack_01"],speed*0.78,0.06)
 
 static func play_shadow_hit(root: Node3D,speed: float = 1.0) -> bool:
 	return play_named_animation(root,["HitRecieve","HitRecieve_2","Hit","Damage"],speed,0.08)
@@ -174,18 +183,181 @@ static func _prepare_dev_shadow(root: Node3D) -> void:
 	var body := root.find_child("Adventurer_Body",true,false) as MeshInstance3D
 	var legs := root.find_child("Adventurer_Legs",true,false) as MeshInstance3D
 	var feet := root.find_child("Adventurer_Feet",true,false) as MeshInstance3D
+	var head := root.find_child("Adventurer_Head",true,false) as MeshInstance3D
 
+	var shadow_mat := _shadow_material()
 	if body:
-		body.material_override = _mat(Color(0.035,0.042,0.052),0.88,0.02)
+		body.material_override = shadow_mat
 	if legs:
-		legs.material_override = _mat(Color(0.055,0.058,0.065),0.90,0.0)
+		legs.material_override = shadow_mat
 	if feet:
-		feet.material_override = _mat(Color(0.070,0.050,0.038),0.82,0.02)
+		feet.material_override = _mat(Color(0.008,0.010,0.016),0.94,0.0)
+	if head:
+		# No human face: the imported head becomes a light-absorbing void.
+		head.material_override = _mat(Color(0.002,0.003,0.006),1.0,0.0)
 
+	_add_shadow_hood_and_eyes(root)
+	_add_shadow_mist(root)
 	_enable_shadows(root)
 
 static func _prepare_dev_hound(root: Node3D) -> void:
+	var wolf := root.find_child("Wolf",true,false) as MeshInstance3D
+	if wolf:
+		_tint_imported_materials(wolf,Color(0.46,0.56,0.42,1.0),0.18)
+	_add_hound_undead_details(root)
 	_enable_shadows(root)
+
+static func _shadow_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+void fragment() {
+	float ripple = 0.5 + 0.5 * sin(UV.y * 34.0 + TIME * 0.9 + sin(UV.x * 19.0));
+	float edge = pow(1.0 - max(dot(NORMAL, VIEW), 0.0), 2.5);
+	ALBEDO = mix(vec3(0.002,0.003,0.006), vec3(0.014,0.019,0.032), ripple * 0.32);
+	ROUGHNESS = 0.93;
+	METALLIC = 0.0;
+	EMISSION = vec3(0.015,0.025,0.055) * edge * 0.48;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+static func _add_shadow_hood_and_eyes(root: Node3D) -> void:
+	var skeleton := _find_skeleton(root)
+	if skeleton == null or skeleton.find_bone("Head") < 0:
+		return
+	if skeleton.find_child("ShadowIdentity",false,false) != null:
+		return
+
+	var socket := BoneAttachment3D.new()
+	socket.name = "ShadowIdentity"
+	socket.bone_name = "Head"
+	skeleton.add_child(socket)
+
+	var hood := MeshInstance3D.new()
+	var hood_mesh := SphereMesh.new()
+	hood_mesh.radius = 0.27
+	hood_mesh.height = 0.54
+	hood_mesh.radial_segments = 20
+	hood_mesh.rings = 10
+	hood_mesh.material = _mat(Color(0.006,0.008,0.013),0.97,0.0)
+	hood.mesh = hood_mesh
+	hood.position = Vector3(0.0,0.055,-0.012)
+	hood.scale = Vector3(1.20,1.22,1.12)
+	socket.add_child(hood)
+
+	var face_void := MeshInstance3D.new()
+	var void_mesh := SphereMesh.new()
+	void_mesh.radius = 0.19
+	void_mesh.height = 0.38
+	void_mesh.radial_segments = 16
+	void_mesh.rings = 8
+	void_mesh.material = _mat(Color(0.0,0.0,0.002),1.0,0.0)
+	face_void.mesh = void_mesh
+	face_void.position = Vector3(0.0,-0.01,0.19)
+	face_void.scale = Vector3(0.88,1.03,0.36)
+	socket.add_child(face_void)
+
+	for side in [-1.0,1.0]:
+		var eye := MeshInstance3D.new()
+		var eye_mesh := SphereMesh.new()
+		eye_mesh.radius = 0.026
+		eye_mesh.height = 0.052
+		eye_mesh.radial_segments = 12
+		eye_mesh.rings = 6
+		eye_mesh.material = _mat(Color(0.22,0.48,1.0),0.35,0.0,true)
+		eye.mesh = eye_mesh
+		eye.position = Vector3(0.067*side,0.012,0.263)
+		eye.scale = Vector3(1.25,0.72,0.55)
+		socket.add_child(eye)
+
+static func _add_shadow_mist(root: Node3D) -> void:
+	if root.find_child("ShadowMist",false,false) != null:
+		return
+	var particles := GPUParticles3D.new()
+	particles.name = "ShadowMist"
+	particles.amount = 18
+	particles.lifetime = 1.7
+	particles.randomness = 0.48
+	particles.position = Vector3(0,0.85,0)
+	particles.visibility_aabb = AABB(Vector3(-0.8,-0.4,-0.8),Vector3(1.6,2.8,1.6))
+
+	var process := ParticleProcessMaterial.new()
+	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	process.emission_box_extents = Vector3(0.32,0.72,0.22)
+	process.direction = Vector3(0,1,0)
+	process.spread = 42.0
+	process.gravity = Vector3(0,0.08,0)
+	process.initial_velocity_min = 0.03
+	process.initial_velocity_max = 0.16
+	process.scale_min = 0.07
+	process.scale_max = 0.19
+	process.color = Color(0.006,0.010,0.020,0.20)
+	particles.process_material = process
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.34,0.34)
+	var smoke_mat := StandardMaterial3D.new()
+	smoke_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smoke_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smoke_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	smoke_mat.albedo_color = Color(0.008,0.012,0.025,0.20)
+	quad.material = smoke_mat
+	particles.draw_pass_1 = quad
+	root.add_child(particles)
+
+static func _tint_imported_materials(mesh_instance: MeshInstance3D,tint: Color,roughness_add: float) -> void:
+	if mesh_instance.mesh == null:
+		return
+	for surface in range(mesh_instance.mesh.get_surface_count()):
+		var source := mesh_instance.mesh.surface_get_material(surface)
+		if source is BaseMaterial3D:
+			var copy := source.duplicate() as BaseMaterial3D
+			copy.albedo_color *= tint
+			copy.roughness = clampf(copy.roughness + roughness_add,0.0,1.0)
+			mesh_instance.set_surface_override_material(surface,copy)
+
+static func _add_hound_undead_details(root: Node3D) -> void:
+	var skeleton := _find_skeleton(root)
+	if skeleton == null:
+		return
+
+	if skeleton.find_bone("Head") >= 0:
+		var head_socket := BoneAttachment3D.new()
+		head_socket.name = "UndeadHeadFX"
+		head_socket.bone_name = "Head"
+		skeleton.add_child(head_socket)
+		for side in [-1.0,1.0]:
+			var eye := MeshInstance3D.new()
+			var mesh := SphereMesh.new()
+			mesh.radius = 0.030
+			mesh.height = 0.060
+			mesh.radial_segments = 10
+			mesh.rings = 5
+			mesh.material = _mat(Color(0.72,0.10,0.025),0.42,0.0,true)
+			eye.mesh = mesh
+			eye.position = Vector3(0.075*side,0.055,-0.225)
+			head_socket.add_child(eye)
+
+	if skeleton.find_bone("Torso2") >= 0:
+		var torso_socket := BoneAttachment3D.new()
+		torso_socket.name = "UndeadWound"
+		torso_socket.bone_name = "Torso2"
+		skeleton.add_child(torso_socket)
+		var wound := MeshInstance3D.new()
+		var wound_mesh := SphereMesh.new()
+		wound_mesh.radius = 0.12
+		wound_mesh.height = 0.24
+		wound_mesh.radial_segments = 12
+		wound_mesh.rings = 6
+		wound_mesh.material = _mat(Color(0.16,0.025,0.018),0.86,0.0)
+		wound.mesh = wound_mesh
+		wound.position = Vector3(0.18,0.02,-0.15)
+		wound.scale = Vector3(1.5,0.28,0.8)
+		torso_socket.add_child(wound)
 
 static func _prepare_sword(root: Node3D) -> void:
 	root.scale = Vector3(0.92,0.92,0.92)
