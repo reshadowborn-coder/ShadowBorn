@@ -75,6 +75,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ios_iphone_policy_tests.gd 2>&1 | tee /tmp/ios-iphone-policy.log
           ! grep -q "SCRIPT ERROR:" /tmp/ios-iphone-policy.log
 
+      - name: Validate platform runtime pressure policy
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/platform_runtime_policy_tests.gd 2>&1 | tee /tmp/platform-runtime-policy.log
+          ! grep -q "SCRIPT ERROR:" /tmp/platform-runtime-policy.log
+
       - name: Run performance and visual consistency regressions
         run: |
           set -o pipefail
@@ -435,6 +441,7 @@ jobs:
           grep -Fq "iphone-ipad-minimum-performance-a12" /tmp/iphone-required-capabilities.txt
           ! grep -Fq "iphone-performance-gaming-tier" /tmp/iphone-required-capabilities.txt
           test -f "$APP/PrivacyInfo.xcprivacy"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSSupportsGameMode' "$APP/Info.plist")" = "true"
           if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
             echo "Unexpected second device family: build is not iPhone-only" >&2
             exit 1
@@ -479,6 +486,7 @@ jobs:
           grep -Fq "iphone-ipad-minimum-performance-a12" /tmp/iphone-release-required-capabilities.txt
           ! grep -Fq "iphone-performance-gaming-tier" /tmp/iphone-release-required-capabilities.txt
           test -f "$RELEASE_APP/PrivacyInfo.xcprivacy"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSSupportsGameMode' "$RELEASE_APP/Info.plist")" = "true"
 
       - name: Package iPhone QA Xcode artifact
         run: |
