@@ -36,6 +36,7 @@ func _run()->void:
 	_check(implementation.contains("prepare]"),"impact generators are explicitly prepared for low-latency reuse")
 	_check(not implementation.contains("_feedbackSupportLevel"),"native bridge does not use private haptic capability APIs")
 	_check(module.contains("Engine::get_singleton()->add_singleton"),"native bridge registers one Godot engine singleton")
+	_check(module.contains("remove_singleton"),"native bridge removes the Engine singleton before destroying its Object")
 	_check(module.contains("\"ShadowbornIOS\""),"native singleton name matches PlatformRuntime contract")
 	_check(gdip.contains("CoreHaptics.framework"),"plugin contract links CoreHaptics explicitly")
 	_check(not FileAccess.file_exists("res://ios/plugins/shadowborn_ios/ShadowbornIOS.gdip"),"unverified native plugin is not auto-detected by Godot")
