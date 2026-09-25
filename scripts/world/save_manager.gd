@@ -39,6 +39,14 @@ static func _vector3_array(v:Vector3)->Array:
 static func _strict_bool(value,default_value:bool=false)->bool:
 	return value if typeof(value)==TYPE_BOOL else default_value
 
+static func _strict_string(value,default_value:String="",max_length:int=64)->String:
+	if typeof(value) not in [TYPE_STRING,TYPE_STRING_NAME]:
+		return default_value
+	var text:=str(value)
+	if text.length()>max_length:
+		return default_value
+	return text
+
 static func _bounded_int(value,min_value:int,max_value:int,default_value:int)->int:
 	if typeof(value) not in [TYPE_INT,TYPE_FLOAT]:
 		return clampi(default_value,min_value,max_value)
@@ -284,8 +292,9 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		var clean:Array=[]
 		var seen:Dictionary={}
 		var known_ids:=Act0Contract.all_encounter_ids()
-		for value in state.cleared_encounters:
-			var id:=str(value)
+		var raw_clears:Array=state.cleared_encounters
+		for i in range(mini(raw_clears.size(),64)):
+			var id:=_strict_string(raw_clears[i],"",64)
 			if id.is_empty() or seen.has(id) or id not in known_ids:
 				continue
 			seen[id]=true
@@ -299,15 +308,17 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	state.silver = _bounded_int(state.get("silver",0),0,1,0)
 	state.catacomb_room = _bounded_int(state.get("catacomb_room",0),0,5,0)
 
-	var mode:=str(state.get("performance_mode","smooth60"))
+	state.checkpoint=_strict_string(state.get("checkpoint","awakening"),"awakening",64)
+	var mode:=_strict_string(state.get("performance_mode","smooth60"),"smooth60",32)
 	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
 	state.reduced_motion=_strict_bool(state.get("reduced_motion",false))
-	var identity:=str(state.get("shadow_identity",""))
+	var identity:=_strict_string(state.get("shadow_identity",""),"",16)
 	state.shadow_identity = identity if identity in ["","male","female"] else ""
 
-	state.act0_stage=Act0Contract.normalize_stage(str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR)))
+	var raw_stage:=_strict_string(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR),Act0Contract.STAGE_EXTERIOR,64)
+	state.act0_stage=Act0Contract.normalize_stage(raw_stage)
 
-	var family:=str(state.get("weapon_family",""))
+	var family:=_strict_string(state.get("weapon_family",""),"",64)
 	if not family.is_empty() and (family not in Act0Contract.WEAPON_FAMILIES or not Act0Progression.WEAPONS.has(family)):
 		family=""
 	state.weapon_family=family
