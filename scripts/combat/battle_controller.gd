@@ -177,11 +177,11 @@ func _choose_auto_skill(index: int) -> int:
 func _skill_for(actor: Dictionary, skill_index: int) -> Dictionary:
 	if str(actor["team"]) == PLAYER_TEAM:
 		if skill_index == 1:
-			return {"id":"shadow_lunge","multiplier":1.62,"cooldown":3,"windup":0.31,"recover":0.36,"effect":"turn_cut"}
-		return {"id":"basic_slash","multiplier":1.0,"cooldown":0,"windup":0.23,"recover":0.28,"effect":""}
+			return {"id":"shadow_lunge","multiplier":1.62,"cooldown":3,"windup":0.38,"recover":0.54,"effect":"turn_cut"}
+		return {"id":"basic_slash","multiplier":1.0,"cooldown":0,"windup":0.40,"recover":0.54,"effect":""}
 	if skill_index == 1:
-		return {"id":"hound_rend","multiplier":1.28,"cooldown":2,"windup":0.26,"recover":0.31,"effect":""}
-	return {"id":"hound_bite","multiplier":1.0,"cooldown":0,"windup":0.20,"recover":0.25,"effect":""}
+		return {"id":"hound_rend","multiplier":1.28,"cooldown":2,"windup":0.52,"recover":0.62,"effect":""}
+	return {"id":"hound_bite","multiplier":1.0,"cooldown":0,"windup":0.52,"recover":0.62,"effect":""}
 
 func _tick_cooldowns(actor: Dictionary) -> void:
 	var cooldowns: Array = actor.get("cooldowns",[0,0])
