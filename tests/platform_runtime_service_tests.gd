@@ -55,11 +55,15 @@ func _run()->void:
 	var state_counter:={"count":0}
 	var callback:=func(_domain:String,_label:String,_metadata:Dictionary): state_counter["count"]=int(state_counter["count"])+1
 	service.reportable_state_changed.connect(callback)
-	service.report_state("com.shadowborn.test","temple",{"quality":"smooth60"})
-	service.report_state("com.shadowborn.test","temple",{"quality":"smooth60"})
-	service.report_state("com.shadowborn.test","combat",{"quality":"smooth60"})
+	service.report_state("com.shadowborn.presentation","smooth60",{"reduced_motion":false})
+	service.report_state("com.shadowborn.presentation","smooth60",{"reduced_motion":false})
+	service.report_state("com.shadowborn.presentation","battery30",{"reduced_motion":false})
 	_check(int(state_counter["count"])==2,"reportable state transitions deduplicate identical state/metadata pairs")
-	_check(str(service.current_reported_state("com.shadowborn.test").get("label",""))=="combat","latest reportable state is retained for diagnostics")
+	_check(str(service.current_reported_state("com.shadowborn.presentation").get("label",""))=="battery30","latest reportable state is retained for diagnostics")
+	service.report_state("com.shadowborn.presentation","privacy_probe",{"reduced_motion":true,"player_name":"must_not_escape","nested":{"unsafe":true}})
+	var privacy_state:=service.current_reported_state("com.shadowborn.presentation")
+	var privacy_metadata:Dictionary=privacy_state.get("metadata",{})
+	_check(privacy_metadata.size()==1 and privacy_metadata.get("reduced_motion",false)==true,"reporting schema drops unregistered or structured metadata before native forwarding")
 	service.reportable_state_changed.disconnect(callback)
 
 	var memory_counter:={"count":0}
