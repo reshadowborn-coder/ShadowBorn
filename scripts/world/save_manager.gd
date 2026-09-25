@@ -5,6 +5,7 @@ const SAVE_PATH := "user://chapter00_save.json"
 const TMP_PATH := SAVE_PATH + ".tmp"
 const BAK_PATH := SAVE_PATH + ".bak"
 const SAVE_VERSION := 5
+const MAX_SAVE_BYTES := 262144
 
 static func default_state() -> Dictionary:
 	return {
@@ -201,6 +202,10 @@ static func _read_dictionary(path:String):
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return null
+	var length:=file.get_length()
+	if length<=0 or length>MAX_SAVE_BYTES:
+		file.close()
+		return null
 	var parsed = JSON.parse_string(file.get_as_text())
 	file.close()
 	if typeof(parsed) != TYPE_DICTIONARY:
@@ -209,12 +214,27 @@ static func _read_dictionary(path:String):
 
 static func save_state(state: Dictionary) -> bool:
 	var normalized := _migrate(state.duplicate(true))
+	var payload:=JSON.stringify(normalized)
+	if payload.to_utf8_buffer().size()>MAX_SAVE_BYTES:
+		return false
+
 	var file := FileAccess.open(TMP_PATH, FileAccess.WRITE)
 	if file == null:
 		return false
-	file.store_string(JSON.stringify(normalized))
+	file.store_string(payload)
 	file.flush()
+	var write_error:=file.get_error()
 	file.close()
+	if write_error!=OK:
+		if FileAccess.file_exists(TMP_PATH):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(TMP_PATH))
+		return false
+
+	# Never promote a write that cannot be read back as a dictionary. This
+	# catches truncated/partial temporary files before the valid primary moves.
+	if _read_dictionary(TMP_PATH)==null:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TMP_PATH))
+		return false
 
 	var save_abs := ProjectSettings.globalize_path(SAVE_PATH)
 	var tmp_abs := ProjectSettings.globalize_path(TMP_PATH)
@@ -241,9 +261,13 @@ static func save_state(state: Dictionary) -> bool:
 
 static func _migrate(raw: Dictionary) -> Dictionary:
 	var source_version:=_bounded_int(raw.get("version",0),0,SAVE_VERSION,0)
-	var state := default_state()
-	for key in raw.keys():
-		state[key] = raw[key]
+	var defaults:=default_state()
+	var state := defaults.duplicate(true)
+	# Persist only the canonical schema. Unknown top-level fields from corrupt,
+	# hand-edited or future saves cannot accumulate into runtime/save payloads.
+	for key in defaults.keys():
+		if raw.has(key):
+			state[key]=raw[key]
 	state.version = SAVE_VERSION
 
 	if typeof(state.get("cleared_encounters")) != TYPE_ARRAY:
