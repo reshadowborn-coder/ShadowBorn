@@ -83,6 +83,7 @@ func _build_route() -> void:
 	_blocker("RUIN_01_FloorCollision",Vector3(2,-0.25,-29),Vector3(15,0.5,28))
 	_box("TEMPLE_EXT_01_Ground",Vector3(0,-0.25,-58),Vector3(22,0.5,30),GROUND)
 	_blocker("TEMPLE_EXT_01_FloorCollision",Vector3(0,-0.25,-58),Vector3(22,0.5,30))
+	_build_route_containment()
 	var grave_i:=0
 	for z in [-3.0,-8.0,-13.0,-18.0]:
 		_grave("GraveL%02d"%grave_i,Vector3(-5.2,0.0,z),-8.0+grave_i*5.0)
@@ -108,6 +109,21 @@ func _build_route() -> void:
 	_build_hound(Vector3(0,0.75,-14.0))
 	_build_armless(Vector3(1,0.95,-40.0))
 	_build_shield_boss(Vector3(0,1.0,-62.0))
+
+func _build_route_containment()->void:
+	# Shadow has planar movement, so visible floor edges cannot be trusted as
+	# gameplay boundaries. These simple invisible walls keep every mandatory
+	# trigger inside the traversable corridor.
+	_blocker("ExteriorStartBoundary",Vector3(0,1.5,14.7),Vector3(18,3.0,.6))
+	_blocker("CemeteryRouteL",Vector3(-8.7,1.5,0),Vector3(.6,3.0,30))
+	_blocker("CemeteryRouteR",Vector3(8.7,1.5,0),Vector3(.6,3.0,30))
+	_blocker("RuinRouteL",Vector3(-5.2,1.5,-29),Vector3(.6,3.0,28))
+	_blocker("RuinRouteR",Vector3(9.2,1.5,-29),Vector3(.6,3.0,28))
+	# The ruin path narrows on the left at z=-15. Close the stepped seam so a
+	# player cannot enter the next cell already outside its left boundary.
+	_blocker("CemeteryToRuinLeftSeam",Vector3(-6.95,1.5,-15),Vector3(3.5,3.0,.6))
+	_blocker("TempleExteriorRouteL",Vector3(-10.7,1.5,-58),Vector3(.6,3.0,30))
+	_blocker("TempleExteriorRouteR",Vector3(10.7,1.5,-58),Vector3(.6,3.0,30))
 
 func _build_awaken_pocket() -> void:
 	_box("AwakenSlab",Vector3(0,0.12,7.0),Vector3(2.1,0.24,4.0),STONE)
