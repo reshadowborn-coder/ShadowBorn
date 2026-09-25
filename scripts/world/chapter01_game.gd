@@ -484,7 +484,13 @@ func _on_reduced_motion_changed(value:bool)->void:
 	_save_progress()
 
 func _apply_performance_mode()->void:
-	Engine.max_fps=30 if performance_mode=="battery30" else 60
+	var platform_runtime:=get_node_or_null("/root/PlatformRuntime") as PlatformRuntimeService
+	if platform_runtime:
+		platform_runtime.set_user_performance_mode(performance_mode)
+	else:
+		# Defensive fallback for isolated scene/tool tests that do not mount the
+		# project autoload. Runtime builds should always use PlatformRuntime.
+		Engine.max_fps=30 if performance_mode=="battery30" else 60
 
 func _apply_presentation_settings()->void:
 	camera_rig.set_reduced_motion(reduced_motion)
