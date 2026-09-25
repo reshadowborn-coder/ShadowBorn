@@ -8,6 +8,7 @@ var reduced_motion:=false
 var elapsed:=0.0
 var reaction_remaining:=0.0
 const REACTION_DURATION:=1.25
+const ACTIVE_RADIUS_SQUARED:=1764.0
 var body:Node3D
 var head:Node3D
 var arm_l:Node3D
@@ -23,6 +24,7 @@ var head_position:=Vector3.ZERO
 var arm_l_position:=Vector3.ZERO
 var arm_r_position:=Vector3.ZERO
 var tool_position:=Vector3.ZERO
+var player:Node3D
 
 func _ready()->void:
 	add_to_group("temple_npc_idle")
@@ -46,11 +48,19 @@ func _ready()->void:
 	if tool:
 		tool_basis=tool.basis
 		tool_position=tool.position
+	call_deferred("_bind_player")
+
+func _bind_player()->void:
+	player=get_tree().get_first_node_in_group("player") as Node3D
 
 func set_reduced_motion(value:bool)->void:
 	reduced_motion=value
 
 func _process(delta:float)->void:
+	if not is_visible_in_tree():
+		return
+	if is_instance_valid(player) and global_position.distance_squared_to(player.global_position)>ACTIVE_RADIUS_SQUARED:
+		return
 	elapsed=fmod(elapsed+delta,120.0)
 	reaction_remaining=maxf(0.0,reaction_remaining-delta)
 	var scale:=0.30 if reduced_motion else 1.0
