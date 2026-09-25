@@ -1,6 +1,8 @@
 class_name CombatFrameTrace
 extends Node
 
+signal row_completed(row: Dictionary)
+
 var requested_fps := 60
 var reduced_motion := false
 var frame_index := 0
@@ -9,6 +11,10 @@ var _waiting_events: Array[Dictionary] = []
 var _frame_events: Array[Dictionary] = []
 var _last_state: Dictionary = {}
 var _attached := false
+var console_output := true
+
+func set_console_output(value: bool) -> void:
+	console_output = value
 
 func _ready() -> void:
 	if not RenderingServer.frame_pre_draw.is_connected(_on_frame_pre_draw):
@@ -82,7 +88,10 @@ func _on_frame_post_draw() -> void:
 	for row in _frame_events:
 		row["frame_post_draw_ts_us"] = post_us
 		row["event_to_frame_pre_us"] = int(row["frame_pre_draw_ts_us"]) - int(row["ts_us"])
-		print("SB_TRACE " + JSON.stringify(row))
+		var completed: Dictionary = row.duplicate(true)
+		emit_signal("row_completed",completed)
+		if console_output:
+			print("SB_TRACE " + JSON.stringify(completed))
 	_frame_events.clear()
 
 func _on_command_committed(skill: String) -> void:
