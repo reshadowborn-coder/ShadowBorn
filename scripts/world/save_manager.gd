@@ -32,6 +32,74 @@ static func default_state() -> Dictionary:
 		"act0_complete": false
 	}
 
+static func _vector3_array(v:Vector3)->Array:
+	return [v.x,v.y,v.z]
+
+static func _checkpoint_values(value)->Variant:
+	if typeof(value)!=TYPE_ARRAY or value.size()!=3:
+		return null
+	for component in value:
+		if typeof(component) not in [TYPE_INT,TYPE_FLOAT]:
+			return null
+	var x:=float(value[0])
+	var y:=float(value[1])
+	var z:=float(value[2])
+	if x!=x or y!=y or z!=z:
+		return null
+	if absf(x)>15.0 or y < -1.0 or y > 5.0 or z > 15.0 or z < -182.0:
+		return null
+	return Vector3(x,y,z)
+
+static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
+	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
+	match stage:
+		Act0Contract.STAGE_EXTERIOR:
+			return p.z>=-75.0
+		Act0Contract.STAGE_TEMPLE_ENTRY,Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
+			return p.z<=-63.0 and p.z>=-117.0
+		Act0Contract.STAGE_CATACOMBS:
+			return p.z<=-109.0 and p.z>=-182.0
+		Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH:
+			return p.z<=-70.0 and p.z>=-117.0
+		Act0Contract.STAGE_COMPLETE:
+			return p.z<=-109.0 and p.z>=-182.0
+	return false
+
+static func _repair_checkpoint(state:Dictionary)->Dictionary:
+	var parsed=_checkpoint_values(state.get("checkpoint_position"))
+	if parsed!=null and _checkpoint_matches_stage(state,parsed):
+		return _repair_checkpoint(state)
+
+	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
+	var recovery:=Vector3(0,0.9,8)
+	var checkpoint:="awakening"
+	match stage:
+		Act0Contract.STAGE_TEMPLE_ENTRY:
+			if bool(state.get("faded_sigil_activated",false)):
+				recovery=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
+				checkpoint="temple_entry"
+			else:
+				recovery=Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z)
+				checkpoint="faded_sigil"
+		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
+			recovery=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
+			checkpoint="temple_entry"
+		Act0Contract.STAGE_CATACOMBS:
+			recovery=Act0Layout.CATACOMB_ENTRY_CHECKPOINT
+			checkpoint="catacombs_entry"
+		Act0Contract.STAGE_ROOM5_RETURN:
+			recovery=Act0Layout.ROOM5_RETURN_CHECKPOINT
+			checkpoint="room5_return"
+		Act0Contract.STAGE_ROOM5_REMATCH:
+			recovery=Act0Layout.ROOM5_RETURN_CHECKPOINT
+			checkpoint="room5_rematch"
+		Act0Contract.STAGE_COMPLETE:
+			recovery=Act0Layout.ROOM5_SHADOW_POSITION
+			checkpoint="act0_complete"
+	state.checkpoint_position=_vector3_array(recovery)
+	state.checkpoint=checkpoint
+	return state
+
 static func load_state() -> Dictionary:
 	var parsed = _read_dictionary(SAVE_PATH)
 	if parsed == null:
@@ -224,7 +292,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.act0_stage=Act0Contract.STAGE_TEMPLE_ENTRY if shield_cleared else Act0Contract.STAGE_EXTERIOR
 		if shield_cleared:
 			state.silver=maxi(1,state.silver)
-		return state
+		return _repair_checkpoint(state)
 
 	state.covenant_joined=true
 	state.faded_sigil_activated=true
@@ -240,7 +308,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.act0_stage=Act0Contract.STAGE_WEAPON_CHOICE
 		if shield_cleared:
 			state.silver=maxi(1,state.silver)
-		return state
+		return _repair_checkpoint(state)
 
 	if not forged:
 		state.first_forge_done=false
@@ -252,7 +320,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.act0_complete=false
 		state.act0_stage=Act0Contract.STAGE_FIRST_FORGE
 		state.silver=maxi(1,state.silver)
-		return state
+		return _repair_checkpoint(state)
 
 	# From this point on, Covenant + weapon + committed forge are valid.
 	state.first_forge_done=true
@@ -298,7 +366,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.act0_complete=false
 		state.act0_stage=Act0Contract.STAGE_CATACOMBS
 
-	return state
+	return _repair_checkpoint(state)
 
 func patch_and_save(patch:Dictionary)->bool:
 	var state:=load_state()
