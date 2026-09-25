@@ -24,7 +24,8 @@ func _ready()->void:
 	panel.visible=false
 	for child in $Panel/Weapons.get_children():
 		if child is Button:
-			child.pressed.connect(func():_select(str(child.get_meta("family"))))
+			var family:=str(child.get_meta("family"))
+			child.pressed.connect(func():_select(family))
 	confirm.pressed.connect(_confirm)
 	cancel.pressed.connect(close)
 	confirm.disabled=true
