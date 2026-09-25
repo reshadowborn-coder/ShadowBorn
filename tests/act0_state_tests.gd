@@ -18,6 +18,7 @@ func _run()->void:
 	_test_temple_progression()
 	_test_all_weapon_families()
 	_test_catacomb_progression()
+	_test_catacomb_reentry_contract()
 	_test_combat_math()
 	_test_save_recovery()
 	_test_resume_transition_matrix()
@@ -129,6 +130,45 @@ func _test_catacomb_progression()->void:
 	_check(c.unlock_story_summon(),"story companion unlocks after solo limit")
 	_check(not c.unlock_story_summon(),"story companion unlock is one-shot")
 	_check(c.clear_room(5) and c.complete,"Room 5 rematch completes Act 0")
+
+func _test_catacomb_reentry_contract()->void:
+	var expected_ids:={
+		0:"temple_entry",
+		1:"catacombs_entry",
+		2:"cat_r1_skeleton_cleared",
+		3:"cat_r2_hound_cleared",
+		4:"cat_r3_guard_cleared",
+		5:"cat_r4_revenant_cleared"
+	}
+	for room in range(0,6):
+		_check(Act0Contract.catacomb_checkpoint_id(room)==str(expected_ids[room]),"Catacomb Room %d has a fixed resume checkpoint ID"%room)
+		if room>0:
+			var resume:=Act0Layout.catacomb_room_resume_position(room)
+			var trigger:=Act0Layout.catacomb_room_trigger_position(room)
+			_check(absf(resume.x)<0.001 and resume.z>trigger.z,"Catacomb Room %d resume anchor remains before its encounter trigger"%room)
+
+	var temple:=Act0Progression.new()
+	var cat:=CatacombProgression.new()
+	var flow:=Act0Orchestrator.new()
+	var state:=SaveManager.default_state()
+	state.covenant_joined=true
+	state.weapon_family="bow"
+	state.first_forge_done=true
+	state.forged_item=Act0Progression.canonical_first_forge_item("bow")
+	state.act0_stage=Act0Contract.STAGE_CATACOMBS
+	state.catacomb_room=3
+	temple.restore(state)
+	cat.restore(state)
+	flow.setup(temple,cat)
+	_check(flow.enter_catacombs() and cat.room==3,"re-entering Catacombs preserves the current unfinished Room 3")
+
+	state.act0_stage=Act0Contract.STAGE_ROOM5_REMATCH
+	state.catacomb_room=5
+	state.room5_solo_limit_seen=true
+	state.story_summon_unlocked=true
+	state.room5_rematch_ready=true
+	flow.restore(state)
+	_check(flow.enter_catacombs() and cat.room==5,"Room 5 rematch re-entry preserves Room 5 instead of restarting Catacombs")
 
 func _test_combat_math()->void:
 	var base:=CombatResolver.damage(8.0,1.30,4.0)
