@@ -89,3 +89,14 @@ static func catacomb_encounter_ids(room:int)->Array:
 
 static func catacomb_checkpoint_id(room:int)->String:
 	return str(CATACOMB_CHECKPOINT_IDS.get(clampi(room,0,5),""))
+
+static func all_catacomb_encounter_ids()->Array:
+	var out:Array=[]
+	for room in range(1,6):
+		out.append_array(catacomb_encounter_ids(room))
+	return out
+
+static func all_encounter_ids()->Array:
+	var out:Array=EXTERIOR_ENCOUNTERS.duplicate()
+	out.append_array(all_catacomb_encounter_ids())
+	return out
