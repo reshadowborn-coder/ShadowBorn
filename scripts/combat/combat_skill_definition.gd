@@ -26,6 +26,10 @@ enum TargetRule {
 @export var effect_steps:Array[Dictionary]=[]
 @export var rank_patches:Array[Dictionary]=[]
 @export var presentation_id:StringName=&""
+@export var aura_stat_modifiers:Dictionary={}
+@export var aura_required_battle_tags:Array[StringName]=[]
+@export var aura_blocked_battle_tags:Array[StringName]=[]
+@export var aura_persists_after_owner_death:bool=true
 
 func validate()->Array[String]:
 	var errors:Array[String]=[]
@@ -39,6 +43,8 @@ func validate()->Array[String]:
 		errors.append("default skill cannot have a cooldown")
 	if kind==SkillKind.AURA and base_cooldown!=0:
 		errors.append("aura cannot have a cooldown")
+	if kind==SkillKind.AURA and target_rule!=TargetRule.ALL_ALLIES:
+		errors.append("team aura must target all allies")
 	for patch_value in rank_patches:
 		if typeof(patch_value)!=TYPE_DICTIONARY:
 			errors.append("rank patch must be a dictionary")

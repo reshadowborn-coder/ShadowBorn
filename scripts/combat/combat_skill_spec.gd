@@ -53,6 +53,14 @@ func advance_actionable_owner_turn()->void:
 func has_tag(tag:StringName)->bool:
 	return tag in dynamic_tags
 
+func apply_external_patch(patch:Dictionary)->bool:
+	var op:=str(patch.get("op",""))
+	if op not in ["add","multiply_bp","set","cooldown_delta","add_tag"]:
+		return false
+	_apply_patch(patch)
+	cooldown_remaining=clampi(cooldown_remaining,0,cooldown_max())
+	return true
+
 func snapshot()->Dictionary:
 	var tags:Array[String]=[]
 	for tag in dynamic_tags:

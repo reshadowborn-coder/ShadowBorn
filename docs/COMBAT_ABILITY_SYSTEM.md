@@ -92,3 +92,38 @@ Extra Turn remains a genuine owner turn.
 - Talent graph rejects cycles and missing prerequisites.
 - IDs are semantic and stable; display names may change without save migration.
 - Act 0 stays on compatibility behavior until explicitly migrated.
+
+
+## Status application pipeline
+Hostile status placement is explicitly two-stage:
+1. the authored effect chance succeeds,
+2. the target may resist based on source Accuracy versus target Resistance.
+
+Shadowborn intentionally has no hidden mandatory 3% failure floor. The current provisional curve uses 15% resistance at equal ACC/RES and 0.25 percentage points per stat difference, clamped from 0% to 95%. These constants are balance data and can be retuned without changing call sites.
+
+A sufficiently accurate build can therefore guarantee an ordinary debuff unless the target has an explicit immunity/block rule. Boss protection should be readable through immunity tags, Stagger/Resolve, encounter rules or control diminishing returns rather than invisible dice.
+
+Unresistable effects must be explicitly authored. Immunity/blocking is resolved before chance/resistance.
+
+A multi-hit skill should call status placement once per authored effect/target unless the skill explicitly declares per-hit application. This avoids accidental multiplication of proc chance.
+
+## Deterministic combat RNG
+CombatDeterministicRng provides a small platform-stable integer roll stream with snapshot/restore. Random decisions should use this stream rather than ad-hoc randf() calls inside hero scripts.
+
+This supports deterministic tests, future combat replays and exact reproduction of a reported battle.
+
+## Auras
+Aura is a dedicated kit slot, not a passive disguised as an active skill.
+
+Only one team aura is active through CombatAuraRuntime. An aura declares:
+- team-wide stat modifiers,
+- required battle-mode tags,
+- blocked battle-rule tags,
+- whether it persists after its owner dies.
+
+The Aura unlock milestone remains content/progression data; the runtime does not hard-code a level.
+
+## Talent compilation
+Talents do not mutate static skill definitions. CombatBuildCompiler builds battle-local CombatSkillSpecs, aggregates talent stat modifiers, applies whitelisted skill patches and exposes any granted passive IDs.
+
+This keeps respecs and balance changes safe: static content remains immutable while the battle receives a compiled build.

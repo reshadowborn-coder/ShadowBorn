@@ -71,6 +71,19 @@ func active_branches(ranks:Dictionary)->Array[StringName]:
 	branches.sort_custom(func(a:StringName,b:StringName)->bool:return str(a)<str(b))
 	return branches
 
+func selected_definitions(ranks:Dictionary)->Array[CombatTalentDefinition]:
+	var out:Array[CombatTalentDefinition]=[]
+	for raw_id in _definitions:
+		var definition:CombatTalentDefinition=_definitions[raw_id]
+		if int(ranks.get(str(definition.id),0))>0:
+			out.append(definition)
+	out.sort_custom(func(a:CombatTalentDefinition,b:CombatTalentDefinition)->bool:
+		if a.tier!=b.tier:
+			return a.tier<b.tier
+		return str(a.id)<str(b.id)
+	)
+	return out
+
 func total_spent_points(ranks:Dictionary)->int:
 	var total:=0
 	for raw_id in _definitions:

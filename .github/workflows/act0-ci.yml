@@ -105,6 +105,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_ability_architecture_tests.gd 2>&1 | tee /tmp/combat-ability-architecture.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-ability-architecture.log
 
+      - name: Validate build aura and status rules
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_build_status_rules_tests.gd 2>&1 | tee /tmp/combat-build-status-rules.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-build-status-rules.log
+
       - name: Validate Act 1 speed-driven combat integration
         run: |
           set -o pipefail
