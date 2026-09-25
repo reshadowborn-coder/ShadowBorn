@@ -168,8 +168,10 @@ func _test_adversarial_turn_edges()->void:
 	var o2:=_take(overflow)
 	var o3:=_take(overflow)
 	var o4:=_take(overflow)
+	var o5:=_take(overflow)
 	_check(StringName(o1.actor_id)==&"shadow" and StringName(o2.actor_id)==&"shadow" and StringName(o3.actor_id)==&"shadow","300% stored meter grants exactly three immediately available natural turns")
-	_check(StringName(o4.actor_id)==&"rat","bounded overflow eventually yields to opponent instead of looping")
+	_check(StringName(o4.actor_id)==&"shadow","after stored overflow drains, equal-speed refill uses stable registration-order tie break")
+	_check(StringName(o5.actor_id)==&"rat","ready opponent keeps accumulated meter and acts next; overflow remains bounded")
 
 	var death_queue:=CombatTurnTimeline.new()
 	death_queue.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
