@@ -14,7 +14,8 @@ var reveal_focus := Vector3.ZERO
 var reduced_motion:=false
 
 func _process(delta: float) -> void:
-	var focus := combat_focus if combat_mode else (reveal_focus if reveal_mode else (target.global_position if target else global_position))
+	var follow_focus:=target.global_position if is_instance_valid(target) else global_position
+	var focus := combat_focus if combat_mode else (reveal_focus if reveal_mode else follow_focus)
 	var desired := focus + offset
 	var response:=12.0 if reduced_motion else follow_lerp
 	global_position = global_position.lerp(desired, 1.0 - exp(-response * delta))
