@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+
+opts = Variables([], ARGUMENTS)
+opts.Add(EnumVariable("target", "Plugin target", "release_debug", ["release_debug", "release"]))
+opts.Add(EnumVariable("arch", "CPU architecture", "arm64", ["arm64"]))
+opts.Add(BoolVariable("simulator", "Build for the iOS simulator", False))
+opts.Add(PathVariable("godot_headers", "Root of the Godot 4.4.1 header archive", ""))
+opts.Add(PathVariable("out_dir", "Output directory", "build/native-ios"))
+
+env = DefaultEnvironment()
+opts.Update(env)
+
+headers = env["godot_headers"]
+if not headers or not os.path.isdir(headers):
+    print("godot_headers must point at an extracted Godot iOS header archive")
+    Exit(2)
+
+sdk_name = "iphonesimulator" if env["simulator"] else "iphoneos"
+sdk_path = subprocess.check_output(["xcrun", "--sdk", sdk_name, "--show-sdk-path"], text=True).strip()
+clang = subprocess.check_output(["xcrun", "--find", "clang"], text=True).strip()
+clangxx = subprocess.check_output(["xcrun", "--find", "clang++"], text=True).strip()
+ar = subprocess.check_output(["xcrun", "--find", "ar"], text=True).strip()
+
+env.Replace(CC=clang, CXX=clangxx, AR=ar)
+env.Append(CPPPATH=[headers, os.path.join(headers, "platform", "ios")])
+env.Append(CPPDEFINES=["PTRCALL_ENABLED", "TYPED_METHOD_BIND", "IOS_ENABLED", "UNIX_ENABLED", "VULKAN_ENABLED"])
+env.Append(CCFLAGS=[
+    "-arch", env["arch"],
+    "-isysroot", sdk_path,
+    "-fmodules", "-fcxx-modules", "-fblocks", "-fobjc-arc",
+    "-fvisibility=hidden", "-fno-exceptions", "-fno-rtti",
+    "-Wall", "-Wextra", "-Werror=return-type",
+])
+env.Append(CXXFLAGS=["-std=gnu++17"])
+env.Append(LINKFLAGS=["-arch", env["arch"], "-isysroot", sdk_path])
+
+if env["simulator"]:
+    env.Append(CCFLAGS=["-mios-simulator-version-min=16.0"])
+    env.Append(LINKFLAGS=["-mios-simulator-version-min=16.0"])
+else:
+    env.Append(CCFLAGS=["-miphoneos-version-min=16.0"])
+    env.Append(LINKFLAGS=["-miphoneos-version-min=16.0"])
+
+if env["target"] == "release_debug":
+    env.Append(CPPDEFINES=["DEBUG_ENABLED"])
+    env.Append(CCFLAGS=["-O2"])
+else:
+    env.Append(CPPDEFINES=["NDEBUG"])
+    env.Append(CCFLAGS=["-O2"])
+
+sources = [
+    "native/ios/ShadowbornIOS/shadowborn_ios_module.cpp",
+    "native/ios/ShadowbornIOS/shadowborn_ios.mm",
+]
+
+platform_name = "simulator" if env["simulator"] else "iphoneos"
+target_path = os.path.join(
+    env["out_dir"],
+    "ShadowbornIOS.%s.%s.%s" % (env["arch"], platform_name, env["target"])
+)
+library = env.StaticLibrary(target=target_path, source=sources)
+Default(library)
