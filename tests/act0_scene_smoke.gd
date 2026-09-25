@@ -129,5 +129,23 @@ func _test_chapter_scene()->void:
 		_check(game.catacombs.room==0,"fresh scene has no Catacomb progress")
 		_check(not game.room5_active,"Room 5 is inactive on fresh load")
 
+		var cat_gate_runtime:=triggers.get_node_or_null("CatacombsEntry") if triggers else null
+		if cat_gate_runtime and cat_gate_runtime.has_method("_sync_catacomb_blocker"):
+			game.act0.first_forge_done=true
+			game.act0.stage=Act0Contract.STAGE_CATACOMBS
+			cat_gate_runtime._sync_catacomb_blocker()
+			await process_frame
+			_check(cat_gate_runtime.get_node_or_null("ProgressionBlocker")==null,"first forge opens the Catacomb passage during normal descent")
+
+			game.act0.stage=Act0Contract.STAGE_ROOM5_RETURN
+			cat_gate_runtime._sync_catacomb_blocker()
+			await process_frame
+			_check(cat_gate_runtime.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Room 5 forced return physically re-locks the Catacomb passage")
+
+			game.act0.stage=Act0Contract.STAGE_ROOM5_REMATCH
+			cat_gate_runtime._sync_catacomb_blocker()
+			await process_frame
+			_check(cat_gate_runtime.get_node_or_null("ProgressionBlocker")==null,"story summon re-opens the Catacomb passage for the Room 5 rematch")
+
 	chapter.queue_free()
 	await process_frame
