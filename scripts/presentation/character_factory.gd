@@ -1,137 +1,204 @@
 class_name CharacterFactory
 extends RefCounted
 
-const SHADOW_SCENE := "res://assets/characters/shadow/shadow.glb"
-const HOUND_SCENE := "res://assets/characters/grave_hound/grave_hound.glb"
+const FINAL_SHADOW := "res://assets/characters/shadow/shadow.glb"
+const FINAL_HOUND := "res://assets/characters/grave_hound/grave_hound.glb"
+
+const DEV_SHADOW := "res://assets/vendor/quaternius/shadow_adventurer.gltf"
+const DEV_HOUND := "res://assets/vendor/quaternius/grave_wolf.gltf"
+const DEV_SWORD := "res://assets/vendor/quaternius/shadow_sword.gltf"
 
 static func create_shadow(with_sword: bool = true) -> Node3D:
-	var loaded := _load_scene(SHADOW_SCENE)
-	if loaded != null:
-		loaded.name = "ShadowModel"
-		if not with_sword:
-			_set_named_weapon_visible(loaded,false)
-		return loaded
-	return _build_shadow_fallback(with_sword)
+	var final_model := _load_scene(FINAL_SHADOW)
+	if final_model != null:
+		final_model.name = "ShadowModel"
+		_set_named_weapon_visible(final_model,with_sword)
+		return final_model
+
+	var dev_model := _load_scene(DEV_SHADOW)
+	if dev_model != null:
+		dev_model.name = "ShadowDevModel"
+		_prepare_dev_shadow(dev_model)
+		if with_sword:
+			attach_sword(dev_model)
+		return dev_model
+
+	return _build_emergency_shadow(with_sword)
 
 static func create_hound() -> Node3D:
-	var loaded := _load_scene(HOUND_SCENE)
-	if loaded != null:
-		loaded.name = "GraveHoundModel"
-		return loaded
-	return _build_hound_fallback()
+	var final_model := _load_scene(FINAL_HOUND)
+	if final_model != null:
+		final_model.name = "GraveHoundModel"
+		return final_model
+
+	var dev_model := _load_scene(DEV_HOUND)
+	if dev_model != null:
+		dev_model.name = "GraveHoundDevModel"
+		_prepare_dev_hound(dev_model)
+		return dev_model
+
+	return _build_emergency_hound()
 
 static func create_sword_prop() -> Node3D:
-	var sword := Node3D.new()
-	sword.name = "SwordProp"
-	var steel := Color(0.31,0.34,0.39)
-	var blade := _box(Vector3(0.055,1.34,0.035),Color(0.43,0.47,0.52),0.72)
-	blade.position.y = 0.44
-	sword.add_child(blade)
-	var guard := _box(Vector3(0.36,0.065,0.065),steel,0.68)
-	guard.position.y = -0.22
-	sword.add_child(guard)
-	var grip := _cylinder(0.040,0.34,Color(0.10,0.065,0.040),0.05)
-	grip.position.y = -0.39
-	sword.add_child(grip)
-	var pommel := _sphere(0.07,steel)
-	pommel.position.y = -0.59
-	sword.add_child(pommel)
-	return sword
+	var model := _load_scene(DEV_SWORD)
+	if model != null:
+		model.name = "SwordProp"
+		_prepare_sword(model)
+		return model
+	return _build_emergency_sword()
 
 static func attach_sword(root: Node3D) -> void:
 	_set_named_weapon_visible(root,true)
-	if root.find_child("Weapon",true,false) != null:
+	if root.find_child("ShadowbornWeapon",true,false) != null:
 		return
-	var socket := root.find_child("WeaponSocket",true,false) as Node3D
-	if socket == null:
-		socket = Node3D.new()
+
+	var skeleton := _find_skeleton(root)
+	if skeleton != null and skeleton.find_bone("Wrist.R") >= 0:
+		var socket := BoneAttachment3D.new()
 		socket.name = "WeaponSocket"
-		socket.position = Vector3(0.57,1.03,0.07)
-		socket.rotation_degrees.z = -15.0
-		root.add_child(socket)
-	var sword := create_sword_prop()
-	sword.name = "Weapon"
-	socket.add_child(sword)
+		socket.bone_name = "Wrist.R"
+		skeleton.add_child(socket)
+
+		var sword := create_sword_prop()
+		sword.name = "ShadowbornWeapon"
+		sword.position = Vector3(0.0,0.08,0.0)
+		sword.rotation_degrees = Vector3(0.0,0.0,180.0)
+		socket.add_child(sword)
+		return
+
+	var fallback_socket := Node3D.new()
+	fallback_socket.name = "WeaponSocket"
+	fallback_socket.position = Vector3(0.52,1.03,0.04)
+	fallback_socket.rotation_degrees.z = -15.0
+	root.add_child(fallback_socket)
+	var fallback_sword := create_sword_prop()
+	fallback_sword.name = "ShadowbornWeapon"
+	fallback_socket.add_child(fallback_sword)
 
 static func pose_seated_corpse(root: Node3D) -> void:
-	if play_named_animation(root,["dead_seated","Dead_Seated","corpse_seated","Corpse_Seated"]):
+	# Production model can ship a dedicated seated-death clip later.
+	if set_animation_end_pose(root,["Dead_Seated","dead_seated","Corpse_Seated","corpse_seated"]):
 		return
-	var fallback := root.find_child("ShadowFallback",true,false)
-	if fallback == null and root.name == "ShadowFallback":
-		fallback = root
-	if fallback == null:
-		root.rotation_degrees = Vector3(6.0,0.0,-8.0)
+
+	# The CC0 development character has a real skeletal Death clip. Its final frame
+	# gives us a physically collapsed body instead of a rigid primitive mannequin.
+	if set_animation_end_pose(root,["Death"]):
+		root.position = Vector3(0.0,-0.06,0.04)
+		root.rotation_degrees = Vector3(-7.0,0.0,-13.0)
 		return
-	var pelvis := fallback.get_node_or_null("Pelvis") as Node3D
-	var torso := fallback.get_node_or_null("Torso") as Node3D
-	var head := fallback.get_node_or_null("HeadRig") as Node3D
-	var leg_l := fallback.get_node_or_null("LegL") as Node3D
-	var leg_r := fallback.get_node_or_null("LegR") as Node3D
-	var arm_l := fallback.get_node_or_null("ArmL") as Node3D
-	var arm_r := fallback.get_node_or_null("ArmR") as Node3D
-	if pelvis:
-		pelvis.position = Vector3(0,0.46,0)
-		pelvis.rotation_degrees.z = -7
-	if torso:
-		torso.position = Vector3(-0.05,1.02,-0.06)
-		torso.rotation_degrees = Vector3(0,0,-13)
-	if head:
-		head.position = Vector3(-0.16,1.70,-0.02)
-		head.rotation_degrees = Vector3(18,0,-19)
-	if leg_l:
-		leg_l.position = Vector3(-0.22,0.23,0.24)
-		leg_l.rotation_degrees = Vector3(72,0,-18)
-	if leg_r:
-		leg_r.position = Vector3(0.20,0.20,0.18)
-		leg_r.rotation_degrees = Vector3(62,0,12)
-	if arm_l:
-		arm_l.position = Vector3(-0.46,0.88,0.08)
-		arm_l.rotation_degrees = Vector3(20,0,-42)
-	if arm_r:
-		arm_r.position = Vector3(0.34,0.74,0.18)
-		arm_r.rotation_degrees = Vector3(58,0,26)
+
+	# Last-resort emergency stand-in.
+	root.position = Vector3(0.0,-0.08,0.0)
+	root.rotation_degrees = Vector3(8.0,0.0,-16.0)
+
+static func play_resurrection(root: Node3D) -> bool:
+	root.position = Vector3(0.0,-0.06,0.04)
+	return play_backwards_named(root,["Death"],0.52,0.20)
 
 static func pose_standing(root: Node3D) -> void:
-	var fallback := root.find_child("ShadowFallback",true,false)
-	if fallback == null and root.name == "ShadowFallback":
-		fallback = root
-	if fallback == null:
-		play_named_animation(root,["stand_up","Stand_Up","get_up","Get_Up","idle","Idle"])
-		return
-	var pelvis := fallback.get_node_or_null("Pelvis") as Node3D
-	var torso := fallback.get_node_or_null("Torso") as Node3D
-	var head := fallback.get_node_or_null("HeadRig") as Node3D
-	var leg_l := fallback.get_node_or_null("LegL") as Node3D
-	var leg_r := fallback.get_node_or_null("LegR") as Node3D
-	var arm_l := fallback.get_node_or_null("ArmL") as Node3D
-	var arm_r := fallback.get_node_or_null("ArmR") as Node3D
-	if pelvis:
-		pelvis.position = Vector3(0,0.87,0); pelvis.rotation_degrees = Vector3.ZERO
-	if torso:
-		torso.position = Vector3(0,1.43,0); torso.rotation_degrees = Vector3.ZERO
-	if head:
-		head.position = Vector3(0,2.15,0); head.rotation_degrees = Vector3.ZERO
-	if leg_l:
-		leg_l.position = Vector3(-0.17,0.53,0); leg_l.rotation_degrees = Vector3(0,0,-2.5)
-	if leg_r:
-		leg_r.position = Vector3(0.17,0.53,0); leg_r.rotation_degrees = Vector3(0,0,2.5)
-	if arm_l:
-		arm_l.position = Vector3(-0.47,1.25,0); arm_l.rotation_degrees = Vector3(0,0,-8)
-	if arm_r:
-		arm_r.position = Vector3(0.47,1.25,0); arm_r.rotation_degrees = Vector3(0,0,8)
+	root.position = Vector3.ZERO
+	root.rotation_degrees = Vector3.ZERO
+	play_named_animation(root,["Idle_Neutral","Idle","Idle_Sword"],1.0,0.18)
 
-static func play_named_animation(root: Node, candidates: Array[String]) -> bool:
+static func play_shadow_idle(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Idle_Sword","Idle","Idle_Neutral"],speed,0.16)
+
+static func play_shadow_attack(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Sword_Slash","Attack","Attack_01","Basic_Attack"],speed,0.10)
+
+static func play_shadow_hit(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["HitRecieve","HitRecieve_2","Hit","Damage"],speed,0.08)
+
+static func play_hound_idle(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Idle","Idle_2","Idle_2_HeadLow"],speed,0.16)
+
+static func play_hound_attack(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Attack"],speed,0.08)
+
+static func play_hound_hit(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Idle_HitReact1","Idle_HitReact2"],speed,0.06)
+
+static func play_pickup(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Interact"],speed,0.14)
+
+static func play_death(root: Node3D,speed: float = 1.0) -> bool:
+	return play_named_animation(root,["Death","Die"],speed,0.08)
+
+static func play_named_animation(root: Node,candidates: Array[String],speed: float = 1.0,blend: float = 0.12) -> bool:
 	var player := _find_animation_player(root)
 	if player == null:
 		return false
-	for name in candidates:
-		if player.has_animation(name):
-			player.play(name)
+	for candidate in candidates:
+		if player.has_animation(candidate):
+			player.play(candidate,blend,speed,false)
 			return true
 	return false
 
-static func _set_named_weapon_visible(root: Node, visible_: bool) -> void:
-	for candidate in ["Weapon","Sword","weapon","sword"]:
+static func play_backwards_named(root: Node,candidates: Array[String],speed: float = 1.0,blend: float = 0.12) -> bool:
+	var player := _find_animation_player(root)
+	if player == null:
+		return false
+	for candidate in candidates:
+		if player.has_animation(candidate):
+			player.play(candidate,blend,-absf(speed),true)
+			return true
+	return false
+
+static func set_animation_end_pose(root: Node,candidates: Array[String]) -> bool:
+	var player := _find_animation_player(root)
+	if player == null:
+		return false
+	for candidate in candidates:
+		if player.has_animation(candidate):
+			player.play(candidate,0.0,1.0,false)
+			player.seek(player.current_animation_length,true)
+			player.pause()
+			return true
+	return false
+
+static func has_animation(root: Node,name_: String) -> bool:
+	var player := _find_animation_player(root)
+	return player != null and player.has_animation(name_)
+
+static func animation_names(root: Node) -> Array[StringName]:
+	var player := _find_animation_player(root)
+	if player == null:
+		return []
+	return player.get_animation_list()
+
+static func _prepare_dev_shadow(root: Node3D) -> void:
+	var backpack := root.find_child("Backpack",true,false)
+	if backpack is Node3D:
+		(backpack as Node3D).visible = false
+
+	var body := root.find_child("Adventurer_Body",true,false) as MeshInstance3D
+	var legs := root.find_child("Adventurer_Legs",true,false) as MeshInstance3D
+	var feet := root.find_child("Adventurer_Feet",true,false) as MeshInstance3D
+
+	if body:
+		body.material_override = _mat(Color(0.035,0.042,0.052),0.88,0.02)
+	if legs:
+		legs.material_override = _mat(Color(0.055,0.058,0.065),0.90,0.0)
+	if feet:
+		feet.material_override = _mat(Color(0.070,0.050,0.038),0.82,0.02)
+
+	_enable_shadows(root)
+
+static func _prepare_dev_hound(root: Node3D) -> void:
+	_enable_shadows(root)
+
+static func _prepare_sword(root: Node3D) -> void:
+	root.scale = Vector3(0.92,0.92,0.92)
+	_enable_shadows(root)
+
+static func _enable_shadows(root: Node) -> void:
+	if root is MeshInstance3D:
+		(root as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for child in root.get_children():
+		_enable_shadows(child)
+
+static func _set_named_weapon_visible(root: Node,visible_: bool) -> void:
+	for candidate in ["Weapon","Sword","weapon","sword","ShadowbornWeapon"]:
 		var found := root.find_child(candidate,true,false)
 		if found is Node3D:
 			(found as Node3D).visible = visible_
@@ -153,7 +220,16 @@ static func _find_animation_player(root: Node) -> AnimationPlayer:
 			return found
 	return null
 
-static func _mat(color: Color, roughness: float=0.8, metallic: float=0.0, emission: bool=false) -> StandardMaterial3D:
+static func _find_skeleton(root: Node) -> Skeleton3D:
+	if root is Skeleton3D:
+		return root as Skeleton3D
+	for child in root.get_children():
+		var found := _find_skeleton(child)
+		if found != null:
+			return found
+	return null
+
+static func _mat(color: Color,roughness: float=0.8,metallic: float=0.0,emission: bool=false) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = roughness
@@ -161,124 +237,78 @@ static func _mat(color: Color, roughness: float=0.8, metallic: float=0.0, emissi
 	if emission:
 		mat.emission_enabled = true
 		mat.emission = color
-		mat.emission_energy_multiplier = 2.4
+		mat.emission_energy_multiplier = 2.2
 	return mat
 
-static func _sphere(radius: float, color: Color, emission: bool=false) -> MeshInstance3D:
-	var n := MeshInstance3D.new()
+static func _box(size: Vector3,color: Color,metallic: float=0.0) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mesh.material = _mat(color,0.70,metallic)
+	node.mesh = mesh
+	return node
+
+static func _sphere(radius: float,color: Color) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
 	var mesh := SphereMesh.new()
 	mesh.radius = radius
 	mesh.height = radius*2.0
-	mesh.radial_segments = 24
-	mesh.rings = 12
-	mesh.material = _mat(color,0.74,0.0,emission)
-	n.mesh = mesh
-	return n
+	mesh.radial_segments = 16
+	mesh.rings = 8
+	mesh.material = _mat(color)
+	node.mesh = mesh
+	return node
 
-static func _capsule(radius: float, height: float, color: Color, metallic: float=0.0) -> MeshInstance3D:
-	var n := MeshInstance3D.new()
+static func _capsule(radius: float,height: float,color: Color) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
 	var mesh := CapsuleMesh.new()
 	mesh.radius = radius
 	mesh.height = height
-	mesh.radial_segments = 24
-	mesh.rings = 12
-	mesh.material = _mat(color,0.70,metallic)
-	n.mesh = mesh
-	return n
+	mesh.radial_segments = 16
+	mesh.rings = 8
+	mesh.material = _mat(color)
+	node.mesh = mesh
+	return node
 
-static func _cylinder(radius: float, height: float, color: Color, metallic: float=0.0) -> MeshInstance3D:
-	var n := MeshInstance3D.new()
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 24
-	mesh.material = _mat(color,0.66,metallic)
-	n.mesh = mesh
-	return n
-
-static func _box(size: Vector3, color: Color, metallic: float=0.0) -> MeshInstance3D:
-	var n := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	mesh.material = _mat(color,0.68,metallic)
-	n.mesh = mesh
-	return n
-
-static func _build_shadow_fallback(with_sword: bool) -> Node3D:
+static func _build_emergency_sword() -> Node3D:
 	var root := Node3D.new()
-	root.name = "ShadowFallback"
-	var cloth := Color(0.027,0.030,0.038)
-	var cloth_2 := Color(0.047,0.050,0.061)
-	var leather := Color(0.095,0.070,0.052)
-	var old_steel := Color(0.18,0.19,0.21)
-	var skin := Color(0.36,0.29,0.26)
-
-	var pelvis := Node3D.new(); pelvis.name = "Pelvis"; pelvis.position = Vector3(0,0.87,0); root.add_child(pelvis)
-	var waist := _capsule(0.255,0.54,cloth); pelvis.add_child(waist)
-
-	var leg_l := Node3D.new(); leg_l.name = "LegL"; leg_l.position = Vector3(-0.17,0.53,0); leg_l.rotation_degrees.z=-2.5; root.add_child(leg_l)
-	var ll := _capsule(0.13,0.78,cloth_2); leg_l.add_child(ll)
-	var boot_l := _capsule(0.125,0.42,Color(0.025,0.024,0.025)); boot_l.position=Vector3(0,-0.30,0.035); leg_l.add_child(boot_l)
-
-	var leg_r := Node3D.new(); leg_r.name = "LegR"; leg_r.position = Vector3(0.17,0.53,0); leg_r.rotation_degrees.z=2.5; root.add_child(leg_r)
-	var lr := _capsule(0.13,0.78,cloth_2); leg_r.add_child(lr)
-	var boot_r := _capsule(0.125,0.42,Color(0.025,0.024,0.025)); boot_r.position=Vector3(0,-0.30,0.035); leg_r.add_child(boot_r)
-
-	var torso := Node3D.new(); torso.name="Torso"; torso.position=Vector3(0,1.43,0); root.add_child(torso)
-	var body := _capsule(0.35,1.05,cloth_2); body.scale=Vector3(1.0,1.0,0.72); torso.add_child(body)
-	var rag_front := _box(Vector3(0.58,0.72,0.035),Color(0.038,0.041,0.051)); rag_front.position=Vector3(0,-0.04,0.25); rag_front.rotation_degrees.z=-4; torso.add_child(rag_front)
-	var strap := _box(Vector3(0.09,0.95,0.045),leather); strap.position=Vector3(-0.10,0.02,0.27); strap.rotation_degrees.z=-18; torso.add_child(strap)
-	var old_plate := _box(Vector3(0.34,0.18,0.045),old_steel,0.42); old_plate.position=Vector3(0.19,0.18,0.27); old_plate.rotation_degrees.z=8; torso.add_child(old_plate)
-
-	var arm_l := Node3D.new(); arm_l.name="ArmL"; arm_l.position=Vector3(-0.47,1.25,0); arm_l.rotation_degrees.z=-8; root.add_child(arm_l)
-	var al := _capsule(0.10,0.72,cloth); arm_l.add_child(al)
-	var arm_r := Node3D.new(); arm_r.name="ArmR"; arm_r.position=Vector3(0.47,1.25,0); arm_r.rotation_degrees.z=8; root.add_child(arm_r)
-	var ar := _capsule(0.10,0.72,cloth); arm_r.add_child(ar)
-
-	var head_rig := Node3D.new(); head_rig.name="HeadRig"; head_rig.position=Vector3(0,2.15,0); root.add_child(head_rig)
-	var neck := _cylinder(0.12,0.18,skin); neck.position=Vector3(0,-0.24,0); head_rig.add_child(neck)
-	var face := _sphere(0.275,skin); face.scale=Vector3(0.90,1.06,0.84); head_rig.add_child(face)
-	var hair := _sphere(0.288,Color(0.035,0.030,0.029)); hair.position=Vector3(0,0.10,-0.035); hair.scale=Vector3(1.0,0.72,1.02); head_rig.add_child(hair)
-	var cloth_wrap := _box(Vector3(0.46,0.12,0.03),Color(0.018,0.020,0.026)); cloth_wrap.position=Vector3(0,-0.03,0.252); head_rig.add_child(cloth_wrap)
-	for side in [-1.0,1.0]:
-		var eye := _sphere(0.030,Color(0.38,0.56,0.95),true)
-		eye.name = "GlowEye"
-		eye.position = Vector3(0.087*side,0.005,0.274)
-		head_rig.add_child(eye)
-
-	var cloak := _box(Vector3(0.66,1.10,0.045),Color(0.020,0.022,0.029))
-	cloak.position=Vector3(0,1.33,-0.26); cloak.rotation_degrees.x=8; root.add_child(cloak)
-
-	var socket := Node3D.new(); socket.name="WeaponSocket"; socket.position=Vector3(0.57,1.03,0.07); socket.rotation_degrees.z=-15; root.add_child(socket)
-	if with_sword:
-		var weapon := create_sword_prop(); weapon.name="Weapon"; socket.add_child(weapon)
-
+	root.name = "EmergencySword"
+	var blade := _box(Vector3(0.055,1.25,0.035),Color(0.38,0.42,0.49),0.7)
+	blade.position.y = 0.42
+	root.add_child(blade)
+	var guard := _box(Vector3(0.34,0.065,0.065),Color(0.18,0.19,0.21),0.6)
+	guard.position.y = -0.20
+	root.add_child(guard)
 	return root
 
-static func _build_hound_fallback() -> Node3D:
+static func _build_emergency_shadow(with_sword: bool) -> Node3D:
 	var root := Node3D.new()
-	root.name = "GraveHoundFallback"
-	var fur := Color(0.075,0.080,0.086)
-	var bone := Color(0.33,0.31,0.28)
-	var wound := Color(0.24,0.045,0.035)
-
-	var body := _capsule(0.38,1.15,fur); body.position=Vector3(0,0.72,0); body.rotation_degrees.z=90; body.scale=Vector3(1.0,1.14,0.76); root.add_child(body)
-	var chest := _sphere(0.42,fur); chest.position=Vector3(-0.38,0.80,0); chest.scale=Vector3(1.0,1.08,0.78); root.add_child(chest)
-	var head := _sphere(0.31,fur); head.position=Vector3(-0.86,0.91,0.02); head.scale=Vector3(1.12,0.87,0.86); root.add_child(head)
-	var muzzle := _capsule(0.17,0.43,Color(0.055,0.058,0.062)); muzzle.position=Vector3(-1.12,0.84,0.02); muzzle.rotation_degrees.z=90; root.add_child(muzzle)
+	root.name = "ShadowEmergencyFallback"
+	var torso := _capsule(0.34,1.05,Color(0.035,0.040,0.052))
+	torso.position = Vector3(0,1.35,0)
+	root.add_child(torso)
+	var head := _sphere(0.26,Color(0.35,0.28,0.25))
+	head.position = Vector3(0,2.05,0)
+	root.add_child(head)
 	for side in [-1.0,1.0]:
-		var ear := _box(Vector3(0.11,0.42,0.20),fur); ear.position=Vector3(-0.79,1.22,0.20*side); ear.rotation_degrees.z=18*side; root.add_child(ear)
-		var eye := _sphere(0.040,Color(0.95,0.14,0.04),true); eye.position=Vector3(-1.045,0.99,0.14*side); root.add_child(eye)
-	for x in [-0.46,0.40]:
-		for z in [-0.25,0.25]:
-			var leg := _capsule(0.095,0.67,fur); leg.position=Vector3(x,0.34,z); leg.rotation_degrees.z=-8 if x<0 else 8; root.add_child(leg)
-			var paw := _sphere(0.13,Color(0.050,0.052,0.056)); paw.position=Vector3(x,0.07,z); paw.scale=Vector3(1.3,0.55,1.0); root.add_child(paw)
-	var spine := _box(Vector3(0.95,0.08,0.10),bone); spine.position=Vector3(0.10,1.04,-0.30); spine.rotation_degrees.z=-6; root.add_child(spine)
-	for i in range(4):
-		var rib := _cylinder(0.025,0.46,bone); rib.position=Vector3(-0.15+0.20*i,0.88,-0.32); rib.rotation_degrees.x=90; root.add_child(rib)
-	var wound_mark := _sphere(0.11,wound,true); wound_mark.position=Vector3(0.20,0.81,0.33); wound_mark.scale=Vector3(1.6,0.45,0.75); root.add_child(wound_mark)
-	var tail_root := Node3D.new(); tail_root.position=Vector3(0.67,0.80,0); root.add_child(tail_root)
-	for i in range(5):
-		var seg := _cylinder(0.055-float(i)*0.006,0.30,fur); seg.position=Vector3(0.14+0.25*i,0.04+0.05*i,0); seg.rotation_degrees.z=84; tail_root.add_child(seg)
+		var leg := _capsule(0.13,0.82,Color(0.045,0.047,0.052))
+		leg.position = Vector3(0.17*side,0.55,0)
+		root.add_child(leg)
+		var arm := _capsule(0.10,0.70,Color(0.030,0.033,0.042))
+		arm.position = Vector3(0.43*side,1.28,0)
+		root.add_child(arm)
+	if with_sword:
+		attach_sword(root)
+	return root
+
+static func _build_emergency_hound() -> Node3D:
+	var root := Node3D.new()
+	root.name = "HoundEmergencyFallback"
+	var body := _capsule(0.36,1.10,Color(0.075,0.08,0.09))
+	body.position = Vector3(0,0.65,0)
+	body.rotation_degrees.z = 90
+	root.add_child(body)
+	var head := _sphere(0.30,Color(0.065,0.07,0.08))
+	head.position = Vector3(-0.72,0.78,0)
+	root.add_child(head)
 	return root
