@@ -27,7 +27,7 @@ func _build_catacomb_blocker()->void:
 func _catacomb_route_open(game:Node)->bool:
 	if game==null or not game.act0.first_forge_done:
 		return false
-	return game.act0.stage in [Act0Contract.STAGE_CATACOMBS,Act0Contract.STAGE_ROOM5_REMATCH]
+	return game.act0.stage in [Act0Contract.STAGE_CATACOMBS,Act0Contract.STAGE_ROOM5_REMATCH,Act0Contract.STAGE_COMPLETE]
 
 func _sync_catacomb_blocker()->void:
 	if interaction!="catacombs":
