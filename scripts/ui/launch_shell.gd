@@ -9,8 +9,10 @@ var continue_button:Button
 var confirm_panel:Panel
 var identity_mode:="new"
 var pending_identity:=""
+var touch_target:=72.0
 
 func _ready()->void:
+	touch_target=MobileSafeArea.minimum_touch_target(get_viewport(),44.0,72.0)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_background()
 	_build_main()
@@ -66,14 +68,16 @@ func _button(parent:Control,text_:String,y:float)->Button:
 	var b:=Button.new()
 	b.text=text_
 	b.position=Vector2(50,y)
-	b.size=Vector2(500,72)
+	b.size=Vector2(500,touch_target)
+	b.custom_minimum_size=Vector2(500,touch_target)
 	b.focus_mode=Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size",22)
 	parent.add_child(b)
 	return b
 
 func _build_main()->void:
-	main_panel=_panel(Vector2(600,360))
+	var panel_height:=maxf(360.0,110.0+touch_target*2.0+24.0+40.0)
+	main_panel=_panel(Vector2(600,panel_height))
 	var header:=Label.new()
 	header.text="ENTER THE CRADLE OF SHADOWS"
 	header.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -84,11 +88,12 @@ func _build_main()->void:
 
 	continue_button=_button(main_panel,"CONTINUE",110)
 	continue_button.pressed.connect(_continue_game)
-	var new_game:=_button(main_panel,"NEW GAME",200)
+	var new_game:=_button(main_panel,"NEW GAME",110.0+touch_target+24.0)
 	new_game.pressed.connect(func():_open_identity("new"))
 
 func _build_identity()->void:
-	identity_panel=_panel(Vector2(720,470))
+	var identity_height:=maxf(470.0,180.0+touch_target*3.0+48.0+30.0)
+	identity_panel=_panel(Vector2(720,identity_height))
 	identity_panel.visible=false
 
 	var header:=Label.new()
@@ -113,15 +118,16 @@ func _build_identity()->void:
 	male.size.x=500
 	male.pressed.connect(func():_confirm_identity("male"))
 
-	var female:=_button(identity_panel,"FEMALE FORM",270)
+	var female:=_button(identity_panel,"FEMALE FORM",180.0+touch_target+24.0)
 	female.position.x=110
 	female.size.x=500
 	female.pressed.connect(func():_confirm_identity("female"))
 
 	var back:=Button.new()
 	back.text="BACK"
-	back.position=Vector2(250,375)
-	back.size=Vector2(220,55)
+	back.position=Vector2(250,180.0+touch_target*2.0+48.0)
+	back.size=Vector2(220,touch_target)
+	back.custom_minimum_size=Vector2(220,touch_target)
 	back.focus_mode=Control.FOCUS_NONE
 	back.pressed.connect(_close_identity)
 	identity_panel.add_child(back)
@@ -165,7 +171,8 @@ func _confirm_identity(identity:String)->void:
 
 
 func _build_replace_confirm()->void:
-	confirm_panel=_panel(Vector2(620,300))
+	var confirm_height:=maxf(300.0,195.0+touch_target+35.0)
+	confirm_panel=_panel(Vector2(620,confirm_height))
 	confirm_panel.visible=false
 
 	var header:=Label.new()
@@ -188,7 +195,8 @@ func _build_replace_confirm()->void:
 	var replace:=Button.new()
 	replace.text="REPLACE SAVE"
 	replace.position=Vector2(55,195)
-	replace.size=Vector2(240,62)
+	replace.size=Vector2(240,touch_target)
+	replace.custom_minimum_size=Vector2(240,touch_target)
 	replace.focus_mode=Control.FOCUS_NONE
 	replace.pressed.connect(_replace_confirmed)
 	confirm_panel.add_child(replace)
@@ -196,7 +204,8 @@ func _build_replace_confirm()->void:
 	var cancel:=Button.new()
 	cancel.text="CANCEL"
 	cancel.position=Vector2(325,195)
-	cancel.size=Vector2(240,62)
+	cancel.size=Vector2(240,touch_target)
+	cancel.custom_minimum_size=Vector2(240,touch_target)
 	cancel.focus_mode=Control.FOCUS_NONE
 	cancel.pressed.connect(_cancel_replace)
 	confirm_panel.add_child(cancel)
