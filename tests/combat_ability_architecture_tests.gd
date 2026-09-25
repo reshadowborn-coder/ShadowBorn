@@ -15,6 +15,7 @@ func _check(condition:bool,message:String)->void:
 func _run()->void:
 	_test_shadow_skill_catalog_parity()
 	_test_skill_rank_runtime_isolation()
+	_test_skillbook_runtime()
 	_test_passive_trigger_guards()
 	_test_talent_graph_rules()
 	_test_kit_contract()
@@ -57,6 +58,26 @@ func _test_skill_rank_runtime_isolation()->void:
 	_check(high.commit_use() and high.cooldown_remaining==3,"active skill commits its computed cooldown")
 	high.advance_actionable_owner_turn()
 	_check(high.cooldown_remaining==2,"skill cooldown advances only through explicit actionable owner turns")
+
+func _test_skillbook_runtime()->void:
+	var kit:=ShadowAbilityCatalog.kit_for_weapon("sword_shield")
+	var book:=CombatSkillbookRuntime.new()
+	_check(book.configure(kit,1).is_empty(),"Shadow skillbook configures from the catalog")
+	_check(book.has_slot(&"A1") and book.has_slot(&"A2"),"skillbook exposes stable early A1/A2 slots")
+	_check(book.can_use(&"A1"),"default A1 is usable at level 1")
+	_check(book.commit_use(&"A2"),"active A2 commits through skillbook")
+	_check(book.cooldown_remaining(&"A2")==int(ShadowLoadout.PROFILES["sword_shield"].a2_cd),"skillbook owns active cooldown")
+	_check(not book.can_use(&"A2"),"A2 cannot be reused while cooling down")
+	book.advance_actionable_owner_turn()
+	_check(book.cooldown_remaining(&"A2")==int(ShadowLoadout.PROFILES["sword_shield"].a2_cd)-1,"cooldown advances on explicit actionable owner turn")
+	var fresh:=CombatSkillbookRuntime.new()
+	_check(fresh.configure(kit,1).is_empty(),"fresh skillbook configures for control checks")
+	_check(not fresh.can_use(&"A2",true,false) and fresh.can_use(&"A1",true,false),"Block Active Skills disables A2 but preserves A1")
+	_check(not fresh.can_use(&"A2",false,true) and fresh.can_use(&"A1",false,true),"default-only rule supports Provoke-style gating")
+	var bad:=CombatSkillbookRuntime.new()
+	_check(not bad.configure(kit,1,{"shadow.sword_shield.a2":99}).is_empty(),"skillbook rejects corrupted skill ranks")
+	var snapshot:=fresh.snapshot()
+	_check(str(snapshot.actor_id)=="shadow" and (snapshot.slots as Dictionary).has("A1"),"skillbook snapshot exposes deterministic slot state")
 
 func _passive(
 	id:StringName,
