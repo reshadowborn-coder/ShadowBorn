@@ -44,8 +44,11 @@ func _collect(node:Node)->void:
 			if not unique_meshes.has(mesh_id):
 				unique_meshes[mesh_id]=true
 				for surface in range(mesh.get_surface_count()):
-					vertices+=maxi(0,mesh.surface_get_array_len(surface))
-					indices+=maxi(0,mesh.surface_get_array_index_len(surface))
+					var arrays:=mesh.surface_get_arrays(surface)
+					if arrays.size()>Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX]!=null:
+						vertices+=arrays[Mesh.ARRAY_VERTEX].size()
+					if arrays.size()>Mesh.ARRAY_INDEX and arrays[Mesh.ARRAY_INDEX]!=null:
+						indices+=arrays[Mesh.ARRAY_INDEX].size()
 					var material:=mesh.surface_get_material(surface)
 					if material!=null:
 						unique_materials[material.get_instance_id()]=true
