@@ -154,7 +154,7 @@ func is_encounter_cleared(id: String) -> bool:
 func begin_encounter(id: String, profile: Dictionary) -> bool:
 	if is_encounter_cleared(id):
 		return false
-	if Act0Contract.is_exterior_encounter(id) and not Act0Contract.can_start_exterior_encounter(id,cleared_encounters):
+	if Act0Contract.is_exterior_encounter(id) and not Act0Contract.can_start_exterior_encounter(id,cleared_encounters,act0.temple_reveal_seen):
 		story_toast.show_message("The path refuses to advance. An earlier threat still remains.")
 		return false
 	shadow.set_physics_process(false)
@@ -224,7 +224,8 @@ func _on_finished(id: String) -> void:
 				shield_threshold_beat=true
 	checkpoint_position = shadow.global_position
 	director.set_checkpoint(id + "_cleared")
-	director.advance()
+	if first_clear and Act0Contract.is_exterior_encounter(id):
+		director.mark_exterior_encounter_cleared(id)
 	if cat_room > 0:
 		act0_flow.room_cleared(cat_room)
 	_save_progress()
@@ -246,17 +247,40 @@ func _on_failed(_id: String) -> void:
 	shadow.set_physics_process(true)
 	_refresh_navigation()
 
-func play_world_reveal(id: String) -> void:
-	if id != "temple" or encounter.active: return
+func play_world_reveal(id:String)->bool:
+	if id!="temple" or encounter.active or act0.temple_reveal_seen:
+		return false
+	if not is_encounter_cleared("armless") or act0.stage!=Act0Contract.STAGE_EXTERIOR:
+		return false
+
+	var before:=act0.snapshot()
+	var previous_route:=director.route_index
+	var previous_checkpoint:=director.checkpoint
+	var previous_checkpoint_position:=checkpoint_position
+
+	if not act0.mark_temple_reveal_seen():
+		return false
+	director.mark_temple_reveal_seen()
+	checkpoint_position=shadow.global_position
+	director.set_checkpoint("temple_reveal_seen")
+	if not _save_progress():
+		act0.restore(before)
+		director.set_route_index(previous_route)
+		director.set_checkpoint(previous_checkpoint)
+		checkpoint_position=previous_checkpoint_position
+		story_toast.show_message("The vision fractures. Progress could not be saved.")
+		return false
+
 	mobile_controls.set_enabled(false)
 	shadow.set_physics_process(false)
-	camera_rig.enter_reveal(Vector3(0, 5.5, -70.0))
+	camera_rig.enter_reveal(Vector3(0,5.5,-70.0))
 	await get_tree().create_timer(0.45 if reduced_motion else 1.65).timeout
 	camera_rig.exit_reveal()
 	if not reduced_motion:
 		await get_tree().create_timer(0.35).timeout
 	shadow.set_physics_process(true)
 	_refresh_navigation()
+	return true
 
 
 func activate_faded_sigil()->bool:
