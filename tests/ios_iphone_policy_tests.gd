@@ -33,6 +33,8 @@ func _run()->void:
 	_check(project.contains("window/ios/hide_status_bar=true"),"iPhone status bar is hidden during gameplay")
 	_check(project.contains("window/ios/suppress_ui_gesture=true"),"iPhone system-edge gesture suppression is enabled")
 	_check(project.contains("renderer/rendering_device/driver.ios=\"metal\""),"iPhone renderer uses native Metal")
+	_check(project.contains("config/icon=\"res://assets/branding/shadowborn_ios_icon.svg\""),"iPhone export has a single opaque Shadowborn icon source")
+	_check(FileAccess.file_exists("res://assets/branding/shadowborn_ios_icon.svg"),"Shadowborn iPhone icon source exists")
 
 	_check(presets.contains("name=\"iPhone QA\""),"iPhone QA export preset exists")
 	_check(presets.contains("platform=\"iOS\""),"iPhone QA preset targets iOS")
