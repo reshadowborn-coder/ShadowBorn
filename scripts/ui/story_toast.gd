@@ -6,6 +6,8 @@ extends CanvasLayer
 var ticket:=0
 
 func _ready()->void:
+	panel.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	panel.visible=false
 
 func show_message(message:String,duration:float=3.4)->void:
