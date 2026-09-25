@@ -1,0 +1,16 @@
+[config]
+name="ShadowbornIOS"
+binary="ShadowbornIOS.xcframework"
+
+initialization="shadowborn_ios_init"
+deinitialization="shadowborn_ios_deinit"
+
+[dependencies]
+linked=[]
+embedded=[]
+system=["Foundation.framework","UIKit.framework","CoreHaptics.framework"]
+capabilities=[]
+files=[]
+linker_flags=["-ObjC"]
+
+[plist]
