@@ -6,6 +6,7 @@ const SHADOW_EDGE := Color(0.13,0.14,0.18,1.0)
 const WEAPON := Color(0.10,0.11,0.14,1.0)
 var _materials: Dictionary = {}
 var weapon_root:Node3D
+var residual_tween:Tween
 
 func _ready() -> void:
 	_build_proxy()
@@ -99,3 +100,12 @@ func apply_identity(identity:String)->void:
 		if shoulders: shoulders.scale=Vector3.ONE
 		if head: head.scale=Vector3.ONE
 		if mantle: mantle.scale=Vector3.ONE
+
+func play_residual_absorption()->void:
+	if residual_tween:
+		residual_tween.kill()
+	scale=Vector3.ONE
+	residual_tween=create_tween()
+	residual_tween.tween_property(self,"scale",Vector3.ONE*1.08,0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	residual_tween.tween_property(self,"scale",Vector3.ONE*0.97,0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	residual_tween.tween_property(self,"scale",Vector3.ONE,0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
