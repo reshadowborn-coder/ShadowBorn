@@ -116,7 +116,7 @@ func _build()->void:
 		for j in range(3):
 			box("Room%02dBones%02d"%[i+1,j],Vector3(-4.0+j*4.0,.08,z+2.5-(j%2)*4.0),Vector3(1.0,.16,.35),BONE,visual)
 
-	solid_box("Room5Seal",Vector3(0,2.2,-179.0),Vector3(7,4.4,.65),Color(.10,.08,.09),visual,collision)
+	solid_box("Room5Seal",Vector3(0,2.2,-179.0),Vector3(11.3,4.4,.65),Color(.10,.08,.09),visual,collision)
 
 	build_skeleton("cat_r1_skeleton",Vector3(0,1.0,-124.0),visual)
 	build_hound("cat_r2_hound",Vector3(0,0.8,-137.0),visual)
