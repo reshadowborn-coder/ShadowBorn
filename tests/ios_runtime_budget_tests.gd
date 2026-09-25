@@ -6,16 +6,23 @@ const MAX_UNIQUE_MESHES:=220
 const MAX_UNIQUE_MATERIALS:=96
 const MAX_COLLISION_SHAPES:=260
 const MAX_LIGHTS:=8
-const MAX_VERTICES:=500000
-const MAX_INDICES:=1500000
+const MAX_UNIQUE_VERTICES:=500000
+const MAX_UNIQUE_INDICES:=1500000
+# Broad CI guardrails until physical iPhone 13 Pro calibration replaces them.
+const MAX_INSTANCE_VERTEX_REFERENCES:=2000000
+const MAX_INSTANCE_INDEX_REFERENCES:=6000000
+const MAX_RENDER_SURFACES:=800
 
 var failures:=0
 var total_nodes:=0
 var mesh_instances:=0
 var collision_shapes:=0
 var lights:=0
-var vertices:=0
-var indices:=0
+var unique_vertices:=0
+var unique_indices:=0
+var instance_vertex_references:=0
+var instance_index_references:=0
+var render_surfaces:=0
 var unique_meshes:Dictionary={}
 var unique_materials:Dictionary={}
 
@@ -41,18 +48,28 @@ func _collect(node:Node)->void:
 		var mesh:=instance.mesh
 		if mesh!=null:
 			var mesh_id:=mesh.get_instance_id()
-			if not unique_meshes.has(mesh_id):
+			var first_resource_visit:=not unique_meshes.has(mesh_id)
+			if first_resource_visit:
 				unique_meshes[mesh_id]=true
 				if mesh is PrimitiveMesh:
 					var primitive_material:Material=(mesh as PrimitiveMesh).material
 					if primitive_material!=null:
 						unique_materials[primitive_material.get_instance_id()]=true
-				for surface in range(mesh.get_surface_count()):
-					var arrays:=mesh.surface_get_arrays(surface)
-					if arrays.size()>Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX]!=null:
-						vertices+=arrays[Mesh.ARRAY_VERTEX].size()
-					if arrays.size()>Mesh.ARRAY_INDEX and arrays[Mesh.ARRAY_INDEX]!=null:
-						indices+=arrays[Mesh.ARRAY_INDEX].size()
+
+			for surface in range(mesh.get_surface_count()):
+				render_surfaces+=1
+				var arrays:=mesh.surface_get_arrays(surface)
+				var surface_vertices:=0
+				var surface_indices:=0
+				if arrays.size()>Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX]!=null:
+					surface_vertices=arrays[Mesh.ARRAY_VERTEX].size()
+					instance_vertex_references+=surface_vertices
+				if arrays.size()>Mesh.ARRAY_INDEX and arrays[Mesh.ARRAY_INDEX]!=null:
+					surface_indices=arrays[Mesh.ARRAY_INDEX].size()
+					instance_index_references+=surface_indices
+				if first_resource_visit:
+					unique_vertices+=surface_vertices
+					unique_indices+=surface_indices
 					var material:=mesh.surface_get_material(surface)
 					if material!=null:
 						unique_materials[material.get_instance_id()]=true
@@ -74,15 +91,18 @@ func _run()->void:
 	await process_frame
 	_collect(chapter)
 
-	print("IPHONE_RUNTIME_BUDGET nodes=%d meshes=%d unique_meshes=%d materials=%d collisions=%d lights=%d vertices=%d indices=%d"%[
+	print("IPHONE_RUNTIME_BUDGET nodes=%d meshes=%d unique_meshes=%d materials=%d surfaces=%d collisions=%d lights=%d unique_vertices=%d unique_indices=%d instance_vertices=%d instance_indices=%d"%[
 		total_nodes,
 		mesh_instances,
 		unique_meshes.size(),
 		unique_materials.size(),
+		render_surfaces,
 		collision_shapes,
 		lights,
-		vertices,
-		indices
+		unique_vertices,
+		unique_indices,
+		instance_vertex_references,
+		instance_index_references
 	])
 
 	_check(total_nodes<=MAX_TOTAL_NODES,"Act 0 total node budget remains bounded for iPhone")
@@ -91,8 +111,11 @@ func _run()->void:
 	_check(unique_materials.size()<=MAX_UNIQUE_MATERIALS,"Act 0 unique material count remains bounded")
 	_check(collision_shapes<=MAX_COLLISION_SHAPES,"Act 0 collision-shape count remains bounded")
 	_check(lights<=MAX_LIGHTS,"Act 0 dynamic/static light count remains bounded")
-	_check(vertices<=MAX_VERTICES,"Act 0 loaded vertex budget remains bounded")
-	_check(indices<=MAX_INDICES,"Act 0 loaded index budget remains bounded")
+	_check(unique_vertices<=MAX_UNIQUE_VERTICES,"Act 0 unique loaded vertex budget remains bounded")
+	_check(unique_indices<=MAX_UNIQUE_INDICES,"Act 0 unique loaded index budget remains bounded")
+	_check(instance_vertex_references<=MAX_INSTANCE_VERTEX_REFERENCES,"Act 0 per-instance vertex work stays below the provisional iPhone guardrail")
+	_check(instance_index_references<=MAX_INSTANCE_INDEX_REFERENCES,"Act 0 per-instance index work stays below the provisional iPhone guardrail")
+	_check(render_surfaces<=MAX_RENDER_SURFACES,"Act 0 rendered mesh-surface count stays below the provisional iPhone guardrail")
 
 	chapter.queue_free()
 	await process_frame
