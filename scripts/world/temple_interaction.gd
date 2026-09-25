@@ -44,8 +44,16 @@ func _sync_catacomb_blocker()->void:
 func _process(_delta:float)->void:
 	_sync_catacomb_blocker()
 
+func _should_trigger_interaction(body:Node)->bool:
+	if interaction!="catacombs" or not (body is Node3D):
+		return true
+	# Negative Z leads deeper into the Catacombs. Entering the Area from the
+	# lower side means the player is walking back toward the Temple; do not
+	# reinterpret that crossing as another descent/fast-resume request.
+	return (body as Node3D).global_position.z>=global_position.z
+
 func _enter(body:Node)->void:
-	if not body.is_in_group("player"):
+	if not body.is_in_group("player") or not _should_trigger_interaction(body):
 		return
 	var game:=get_tree().get_first_node_in_group("chapter00_game")
 	if game and game.has_method("temple_interact"):
