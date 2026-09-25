@@ -120,6 +120,16 @@ func _test_chapter_scene()->void:
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
+		var hound_visual:=chapter.get_node_or_null("Graybox/VisualGeometry/VIS_HOUND") as Node3D
+		if hound_visual:
+			var hound_home:=hound_visual.global_transform
+			game._position_combatants(hound_visual)
+			hound_visual.rotation_degrees=Vector3(78,33,12)
+			hound_visual.scale=Vector3(0.2,0.3,0.4)
+			game._restore_visual_home(hound_visual)
+			_check(hound_visual.global_transform.is_equal_approx(hound_home),"failed combat commit can restore full enemy transform, not only position")
+			game._restore_act0_position()
+
 		var toast_panel:=game.get_node_or_null("StoryToast/Panel") as Control
 		var toast_text:=game.get_node_or_null("StoryToast/Panel/Text") as Control
 		_check(toast_panel!=null and toast_panel.mouse_filter==Control.MOUSE_FILTER_IGNORE,"story toast cannot intercept world/touch input")
