@@ -6,12 +6,11 @@ signal finished
 var camera: Camera3D
 var shadow_root: Node3D
 var shadow_visual: Node3D
+var sword_prop: Node3D
 var overlay: CanvasLayer
 var subtitle: Label
 var skip_button: Button
-var vignette: ColorRect
-var top_bar: ColorRect
-var bottom_bar: ColorRect
+var fade_rect: ColorRect
 var sequence_done := false
 var skipping := false
 var clock := 0.0
@@ -19,22 +18,16 @@ var motes: Array[Node3D] = []
 
 func _ready() -> void:
 	_build_world()
-	_build_shadow()
+	_build_shadow_and_sword()
 	_build_overlay()
 	_play_sequence()
 
 func _process(delta: float) -> void:
 	clock += delta
-	for i in range(motes.size()):
-		var mote := motes[i]
+	for mote in motes:
 		var base_y := float(mote.get_meta("base_y",0.0))
 		var phase := float(mote.get_meta("phase",0.0))
-		mote.position.y = base_y + sin(clock*0.45+phase)*0.15
-		mote.position.x += sin(clock*0.21+phase)*delta*0.015
-	if sequence_done or not is_instance_valid(shadow_root):
-		return
-	if shadow_root.rotation_degrees.x < 25.0:
-		shadow_root.position.y += sin(clock*1.65)*delta*0.008
+		mote.position.y = base_y + sin(clock*0.42+phase)*0.13
 
 func _unhandled_input(event: InputEvent) -> void:
 	if skipping or sequence_done:
@@ -48,133 +41,125 @@ func _build_world() -> void:
 	var world := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.004,0.006,0.010)
+	env.background_color = Color(0.003,0.005,0.009)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.10,0.125,0.17)
-	env.ambient_light_energy = 0.42
+	env.ambient_light_color = Color(0.075,0.095,0.135)
+	env.ambient_light_energy = 0.38
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.055,0.075,0.10)
-	env.fog_light_energy = 0.48
-	env.fog_density = 0.032
+	env.fog_light_color = Color(0.035,0.050,0.072)
+	env.fog_light_energy = 0.42
+	env.fog_density = 0.034
 	world.environment = env
 	add_child(world)
 
 	var moon := DirectionalLight3D.new()
-	moon.rotation_degrees = Vector3(-58,-18,0)
-	moon.light_color = Color(0.52,0.66,1.0)
-	moon.light_energy = 0.86
+	moon.rotation_degrees = Vector3(-52,-28,0)
+	moon.light_color = Color(0.48,0.62,1.0)
+	moon.light_energy = 0.78
 	moon.shadow_enabled = true
 	add_child(moon)
 
-	var cold := SpotLight3D.new()
-	cold.position = Vector3(0,5.4,1.2)
-	cold.rotation_degrees = Vector3(-68,0,0)
-	cold.light_color = Color(0.38,0.52,1.0)
-	cold.light_energy = 5.2
-	cold.spot_range = 10.0
-	cold.spot_angle = 34.0
-	cold.shadow_enabled = true
-	add_child(cold)
+	var shaft := SpotLight3D.new()
+	shaft.position = Vector3(-1.6,5.6,0.8)
+	shaft.rotation_degrees = Vector3(-68,-8,0)
+	shaft.light_color = Color(0.36,0.50,1.0)
+	shaft.light_energy = 5.6
+	shaft.spot_range = 10.0
+	shaft.spot_angle = 30.0
+	shaft.shadow_enabled = true
+	add_child(shaft)
 
-	for x in [-3.9,3.9]:
-		var warm := OmniLight3D.new()
-		warm.position = Vector3(x,1.65,-1.0)
-		warm.light_color = Color(1.0,0.30,0.08)
-		warm.light_energy = 2.8
-		warm.omni_range = 4.0
-		add_child(warm)
-		_build_brazier(Vector3(x,0,-1.0))
+	var ember := OmniLight3D.new()
+	ember.position = Vector3(4.2,1.45,-1.6)
+	ember.light_color = Color(1.0,0.25,0.055)
+	ember.light_energy = 2.4
+	ember.omni_range = 4.2
+	add_child(ember)
 
 	_build_crypt()
 	_build_motes()
 
 	camera = Camera3D.new()
 	camera.current = true
-	camera.fov = 36.0
-	camera.position = Vector3(0.78,1.72,4.85)
+	camera.fov = 34.0
+	camera.position = Vector3(-0.55,1.52,4.25)
 	add_child(camera)
-	camera.look_at(Vector3(0,1.02,0.15),Vector3.UP)
+	camera.look_at(Vector3(-2.15,1.00,-2.55),Vector3.UP)
 
 func _build_crypt() -> void:
-	var floor_mat := _mat(Color(0.055,0.060,0.067),0.94,0.0)
 	var floor := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(13.5,10.0)
-	plane.material = floor_mat
+	plane.size = Vector2(13.5,10.5)
+	plane.material = _mat(Color(0.040,0.044,0.052),0.94,0.0)
 	floor.mesh = plane
 	add_child(floor)
 
-	_add_box(Vector3(0,2.6,-4.25),Vector3(13.5,5.2,0.55),Color(0.075,0.082,0.092))
-	_add_box(Vector3(-6.5,2.2,-0.4),Vector3(0.55,4.4,7.8),Color(0.068,0.074,0.083))
-	_add_box(Vector3(6.5,2.2,-0.4),Vector3(0.55,4.4,7.8),Color(0.068,0.074,0.083))
+	# The corpse wall: close, heavy and broken. It is the visual anchor of the opening shot.
+	_add_box(Vector3(-2.50,2.20,-3.85),Vector3(5.8,4.4,0.55),Color(0.067,0.073,0.083))
+	_add_box(Vector3(3.45,2.45,-4.15),Vector3(6.3,4.9,0.48),Color(0.061,0.068,0.078))
+	_add_box(Vector3(-6.25,1.85,-0.35),Vector3(0.52,3.7,7.6),Color(0.056,0.062,0.071))
+	_add_box(Vector3(6.25,1.85,-0.35),Vector3(0.52,3.7,7.6),Color(0.056,0.062,0.071))
 
-	for x in [-4.6,-2.25,2.25,4.6]:
-		_add_box(Vector3(x,1.75,-3.96),Vector3(0.42,3.5,0.34),Color(0.105,0.112,0.124))
-		var capital := _box_node(Vector3(0.66,0.18,0.54),Color(0.13,0.135,0.145))
-		capital.position = Vector3(x,3.46,-3.96)
-		add_child(capital)
+	for x in [-4.6,-0.75,2.15,4.75]:
+		_add_box(Vector3(x,1.70,-3.58),Vector3(0.40,3.4,0.38),Color(0.10,0.105,0.116))
+		var cap := _box_node(Vector3(0.72,0.18,0.62),Color(0.125,0.13,0.14))
+		cap.position = Vector3(x,3.41,-3.58)
+		add_child(cap)
 
-	var round_frame := MeshInstance3D.new()
+	var frame := MeshInstance3D.new()
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.88
-	torus.outer_radius = 1.18
-	torus.rings = 24
-	torus.ring_segments = 32
-	torus.material = _mat(Color(0.12,0.13,0.145),0.92,0.0)
-	round_frame.mesh = torus
-	round_frame.position = Vector3(0,3.25,-3.90)
-	round_frame.rotation_degrees.x = 90
-	round_frame.scale.y = 1.12
-	add_child(round_frame)
+	torus.outer_radius = 1.16
+	torus.rings = 20
+	torus.ring_segments = 30
+	torus.material = _mat(Color(0.11,0.12,0.135),0.92,0.0)
+	frame.mesh = torus
+	frame.position = Vector3(2.1,3.15,-3.88)
+	frame.rotation_degrees.x = 90
+	frame.scale.y = 1.10
+	add_child(frame)
 
-	var window_void := _disc(0.88,Color(0.008,0.012,0.022))
-	window_void.position = Vector3(0,3.25,-4.05)
-	window_void.rotation_degrees.x = 90
-	add_child(window_void)
+	var window_dark := _cylinder(0.88,0.045,Color(0.005,0.008,0.015))
+	window_dark.position = Vector3(2.1,3.15,-4.03)
+	window_dark.rotation_degrees.x = 90
+	add_child(window_dark)
 
-	var slab_base := _box_node(Vector3(2.55,0.42,4.15),Color(0.10,0.105,0.115))
-	slab_base.position = Vector3(0,0.22,0.25)
-	add_child(slab_base)
-	var slab_top := _box_node(Vector3(2.20,0.20,3.72),Color(0.15,0.15,0.16))
-	slab_top.position = Vector3(0,0.53,0.25)
-	add_child(slab_top)
-	for z in [-1.16,1.64]:
-		var brace := _box_node(Vector3(2.75,0.18,0.25),Color(0.072,0.075,0.082))
-		brace.position = Vector3(0,0.40,z)
-		add_child(brace)
+	# Fallen stones frame the body without creating a long empty corridor.
+	for i in range(15):
+		var r := _box_node(Vector3(0.18+0.05*(i%4),0.12+0.04*(i%3),0.22+0.05*((i+2)%4)),Color(0.068+0.003*i,0.073+0.003*i,0.081+0.003*i))
+		r.position = Vector3(-5.2+float((i*31)%100)/10.0,0.08,-3.15+float((i*17)%52)/10.0)
+		r.rotation_degrees = Vector3(float(i*11),float(i*27),float(i*7))
+		add_child(r)
 
-	for i in range(8):
-		var rubble := _box_node(Vector3(0.20+0.07*(i%3),0.14+0.05*(i%2),0.24+0.06*((i+1)%3)),Color(0.08+0.005*i,0.085+0.004*i,0.092+0.004*i))
-		rubble.position = Vector3(-5.2+1.45*(i%4),0.08,-3.0+5.2*(i/4))
-		rubble.rotation_degrees = Vector3(float(i*7),float(i*31),float(i*11))
-		add_child(rubble)
+	# A broken stone bench/altar in the middle depth.
+	_add_box(Vector3(1.25,0.26,-0.55),Vector3(2.7,0.44,1.25),Color(0.078,0.082,0.090))
+	_add_box(Vector3(1.15,0.57,-0.58),Vector3(2.2,0.18,0.95),Color(0.11,0.112,0.118))
 
-	var root := Node3D.new()
-	root.position = Vector3(4.7,0,-2.85)
-	add_child(root)
-	for i in range(5):
-		var cross := _box_node(Vector3(0.10,0.85+0.08*i,0.10),Color(0.07,0.06,0.055))
-		cross.position = Vector3(0,0.50+0.12*i,0)
-		cross.rotation_degrees.z = -16+8*i
-		root.add_child(cross)
+	_build_brazier(Vector3(4.2,0,-1.6))
 
-func _build_shadow() -> void:
+func _build_shadow_and_sword() -> void:
 	shadow_root = Node3D.new()
 	shadow_root.name = "AwakeningShadow"
-	shadow_root.position = Vector3(0,0.82,0.26)
-	shadow_root.rotation_degrees = Vector3(86,180,0)
+	shadow_root.position = Vector3(-2.15,0.0,-3.15)
+	shadow_root.rotation_degrees.y = 18.0
 	add_child(shadow_root)
-	shadow_visual = CharacterFactory.create_shadow()
-	shadow_visual.scale = Vector3(1.06,1.06,1.06)
+
+	shadow_visual = CharacterFactory.create_shadow(false)
+	shadow_visual.scale = Vector3(1.02,1.02,1.02)
 	shadow_root.add_child(shadow_visual)
-	CharacterFactory.play_named_animation(shadow_visual,["idle","Idle","Idle_Combat"])
+	CharacterFactory.pose_seated_corpse(shadow_visual)
+
+	sword_prop = CharacterFactory.create_sword_prop()
+	sword_prop.position = Vector3(-0.85,0.10,-1.95)
+	sword_prop.rotation_degrees = Vector3(88,-18,26)
+	add_child(sword_prop)
 
 func _build_motes() -> void:
-	for i in range(24):
-		var mote := _sphere(0.016+0.004*(i%3),Color(0.25,0.31,0.42),true)
-		mote.position = Vector3(-5.4+float((i*37)%108)/10.0,0.55+float((i*19)%33)/10.0,-3.5+float((i*29)%67)/10.0)
+	for i in range(26):
+		var mote := _sphere(0.012+0.003*(i%3),Color(0.21,0.27,0.39),true)
+		mote.position = Vector3(-5.4+float((i*37)%105)/10.0,0.45+float((i*19)%31)/10.0,-3.45+float((i*29)%60)/10.0)
 		mote.set_meta("base_y",mote.position.y)
-		mote.set_meta("phase",float(i)*0.73)
+		mote.set_meta("phase",float(i)*0.71)
 		add_child(mote)
 		motes.append(mote)
 
@@ -186,94 +171,110 @@ func _build_overlay() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(root)
 
-	vignette = ColorRect.new()
-	vignette.color = Color(0,0,0,1)
-	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(vignette)
+	fade_rect = ColorRect.new()
+	fade_rect.color = Color(0,0,0,1)
+	fade_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(fade_rect)
 
-	top_bar = ColorRect.new()
+	var top_bar := ColorRect.new()
 	top_bar.color = Color(0,0,0,1)
 	top_bar.position = Vector2(0,0)
-	top_bar.size = Vector2(1920,92)
+	top_bar.size = Vector2(1920,72)
 	root.add_child(top_bar)
 
-	bottom_bar = ColorRect.new()
+	var bottom_bar := ColorRect.new()
 	bottom_bar.color = Color(0,0,0,1)
-	bottom_bar.anchor_top = 1.0
-	bottom_bar.anchor_bottom = 1.0
-	bottom_bar.offset_top = -92
-	bottom_bar.offset_bottom = 0
-	bottom_bar.offset_right = 1920
+	bottom_bar.position = Vector2(0,1008)
+	bottom_bar.size = Vector2(1920,72)
 	root.add_child(bottom_bar)
 
 	subtitle = Label.new()
-	subtitle.anchor_left = 0.5
-	subtitle.anchor_right = 0.5
-	subtitle.anchor_top = 1.0
-	subtitle.anchor_bottom = 1.0
-	subtitle.offset_left = -650
-	subtitle.offset_right = 650
-	subtitle.offset_top = -175
-	subtitle.offset_bottom = -108
+	subtitle.position = Vector2(360,900)
+	subtitle.size = Vector2(1200,70)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size",27)
-	subtitle.add_theme_color_override("font_color",Color(0.86,0.89,0.95))
+	subtitle.add_theme_font_size_override("font_size",25)
+	subtitle.add_theme_color_override("font_color",Color(0.82,0.85,0.91))
 	root.add_child(subtitle)
 
 	skip_button = Button.new()
 	skip_button.text = "SKIP"
-	skip_button.position = Vector2(1742,112)
-	skip_button.size = Vector2(130,52)
+	skip_button.position = Vector2(1755,94)
+	skip_button.size = Vector2(115,48)
 	skip_button.focus_mode = Control.FOCUS_NONE
-	skip_button.modulate = Color(1,1,1,0.74)
+	skip_button.modulate = Color(1,1,1,0.70)
 	skip_button.pressed.connect(_finish_sequence)
 	root.add_child(skip_button)
 
 func _play_sequence() -> void:
 	var fade := create_tween()
 	fade.tween_interval(0.35)
-	fade.tween_property(vignette,"color:a",0.0,1.45).set_trans(Tween.TRANS_SINE)
+	fade.tween_property(fade_rect,"color:a",0.0,1.25).set_trans(Tween.TRANS_SINE)
 	await fade.finished
 	if skipping: return
 
-	subtitle.text = "Cold stone. No breath. Yet something remembers."
-	await get_tree().create_timer(2.0).timeout
+	# Hold on the corpse. No narration for the first beat.
+	subtitle.text = ""
+	await get_tree().create_timer(1.75).timeout
 	if skipping: return
 
-	for child in shadow_visual.get_children():
-		if child.name == "GlowEye":
-			child.visible = true
-	var pulse := create_tween()
-	pulse.tween_property(camera,"fov",32.0,0.55).set_trans(Tween.TRANS_SINE)
-	pulse.tween_property(camera,"fov",36.0,0.60).set_trans(Tween.TRANS_SINE)
-	await pulse.finished
+	subtitle.text = "Something returns."
+	var wake_cam := create_tween()
+	wake_cam.set_parallel(true)
+	wake_cam.tween_property(camera,"position",Vector3(-0.25,1.68,3.65),1.10).set_trans(Tween.TRANS_SINE)
+	wake_cam.tween_property(camera,"fov",31.5,1.10)
+	await wake_cam.finished
+	camera.look_at(Vector3(-2.15,1.10,-3.12),Vector3.UP)
 	if skipping: return
 
-	subtitle.text = "A name returns before a voice."
+	CharacterFactory.play_named_animation(shadow_visual,["wake","Wake","Awaken","awakening"])
+	await get_tree().create_timer(0.85).timeout
+	if skipping: return
+
+	# He forces the body upright, still unarmed.
+	subtitle.text = ""
 	var rise := create_tween()
 	rise.set_parallel(true)
-	rise.tween_property(shadow_root,"rotation_degrees",Vector3(8,180,0),1.65).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise.tween_property(shadow_root,"position",Vector3(0,0.62,0.18),1.65).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise.tween_property(camera,"position",Vector3(3.15,2.55,7.15),1.65).set_trans(Tween.TRANS_CUBIC)
-	await rise.finished
-	camera.look_at(Vector3(0,1.22,0),Vector3.UP)
+	rise.tween_property(shadow_root,"position",Vector3(-1.92,0.0,-2.95),1.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise.tween_property(camera,"position",Vector3(1.10,2.15,5.10),1.45).set_trans(Tween.TRANS_CUBIC)
+	await get_tree().create_timer(0.62).timeout
+	CharacterFactory.pose_standing(shadow_visual)
+	await get_tree().create_timer(0.83).timeout
+	if skipping: return
+	camera.look_at(Vector3(-1.55,1.18,-2.15),Vector3.UP)
+
+	# The camera deliberately reveals the sword before he reaches for it.
+	subtitle.text = ""
+	var sword_reveal := create_tween()
+	sword_reveal.tween_property(camera,"position",Vector3(0.45,1.42,3.15),0.82).set_trans(Tween.TRANS_SINE)
+	await sword_reveal.finished
+	camera.look_at(sword_prop.global_position+Vector3(0,0.18,0),Vector3.UP)
+	await get_tree().create_timer(0.65).timeout
 	if skipping: return
 
-	await get_tree().create_timer(1.05).timeout
-	if skipping: return
-	subtitle.text = "SHADOW."
-	await get_tree().create_timer(1.35).timeout
+	subtitle.text = "A blade remembers its hand."
+	var pickup := create_tween()
+	pickup.set_parallel(true)
+	pickup.tween_property(shadow_root,"position",Vector3(-1.55,0,-2.45),0.58).set_trans(Tween.TRANS_QUAD)
+	pickup.tween_property(sword_prop,"position",Vector3(-1.40,0.95,-2.35),0.58).set_trans(Tween.TRANS_QUAD)
+	pickup.tween_property(sword_prop,"rotation_degrees",Vector3(0,0,-16),0.58)
+	await pickup.finished
+	CharacterFactory.attach_sword(shadow_visual)
+	sword_prop.visible = false
+	CharacterFactory.play_named_animation(shadow_visual,["draw_sword","Draw_Sword","ready","Ready","Idle_Combat"])
 	if skipping: return
 
-	subtitle.text = "Stone scrapes beyond the broken gate."
-	var warn := create_tween()
-	warn.tween_property(camera,"position",Vector3(-2.7,2.20,6.55),0.95).set_trans(Tween.TRANS_SINE)
-	await warn.finished
-	camera.look_at(Vector3(1.8,0.9,-2.2),Vector3.UP)
-	await get_tree().create_timer(1.25).timeout
+	var hero_shot := create_tween()
+	hero_shot.set_parallel(true)
+	hero_shot.tween_property(camera,"position",Vector3(-4.6,2.45,4.15),1.00).set_trans(Tween.TRANS_SINE)
+	hero_shot.tween_property(camera,"fov",35.0,1.00)
+	await hero_shot.finished
+	camera.look_at(Vector3(-0.3,1.05,-2.0),Vector3.UP)
+	subtitle.text = ""
+	await get_tree().create_timer(0.80).timeout
 	if skipping: return
+
 	_finish_sequence()
 
 func _finish_sequence() -> void:
@@ -284,15 +285,15 @@ func _finish_sequence() -> void:
 	subtitle.text = ""
 	skip_button.disabled = true
 	var out := create_tween()
-	out.tween_property(vignette,"color:a",1.0,0.45)
+	out.tween_property(fade_rect,"color:a",1.0,0.38)
 	await out.finished
 	finished.emit()
 
-func _mat(color: Color, rough: float=0.8, metallic: float=0.0) -> StandardMaterial3D:
+func _mat(color: Color,rough: float,metal: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
 	m.roughness = rough
-	m.metallic = metallic
+	m.metallic = metal
 	return m
 
 func _box_node(size: Vector3,color: Color) -> MeshInstance3D:
@@ -315,11 +316,11 @@ func _sphere(radius: float,color: Color,emission: bool=false) -> MeshInstance3D:
 	mesh.height = radius*2.0
 	mesh.radial_segments = 16
 	mesh.rings = 8
-	var mat := _mat(color,0.65,0.0)
+	var mat := _mat(color,0.64,0.0)
 	if emission:
 		mat.emission_enabled = true
 		mat.emission = color
-		mat.emission_energy_multiplier = 1.35
+		mat.emission_energy_multiplier = 1.3
 	mesh.material = mat
 	n.mesh = mesh
 	return n
@@ -331,22 +332,19 @@ func _cylinder(radius: float,height: float,color: Color) -> MeshInstance3D:
 	mesh.bottom_radius = radius
 	mesh.height = height
 	mesh.radial_segments = 18
-	mesh.material = _mat(color,0.64,0.22)
+	mesh.material = _mat(color,0.66,0.18)
 	n.mesh = mesh
 	return n
 
-func _disc(radius: float,color: Color) -> MeshInstance3D:
-	return _cylinder(radius,0.045,color)
-
 func _build_brazier(pos: Vector3) -> void:
-	var stand := _cylinder(0.09,1.15,Color(0.10,0.09,0.085))
-	stand.position = pos+Vector3(0,0.58,0)
+	var stand := _cylinder(0.09,1.05,Color(0.085,0.075,0.070))
+	stand.position = pos+Vector3(0,0.52,0)
 	add_child(stand)
-	var bowl := _cylinder(0.34,0.16,Color(0.16,0.09,0.05))
-	bowl.position = pos+Vector3(0,1.20,0)
+	var bowl := _cylinder(0.30,0.14,Color(0.14,0.075,0.045))
+	bowl.position = pos+Vector3(0,1.08,0)
 	add_child(bowl)
 	for i in range(3):
-		var flame := _sphere(0.105,Color(1.0,0.22+0.10*i,0.035),true)
-		flame.position = pos+Vector3((i-1)*0.09,1.42+0.055*i,0)
-		flame.scale.y = 1.65
+		var flame := _sphere(0.095,Color(1.0,0.20+0.09*i,0.03),true)
+		flame.position = pos+Vector3((i-1)*0.075,1.28+0.045*i,0)
+		flame.scale.y = 1.6
 		add_child(flame)
