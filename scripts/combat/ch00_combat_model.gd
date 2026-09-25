@@ -53,12 +53,20 @@ func snapshot() -> Dictionary:
 	var visible_state := "TERMINAL"
 	var guard := false
 	var intent := ""
-	if terminal == "CONTINUE" and decision < encounter_beats.size():
-		var beat: Dictionary = encounter_beats[decision]
-		visible_state = str(beat.get("visible_state", "OPEN"))
-		guard = bool(beat.get("guard", false))
-		if visible_state == "RUSH_PREP_VISIBLE":
-			intent = "RUSH PREP"
+	if terminal == "CONTINUE":
+		var beat: Dictionary = {}
+		if not pending_enemy_response.is_empty():
+			# While an enemy opportunity is pending, keep projecting the decision
+			# state that produced that opportunity. Do not leak the next decision's
+			# Guard/intent before the current enemy beat resolves.
+			beat = Dictionary(pending_enemy_response.get("beat", {}))
+		elif decision < encounter_beats.size():
+			beat = encounter_beats[decision]
+		if not beat.is_empty():
+			visible_state = str(beat.get("visible_state", "OPEN"))
+			guard = bool(beat.get("guard", false))
+			if visible_state == "RUSH_PREP_VISIBLE":
+				intent = "RUSH PREP"
 	return {
 		"terminal": terminal,
 		"decision": decision,
