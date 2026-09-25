@@ -87,6 +87,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_effect_contract_tests.gd 2>&1 | tee /tmp/combat-effect-contracts.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-effect-contracts.log
 
+      - name: Validate combat effect stacking container
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_effect_container_tests.gd 2>&1 | tee /tmp/combat-effect-container.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-effect-container.log
+
       - name: Validate speed and turn-meter combat timeline
         run: |
           set -o pipefail
