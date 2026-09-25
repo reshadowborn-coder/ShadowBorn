@@ -8,6 +8,8 @@ signal combat_state_changed(state: Dictionary)
 signal shadow_attack_presented(skill: String, damage: float, target_guarded: bool)
 signal enemy_attack_presented(damage: float)
 signal enemy_beat_presented(action: String, damage: float)
+signal command_committed(skill: String)
+signal semantic_contact(actor: String, action: String)
 
 const FRAY_BONUS := 1.15
 const PRE_TEMPLE_SCRIPTS := {
@@ -87,6 +89,7 @@ func _shadow_action_pre_temple(skill: String) -> void:
 	if skill == "A2" and int(shadow.get("a2_cd",0)) > 0:
 		return
 	action_locked = true
+	emit_signal("command_committed",skill)
 	_emit_state()
 
 	var guarded := bool(enemy.get("guard",false))
@@ -105,6 +108,7 @@ func _shadow_action_pre_temple(skill: String) -> void:
 		action_locked = false
 		return
 
+	emit_signal("semantic_contact","shadow",skill)
 	_apply_pre_temple_post_action(result)
 	_emit_state()
 
@@ -128,6 +132,7 @@ func _shadow_action_pre_temple(skill: String) -> void:
 		if not active:
 			action_locked = false
 			return
+		emit_signal("semantic_contact","enemy",enemy_action)
 		_sync_pre_temple_snapshot()
 		_emit_state()
 		await _wait(CombatPresentationContract.remainder_after_contact(enemy_timing))
@@ -165,6 +170,7 @@ func _shadow_action_legacy(skill: String) -> void:
 		return
 
 	action_locked = true
+	emit_signal("command_committed",skill)
 	_emit_state()
 
 	var guarded := bool(enemy.get("guard",false))
@@ -200,6 +206,7 @@ func _shadow_action_legacy(skill: String) -> void:
 		action_locked = false
 		return
 
+	emit_signal("semantic_contact","shadow",skill)
 	enemy.hp -= dealt
 	_emit_state()
 	await _wait(CombatPresentationContract.remainder_after_contact(shadow_timing))
@@ -220,6 +227,7 @@ func _shadow_action_legacy(skill: String) -> void:
 		action_locked = false
 		return
 
+	emit_signal("semantic_contact","enemy","ATTACK")
 	shadow.hp -= incoming
 	if shadow.a2_cd > 0:
 		shadow.a2_cd -= 1
