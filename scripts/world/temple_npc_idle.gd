@@ -66,12 +66,14 @@ func set_reduced_motion(value:bool)->void:
 	reduced_motion=value
 
 func _process(delta:float)->void:
+	# Interaction reactions are temporal state, not pose work. Let them expire
+	# even while the visual is hidden/far away so stale reactions cannot replay.
+	reaction_remaining=maxf(0.0,reaction_remaining-delta)
 	if not is_visible_in_tree():
 		return
 	if is_instance_valid(player) and global_position.distance_squared_to(player.global_position)>ACTIVE_RADIUS_SQUARED:
 		return
 	elapsed=fmod(elapsed+delta,120.0)
-	reaction_remaining=maxf(0.0,reaction_remaining-delta)
 	var scale:=0.30 if reduced_motion else 1.0
 	var t:=elapsed+phase
 	match motion_profile:
