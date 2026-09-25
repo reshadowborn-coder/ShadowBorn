@@ -27,6 +27,11 @@ func set_loadout(family:String)->void:
 
 func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void:
 	enemies=profiles.duplicate(true)
+	if enemies.is_empty():
+		active=false
+		push_error("Multi-enemy encounter cannot start without enemies")
+		_emit()
+		return
 	for e in enemies:
 		e["current_hp"]=float(e.hp)
 	selected=0
@@ -48,7 +53,7 @@ func select_target(index:int)->void:
 	_emit()
 
 func shadow_action(skill:String)->void:
-	if not active:
+	if not active or skill not in ["A1","A2"]:
 		return
 	if skill=="A2" and a2_cd>0:
 		return
