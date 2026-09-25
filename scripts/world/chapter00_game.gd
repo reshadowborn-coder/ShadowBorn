@@ -431,6 +431,7 @@ func enter_temple()->bool:
 	return true
 
 func temple_interact(kind:String) -> void:
+	_react_temple_npc(kind)
 	match kind:
 		"keeper":
 			if act0.stage==Act0Contract.STAGE_TEMPLE_ENTRY:
@@ -500,6 +501,14 @@ func temple_interact(kind:String) -> void:
 					story_toast.show_message("The lower passage closes again. Progress could not be saved.")
 			else:
 				story_toast.show_message("The passage does not answer an unbound, unforged shadow.")
+
+func _react_temple_npc(kind:String)->void:
+	if kind not in ["keeper","smith","merchant","engraver"]:
+		return
+	for npc in get_tree().get_nodes_in_group("temple_npc_idle"):
+		if str(npc.get("motion_profile"))==kind and npc.has_method("play_interaction_reaction"):
+			npc.play_interaction_reaction()
+			return
 
 func choose_covenant_weapon(family:String) -> bool:
 	var before:=act0.snapshot()
