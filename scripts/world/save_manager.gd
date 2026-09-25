@@ -148,8 +148,8 @@ static func save_state(state: Dictionary) -> bool:
 			DirAccess.rename_absolute(bak_abs, save_abs)
 		return false
 
-	if FileAccess.file_exists(BAK_PATH):
-		DirAccess.remove_absolute(bak_abs)
+	# Keep the previous valid generation. load_state() can then recover even
+	# if the newly promoted primary file is later truncated or corrupted.
 	return true
 
 static func _migrate(raw: Dictionary) -> Dictionary:
