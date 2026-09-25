@@ -98,6 +98,7 @@ func _build_route() -> void:
 	_box("DoorLintel",Vector3(0,6.3,-70.15),Vector3(6.2,0.7,0.7),STONE)
 	_box("EntryColumnL",Vector3(-3.1,3.0,-69.9),Vector3(0.75,6.0,0.75),STONE)
 	_box("EntryColumnR",Vector3(3.1,3.0,-69.9),Vector3(0.75,6.0,0.75),STONE)
+	_build_faded_sigil_marker()
 	_build_environment_props()
 	_build_route_occlusion()
 	_add_reveal_zone("temple", Vector3(0,0.8,-50.5), Vector3(10,2,4))
@@ -126,6 +127,13 @@ func _build_route_occlusion() -> void:
 func _add_reveal_zone(id:String,pos:Vector3,size:Vector3) -> void:
 	var a:=Area3D.new(); a.name="REVEAL_"+id.to_upper(); a.position=pos; a.script=REVEAL_SCRIPT; a.reveal_id=id
 	var c:=CollisionShape3D.new(); var shape:=BoxShape3D.new(); shape.size=size; c.shape=shape; a.add_child(c); add_child(a)
+
+func _build_faded_sigil_marker()->void:
+	var p:=Act0Layout.floor_anchor(Act0Layout.FADED_SIGIL_TRIGGER)
+	_box("FadedSigilBase",p+Vector3(0,0.10,0),Vector3(2.6,0.20,1.5),STONE)
+	_box("FadedSigilMarkA",p+Vector3(0,0.22,0),Vector3(0.22,0.06,1.0),Color(0.20,0.22,0.25))
+	var cross:=_box("FadedSigilMarkB",p+Vector3(0,0.23,0),Vector3(0.22,0.06,0.75),Color(0.20,0.22,0.25))
+	cross.rotation_degrees.y=90.0
 
 func _build_environment_props() -> void:
 	var rocks := [Vector3(-6.2,0.25,4),Vector3(5.8,0.18,1),Vector3(-4.8,0.22,-16),Vector3(5.4,0.3,-25),Vector3(-5.5,0.28,-43),Vector3(6.1,0.22,-53)]
