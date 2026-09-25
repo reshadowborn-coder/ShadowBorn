@@ -93,7 +93,10 @@ func _build()->void:
 	_build_keeper(Act0Layout.floor_anchor(Act0Layout.KEEPER_TRIGGER),visual)
 	_build_weapon_altar(Act0Layout.floor_anchor(Act0Layout.COVENANT_TRIGGER),visual)
 
-func _ambient_root(name:String,role:String,p:Vector3,parent:Node3D,style:int,phase:float=0.0)->Node3D:
+func _ambient_root(name:String,role:String,p:Vector3,style:int,phase:float=0.0)->Node3D:
+	# Build the complete proxy before parenting it into the active scene tree.
+	# This guarantees TempleNPCAmbient._ready() sees final child references
+	# and the authored base rotation/position.
 	var r:=Node3D.new()
 	r.name=name
 	r.position=p
@@ -102,7 +105,6 @@ func _ambient_root(name:String,role:String,p:Vector3,parent:Node3D,style:int,pha
 	r.set("phase_offset",phase)
 	r.set_meta("role",role)
 	r.add_to_group("temple_ambient_npc")
-	parent.add_child(r)
 	return r
 
 func _add_humanoid_core(r:Node3D,body_color:Color,body_size:Vector3=Vector3(.78,1.55,.52),head_y:float=1.95)->void:
@@ -126,7 +128,7 @@ func _build_smith(p:Vector3,parent:Node3D)->void:
 	box("Forge",Vector3(-1.2,.8,.4),Vector3(1.3,1.6,1.2),STONE,station)
 	box("Ember",Vector3(-1.2,1.15,-.25),Vector3(.75,.25,.08),EMBER,station)
 
-	var smith:=_ambient_root("Smith","smith",Vector3(1.15,0,.55),station,TempleNPCAmbient.Style.SMITH,0.15)
+	var smith:=_ambient_root("Smith","smith",Vector3(1.15,0,.55),TempleNPCAmbient.Style.SMITH,0.15)
 	smith.rotation_degrees.y=-18.0
 	_add_humanoid_core(smith,LEATHER,Vector3(.95,1.55,.6),1.98)
 	var work_arm:=_add_work_arm(smith,"WorkArm",Vector3(-.42,1.55,-.05),LEATHER)
@@ -137,6 +139,7 @@ func _build_smith(p:Vector3,parent:Node3D)->void:
 	box("HammerHandle",Vector3(0,-.18,0),Vector3(.12,.75,.12),WOOD,hammer)
 	box("HammerHead",Vector3(0,-.55,0),Vector3(.55,.22,.26),IRON,hammer)
 	_add_work_arm(smith,"OffArm",Vector3(.42,1.48,-.02),LEATHER)
+	station.add_child(smith)
 
 func _build_merchant(p:Vector3,parent:Node3D)->void:
 	var station:=Node3D.new()
@@ -150,7 +153,7 @@ func _build_merchant(p:Vector3,parent:Node3D)->void:
 	box("HangingClothL",Vector3(-1.05,2.25,1.0),Vector3(.8,1.0,.08),Color(.18,.10,.09),station)
 	box("HangingClothR",Vector3(.85,2.18,1.0),Vector3(.75,.9,.08),Color(.10,.13,.16),station)
 
-	var merchant:=_ambient_root("Merchant","merchant",Vector3(0,0,.72),station,TempleNPCAmbient.Style.MERCHANT,1.1)
+	var merchant:=_ambient_root("Merchant","merchant",Vector3(0,0,.72),TempleNPCAmbient.Style.MERCHANT,1.1)
 	_add_humanoid_core(merchant,MERCHANT_CLOTH)
 	_add_work_arm(merchant,"WorkArm",Vector3(-.38,1.48,-.12),MERCHANT_CLOTH)
 	var focus:=Node3D.new()
@@ -158,6 +161,7 @@ func _build_merchant(p:Vector3,parent:Node3D)->void:
 	focus.position=Vector3(.42,1.18,-.42)
 	merchant.add_child(focus)
 	box("SmallGoods",Vector3.ZERO,Vector3(.34,.18,.28),Color(.22,.17,.10),focus)
+	station.add_child(merchant)
 
 func _build_engraver(p:Vector3,parent:Node3D)->void:
 	var station:=Node3D.new()
@@ -168,7 +172,7 @@ func _build_engraver(p:Vector3,parent:Node3D)->void:
 	for i in range(3):
 		box("RuneStone",Vector3(-.65+i*.65,1.4,0),Vector3(.32,.32,.32),Color(.19,.15,.23),station)
 
-	var engraver:=_ambient_root("Engraver","engraver",Vector3(0,0,.72),station,TempleNPCAmbient.Style.ENGRAVER,2.0)
+	var engraver:=_ambient_root("Engraver","engraver",Vector3(0,0,.72),TempleNPCAmbient.Style.ENGRAVER,2.0)
 	engraver.rotation_degrees.y=180.0
 	_add_humanoid_core(engraver,ENGRAVER_CLOTH)
 	_add_work_arm(engraver,"WorkArm",Vector3(-.36,1.52,-.05),ENGRAVER_CLOTH)
@@ -178,12 +182,14 @@ func _build_engraver(p:Vector3,parent:Node3D)->void:
 	focus.position=Vector3(0,1.36,-.52)
 	engraver.add_child(focus)
 	box("RuneFocus",Vector3.ZERO,Vector3(.30,.08,.30),Color(.24,.16,.31),focus)
+	station.add_child(engraver)
 
 func _build_keeper(p:Vector3,parent:Node3D)->void:
-	var keeper:=_ambient_root("Keeper","keeper",p,parent,TempleNPCAmbient.Style.KEEPER,2.8)
+	var keeper:=_ambient_root("Keeper","keeper",p,TempleNPCAmbient.Style.KEEPER,2.8)
 	_add_humanoid_core(keeper,CLOTH,Vector3(.75,1.7,.5),2.05)
 	_add_work_arm(keeper,"WorkArm",Vector3(-.34,1.42,-.08),CLOTH)
 	_add_work_arm(keeper,"OffArm",Vector3(.34,1.42,-.08),CLOTH)
+	parent.add_child(keeper)
 
 func _build_weapon_altar(p:Vector3,parent:Node3D)->void:
 	var r:=Node3D.new()
