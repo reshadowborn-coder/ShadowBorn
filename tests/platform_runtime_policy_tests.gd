@@ -36,6 +36,11 @@ func _run()->void:
 	service._debug_set_environment(PlatformRuntimeService.PressureState.NOMINAL,false,true)
 	_check(service.get_quality_pressure()==PlatformRuntimeService.PressureState.SERIOUS,"memory pressure creates a serious quality floor")
 	_check(float(service.get_native_diagnostics().memory_pressure_hold_seconds)>0.0,"diagnostics expose active memory-pressure hold")
+	service._memory_pressure_remaining=0.0
+	service.set_process(true)
+	service._process(PlatformRuntimeService.RECOVERY_HOLD_SECONDS+0.1)
+	_check(service.get_quality_pressure()==PlatformRuntimeService.PressureState.NOMINAL,"memory pressure recovers after the hysteresis window even without a native bridge")
+	_check(service.effective_fps==60,"smooth60 returns to 60 only after pressure recovery")
 
 	service.set_user_performance_mode("battery30")
 	service._debug_set_environment(PlatformRuntimeService.PressureState.NOMINAL,false)
