@@ -22,12 +22,23 @@ func _ready()->void:
 	move_child(blocker,0)
 	blocker.visible=false
 	panel.visible=false
-	for child in $Panel/Weapons.get_children():
+	var touch:=MobileSafeArea.minimum_touch_target(get_viewport(),44.0,80.0)
+	var panel_height:=maxf(760.0,210.0+touch*5.0)
+	panel.offset_top=-panel_height*0.5
+	panel.offset_bottom=panel_height*0.5
+	var weapons:Control=$Panel/Weapons
+	weapons.size.y=touch*5.0
+	for child in weapons.get_children():
 		if child is Button:
-			child.custom_minimum_size=Vector2(0,64)
+			child.custom_minimum_size=Vector2(0,touch)
 			child.focus_mode=Control.FOCUS_NONE
 			var family:=str(child.get_meta("family"))
 			child.pressed.connect(func():_select(family))
+	confirm.size.y=touch
+	confirm.custom_minimum_size.y=touch
+	cancel.position.y=confirm.position.y+touch+16.0
+	cancel.size.y=touch
+	cancel.custom_minimum_size.y=touch
 	confirm.pressed.connect(_confirm)
 	cancel.pressed.connect(close)
 	confirm.disabled=true
