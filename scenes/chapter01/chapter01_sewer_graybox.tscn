@@ -149,17 +149,31 @@ text = "SHADOW"
 position = Vector2(280, 42)
 text = "ENEMY"
 
+[node name="PlayerTurnMeter" type="ProgressBar" parent="Game/CombatHUD/Panel"]
+position = Vector2(16, 68)
+size = Vector2(230, 12)
+show_percentage = false
+value = 0.0
+mouse_filter = 2
+
+[node name="EnemyTurnMeter" type="ProgressBar" parent="Game/CombatHUD/Panel"]
+position = Vector2(280, 68)
+size = Vector2(230, 12)
+show_percentage = false
+value = 0.0
+mouse_filter = 2
+
 [node name="State" type="Label" parent="Game/CombatHUD/Panel"]
-position = Vector2(16, 72)
+position = Vector2(16, 88)
 text = ""
 
 [node name="A1" type="Button" parent="Game/CombatHUD/Panel"]
-position = Vector2(16, 110)
+position = Vector2(16, 125)
 size = Vector2(230, 60)
 text = "A1  BASIC ATTACK"
 
 [node name="A2" type="Button" parent="Game/CombatHUD/Panel"]
-position = Vector2(270, 110)
+position = Vector2(270, 125)
 size = Vector2(240, 60)
 text = "A2  ACTIVE"
 
@@ -202,6 +216,27 @@ text = "RAT A"
 position = Vector2(340, 48)
 size = Vector2(310, 55)
 text = "RAT B"
+
+[node name="ShadowTurnMeter" type="ProgressBar" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(16, 108)
+size = Vector2(634, 10)
+show_percentage = false
+value = 0.0
+mouse_filter = 2
+
+[node name="TargetATurnMeter" type="ProgressBar" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(16, 122)
+size = Vector2(310, 10)
+show_percentage = false
+value = 0.0
+mouse_filter = 2
+
+[node name="TargetBTurnMeter" type="ProgressBar" parent="Game/MultiTargetHUD/Panel"]
+position = Vector2(340, 122)
+size = Vector2(310, 10)
+show_percentage = false
+value = 0.0
+mouse_filter = 2
 
 [node name="A1" type="Button" parent="Game/MultiTargetHUD/Panel"]
 position = Vector2(16, 125)

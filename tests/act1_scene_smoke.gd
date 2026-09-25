@@ -113,8 +113,14 @@ func _run()->void:
 			_check(game.presenter.shadow_visual==game.shadow and game.presenter.enemy_visual==pack_visuals[1],"pack enemy response rebinds the shared presenter to the acting rat")
 			game.presenter.clear()
 
+	var combat_hud:=chapter.get_node_or_null("Game/CombatHUD") as CombatHUD
+	if combat_hud:
+		_check(combat_hud.player_turn_meter is ProgressBar and combat_hud.enemy_turn_meter is ProgressBar,"1v1 HUD mounts visible Turn Meter bars")
+		_check(not combat_hud.player_turn_meter.show_percentage and not combat_hud.enemy_turn_meter.show_percentage,"1v1 Turn Meter uses compact bar presentation")
+
 	var pack_hud:=chapter.get_node_or_null("Game/MultiTargetHUD") as MultiTargetHUD
 	if pack_hud:
+		_check(pack_hud.shadow_turn_meter is ProgressBar and pack_hud.target_a_turn_meter is ProgressBar and pack_hud.target_b_turn_meter is ProgressBar,"pack HUD mounts independent Turn Meter bars for all three actors")
 		var lock_fixture:={
 			"enemies":[{"id":"rat_a","label":"Rat A","current_hp":10.0},{"id":"rat_b","label":"Rat B","current_hp":10.0}],
 			"selected":0,

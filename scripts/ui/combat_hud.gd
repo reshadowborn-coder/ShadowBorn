@@ -8,6 +8,8 @@ signal visual_state_updated(player_hp_text: String, enemy_hp_text: String, state
 @onready var player_hp: Label = $Panel/PlayerHP
 @onready var enemy_hp: Label = $Panel/EnemyHP
 @onready var state_label: Label = $Panel/State
+@onready var player_turn_meter: ProgressBar = $Panel/PlayerTurnMeter
+@onready var enemy_turn_meter: ProgressBar = $Panel/EnemyTurnMeter
 @onready var a1_button: Button = $Panel/A1
 @onready var a2_button: Button = $Panel/A2
 
@@ -22,6 +24,11 @@ func show_combat(id: String) -> void:
 
 func hide_combat() -> void:
 	panel.visible = false
+
+func _meter_value(actor:Dictionary,actor_id:String,current:Dictionary)->float:
+	if str(current.get("actor_id",""))==actor_id:
+		return 100.0
+	return clampf(float(actor.get("gauge_bp",0))/100.0,0.0,100.0)
 
 func render_state(state: Dictionary) -> void:
 	var s: Dictionary = state.get("shadow", {})
@@ -48,13 +55,20 @@ func render_state(state: Dictionary) -> void:
 	var timeline:Dictionary=state.get("turn_meter",{})
 	if not timeline.is_empty():
 		var actors:Dictionary=timeline.get("actors",{})
-		var shadow_tm:Dictionary=actors.get("shadow",{})
-		var enemy_tm:Dictionary=actors.get(str(state.get("encounter_id","")),{})
-		var shadow_pct:=int(round(float(shadow_tm.get("gauge_bp",0))/100.0))
-		var enemy_pct:=int(round(float(enemy_tm.get("gauge_bp",0))/100.0))
-		states.append("TM %d%% / %d%%"%[shadow_pct,enemy_pct])
 		var current:Dictionary=state.get("current_turn",{})
+		var enemy_id:=str(state.get("encounter_id",""))
+		var shadow_tm:Dictionary=actors.get("shadow",{})
+		var enemy_tm:Dictionary=actors.get(enemy_id,{})
+		player_turn_meter.value=_meter_value(shadow_tm,"shadow",current)
+		enemy_turn_meter.value=_meter_value(enemy_tm,enemy_id,current)
+		player_turn_meter.tooltip_text="TURN METER — SPD %d"%int(shadow_tm.get("effective_speed",0))
+		enemy_turn_meter.tooltip_text="TURN METER — SPD %d"%int(enemy_tm.get("effective_speed",0))
 		if not current.is_empty():
-			states.append("TURN "+str(current.get("actor_id","")).replace("_"," ").to_upper())
+			var actor_text:=str(current.get("actor_id","")).replace("_"," ").to_upper()
+			var control_text:=str(current.get("control_reason","")).replace("Control.","").to_upper()
+			states.append("TURN "+actor_text if control_text.is_empty() else "TURN %s — %s"%[actor_text,control_text])
+	else:
+		player_turn_meter.value=0.0
+		enemy_turn_meter.value=0.0
 	state_label.text = "  •  ".join(states)
 	emit_signal("visual_state_updated",player_hp.text,enemy_hp.text,state_label.text,locked,cd)
