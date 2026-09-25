@@ -97,6 +97,20 @@ func _test_chapter_scene()->void:
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
+		var toast_panel:=game.get_node_or_null("StoryToast/Panel") as Control
+		var toast_text:=game.get_node_or_null("StoryToast/Panel/Text") as Control
+		_check(toast_panel!=null and toast_panel.mouse_filter==Control.MOUSE_FILTER_IGNORE,"story toast cannot intercept world/touch input")
+		_check(toast_text!=null and toast_text.mouse_filter==Control.MOUSE_FILTER_IGNORE,"story toast text cannot intercept world/touch input")
+
+		var menu:=game.get_node_or_null("CovenantMenu") as CovenantMenu
+		if menu:
+			menu.open()
+			for child in menu.get_node("Panel/Weapons").get_children():
+				if child is Button:
+					child.emit_signal("pressed")
+					_check(menu.selected==str(child.get_meta("family")),"Covenant button maps to its own weapon family: %s"%str(child.get_meta("family")))
+			menu.close()
+
 		_check(game.act0.stage==Act0Contract.STAGE_EXTERIOR,"fresh scene restores exterior Act 0 stage")
 		_check(not game.act0.temple_reveal_seen and not game.act0.faded_sigil_activated,"fresh scene keeps reveal and Temple threshold locked")
 		_check(game.catacombs.room==0,"fresh scene has no Catacomb progress")
