@@ -16,6 +16,12 @@ const FALLBACK_TOUCH:=80.0
 @onready var room5_a1:Button=get_parent().get_node("MultiTargetHUD/Panel/A1")
 @onready var room5_a2:Button=get_parent().get_node("MultiTargetHUD/Panel/A2")
 @onready var toast_panel:Control=get_parent().get_node("StoryToast/Panel")
+@onready var settings_panel:Control=get_parent().get_node("SettingsMenu/Panel")
+@onready var settings_battery:Button=get_parent().get_node("SettingsMenu/Panel/Battery30")
+@onready var settings_smooth:Button=get_parent().get_node("SettingsMenu/Panel/Smooth60")
+@onready var settings_reduced:Button=get_parent().get_node("SettingsMenu/Panel/ReducedMotion")
+@onready var settings_info:Label=get_parent().get_node("SettingsMenu/Panel/Info")
+@onready var settings_close:Button=get_parent().get_node("SettingsMenu/Panel/Close")
 
 func _ready()->void:
 	get_viewport().size_changed.connect(apply_safe_area)
@@ -57,6 +63,31 @@ func apply_safe_area()->void:
 	room5_panel.offset_right=ROOM5_WIDTH*0.5
 	room5_panel.offset_bottom=-m.w
 	room5_panel.offset_top=room5_panel.offset_bottom-room5_height
+
+	var settings_row_y:=150.0
+	settings_battery.position.y=settings_row_y
+	settings_smooth.position.y=settings_row_y
+	settings_battery.size.y=touch
+	settings_smooth.size.y=touch
+	settings_battery.custom_minimum_size.y=touch
+	settings_smooth.custom_minimum_size.y=touch
+
+	var reduced_y:=settings_row_y+touch+20.0
+	settings_reduced.position.y=reduced_y
+	settings_reduced.size.y=touch
+	settings_reduced.custom_minimum_size.y=touch
+
+	var info_y:=reduced_y+touch+16.0
+	settings_info.position=Vector2(40,info_y)
+	settings_info.size=Vector2(600,78)
+
+	var close_y:=info_y+90.0
+	settings_close.position.y=close_y
+	settings_close.size.y=touch
+	settings_close.custom_minimum_size.y=touch
+	var settings_height:=close_y+touch+30.0
+	settings_panel.offset_top=-settings_height*0.5
+	settings_panel.offset_bottom=settings_height*0.5
 
 	toast_panel.offset_left=-TOAST_SIZE.x*0.5
 	toast_panel.offset_right=TOAST_SIZE.x*0.5
