@@ -48,7 +48,7 @@ func _run()->void:
 
 	if game:
 		game.catacombs.room=5
-		var changed:=game.catacombs.trigger_room5_solo_limit()
+		var changed:bool=bool(game.catacombs.trigger_room5_solo_limit())
 		_check(changed,"Room 5 solo-limit flag commits through CatacombProgression")
 		game._apply_threshold_visual_state()
 		_check(_all_memory_visible(true),"Room 5 solo-limit reveals Temple memory props")
@@ -70,7 +70,7 @@ func _run()->void:
 		game._apply_threshold_visual_state()
 		_check(_all_memory_visible(true),"Restoring saved Room 5 state restores Temple memory visuals")
 
-		var summon_changed:=game.catacombs.unlock_story_summon()
+		var summon_changed:bool=bool(game.catacombs.unlock_story_summon())
 		_check(summon_changed,"Story summon unlock succeeds from restored Room 5 state")
 		game._apply_threshold_visual_state()
 		_check(_all_memory_visible(true),"Story summon does not erase the earlier failed-descent memory")
