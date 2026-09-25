@@ -127,10 +127,10 @@ func _build_crypt() -> void:
 	round_frame.scale.y = 1.12
 	add_child(round_frame)
 
-	var void := _disc(0.88,Color(0.008,0.012,0.022))
-	void.position = Vector3(0,3.25,-4.05)
-	void.rotation_degrees.x = 90
-	add_child(void)
+	var window_void := _disc(0.88,Color(0.008,0.012,0.022))
+	window_void.position = Vector3(0,3.25,-4.05)
+	window_void.rotation_degrees.x = 90
+	add_child(window_void)
 
 	var slab_base := _box_node(Vector3(2.55,0.42,4.15),Color(0.10,0.105,0.115))
 	slab_base.position = Vector3(0,0.22,0.25)
