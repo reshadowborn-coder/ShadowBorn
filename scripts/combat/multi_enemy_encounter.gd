@@ -16,6 +16,8 @@ const SOLO_LIMIT_ROUNDS := 2
 # Compatibility timing for the completed Act 0 Room 5 flow. Act 1 can opt
 # into the contact-synchronized presentation timeline without changing Act 0.
 const ACTION_LOCK_SECONDS := 0.42
+const SHADOW_BASE_SPEED := 100
+const COMPANION_BASE_SPEED := 105
 
 var enemies:Array=[]
 var selected:=0
@@ -32,6 +34,10 @@ var fray:=false
 var veil:=0.0
 var reduced_motion:=false
 var presentation_timeline_enabled:=false
+var turn_meter_mode_enabled:=false
+var turn_timeline:=CombatTurnTimeline.new()
+var current_turn:Dictionary={}
+var solo_limit_pending:=false
 var phase:="idle"
 var loadout:Dictionary=ShadowLoadout.profile("")
 
@@ -43,6 +49,9 @@ func set_reduced_motion(value:bool)->void:
 
 func set_presentation_timeline_enabled(value:bool)->void:
 	presentation_timeline_enabled=value
+
+func set_turn_meter_mode_enabled(value:bool)->void:
+	turn_meter_mode_enabled=value
 
 static func _valid_profile(profile)->bool:
 	if typeof(profile)!=TYPE_DICTIONARY:
@@ -91,8 +100,17 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool
 	fray=false
 	veil=0.0
 	phase="ready"
+	solo_limit_pending=false
+	current_turn.clear()
 	active=true
-	_emit()
+	if turn_meter_mode_enabled:
+		_setup_turn_meter()
+		action_locked=true
+		phase="turn_meter"
+		_emit()
+		call_deferred("_advance_turn_meter",encounter_generation)
+	else:
+		_emit()
 	return true
 
 func select_target(index:int)->void:
@@ -113,6 +131,9 @@ func shadow_action(skill:String)->void:
 	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if skill=="A2" and a2_cd>0:
+		return
+	if turn_meter_mode_enabled:
+		_shadow_action_turn_meter(skill)
 		return
 	if not presentation_timeline_enabled:
 		_shadow_action_immediate(skill)
@@ -210,6 +231,202 @@ func shadow_action(skill:String)->void:
 	action_locked=false
 	phase="ready"
 	_emit()
+
+func _setup_turn_meter()->void:
+	turn_timeline.reset()
+	turn_timeline.add_actor(&"shadow",&"ally",SHADOW_BASE_SPEED)
+	for e in enemies:
+		var enemy:Dictionary=e
+		var actor_id:=StringName(str(enemy.get("id","")))
+		var speed:=maxi(1,int(enemy.get("speed",90)))
+		turn_timeline.add_actor(actor_id,&"enemy",speed)
+	if companion_active:
+		turn_timeline.add_actor(&"story_companion",&"ally",COMPANION_BASE_SPEED)
+
+func _enemy_index_for_actor(actor_id:StringName)->int:
+	for i in range(enemies.size()):
+		if StringName(str((enemies[i] as Dictionary).get("id","")))==actor_id:
+			return i
+	return -1
+
+func _advance_turn_meter(generation:int)->void:
+	while _turn_valid(generation):
+		var ticket:=turn_timeline.next_turn()
+		if ticket.is_empty():
+			return
+		current_turn=ticket.duplicate(true)
+		action_locked=true
+		phase="turn_meter"
+		_emit()
+
+		var actor_id:=StringName(ticket.get("actor_id",&""))
+		if bool(ticket.get("skipped",false)):
+			await _wait(.04 if reduced_motion else .16)
+			if not _turn_valid(generation):
+				return
+			turn_timeline.end_turn(actor_id)
+			current_turn.clear()
+			continue
+
+		if actor_id==&"shadow":
+			if solo_limit_pending:
+				_finish_solo_limit()
+				return
+			if rounds>0 and a2_cd>0 and bool(ticket.get("cooldowns_advance",true)):
+				a2_cd=maxi(0,a2_cd-1)
+			action_locked=false
+			phase="shadow_ready"
+			_emit()
+			return
+
+		if actor_id==&"story_companion":
+			await _companion_meter_turn(generation)
+			if not _turn_valid(generation):
+				return
+			turn_timeline.end_turn(actor_id)
+			current_turn.clear()
+			continue
+
+		var enemy_index:=_enemy_index_for_actor(actor_id)
+		if enemy_index<0:
+			turn_timeline.end_turn(actor_id)
+			current_turn.clear()
+			continue
+		await _enemy_meter_turn(enemy_index,generation)
+		if not _turn_valid(generation):
+			return
+		turn_timeline.end_turn(actor_id)
+		current_turn.clear()
+		if solo_limit_pending:
+			_finish_solo_limit()
+			return
+		if shadow_hp<=0.0:
+			active=false
+			action_locked=false
+			phase="terminal"
+			_emit()
+			failed.emit()
+			return
+
+func _shadow_action_turn_meter(skill:String)->void:
+	if StringName(current_turn.get("actor_id",&""))!=&"shadow":
+		return
+	var generation:=encounter_generation
+	var target_index:=selected
+	action_locked=true
+	phase="shadow"
+	command_committed.emit(skill)
+	_emit()
+
+	var e:Dictionary=enemies[target_index]
+	var coeff:=float(loadout.get("a1_coeff",1.0))
+	var guard_mult:=float(loadout.get("a1_guard_mult",0.65))
+	var state_mult:=1.0
+
+	if skill=="A2":
+		coeff=float(loadout.get("a2_coeff",1.30))
+		guard_mult=float(loadout.get("a2_guard_mult",0.55))
+		if fray:
+			state_mult*=FRAY_BONUS
+			fray=false
+		a2_cd=int(loadout.get("a2_cd",3))
+		veil=float(loadout.get("a2_veil",0.15))
+	else:
+		fray=true
+
+	if bool(e.get("guard",false)):
+		state_mult*=guard_mult
+
+	var damage:=CombatResolver.damage(8.0,coeff,float(e.def),state_mult)
+	var timing:=CombatPresentationContract.shadow_timing(skill,reduced_motion)
+	shadow_attack_presented.emit(target_index,skill,damage)
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_valid(generation):
+		return
+
+	semantic_contact.emit("shadow",target_index,skill)
+	var next_hp:=maxf(0.0,float(e.current_hp)-damage)
+	if solo_limit_mode:
+		next_hp=maxf(1.0,next_hp)
+	e.current_hp=next_hp
+	enemies[target_index]=e
+	if next_hp<=0.0:
+		turn_timeline.set_alive(StringName(str(e.get("id",""))),false)
+	_emit()
+
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
+	if not _turn_valid(generation):
+		return
+
+	turn_timeline.end_turn(&"shadow")
+	current_turn.clear()
+	rounds+=1
+	if _all_dead():
+		_finish_victory()
+		return
+	if solo_limit_mode and rounds>=SOLO_LIMIT_ROUNDS:
+		solo_limit_pending=true
+	await _advance_turn_meter(generation)
+
+func _enemy_meter_turn(enemy_index:int,generation:int)->void:
+	if enemy_index<0 or enemy_index>=enemies.size():
+		return
+	var e:Dictionary=enemies[enemy_index]
+	if float(e.get("current_hp",0.0))<=0.0:
+		return
+	await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
+	if not _turn_valid(generation):
+		return
+	var incoming:=float(e.get("damage",0.0))
+	if veil>0.0:
+		incoming*=(1.0-veil)
+		veil=0.0
+	var timing:=CombatPresentationContract.enemy_timing("ATTACK",reduced_motion)
+	phase="enemy"
+	enemy_attack_presented.emit(enemy_index,incoming)
+	_emit()
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_valid(generation):
+		return
+	semantic_contact.emit("enemy",enemy_index,"ATTACK")
+	shadow_hp=maxf(0.0,shadow_hp-incoming)
+	if solo_limit_mode:
+		shadow_hp=maxf(1.0,shadow_hp)
+	_emit()
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
+
+func _companion_meter_turn(generation:int)->void:
+	_select_living()
+	var target_index:=selected
+	if target_index<0 or target_index>=enemies.size():
+		return
+	var e:Dictionary=enemies[target_index]
+	var p:=StoryCompanion.profile()
+	var damage:=CombatResolver.damage(float(p.atk),float(p.a1.coeff),float(e.def))
+	var timing:=CombatPresentationContract.shadow_timing("A1",reduced_motion)
+	phase="companion"
+	companion_attack_presented.emit(target_index,damage)
+	_emit()
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_valid(generation):
+		return
+	semantic_contact.emit("companion",target_index,"A1")
+	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
+	enemies[target_index]=e
+	if float(e.current_hp)<=0.0:
+		turn_timeline.set_alive(StringName(str(e.get("id",""))),false)
+	_emit()
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
+
+func _finish_solo_limit()->void:
+	active=false
+	action_locked=false
+	phase="terminal"
+	limit_reached=true
+	solo_limit_pending=false
+	current_turn.clear()
+	_emit()
+	solo_limit_reached.emit()
 
 func _shadow_action_immediate(skill:String)->void:
 	action_locked=true
@@ -414,5 +631,8 @@ func _emit()->void:
 		"phase":phase,
 		"reduced_motion":reduced_motion,
 		"presentation_timeline_enabled":presentation_timeline_enabled,
+		"turn_meter_mode_enabled":turn_meter_mode_enabled,
+		"turn_meter":turn_timeline.snapshot() if turn_meter_mode_enabled else {},
+		"current_turn":current_turn.duplicate(true),
 		"loadout":loadout.duplicate(true)
 	})

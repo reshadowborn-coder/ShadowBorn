@@ -17,6 +17,13 @@ func _cleanup_save()->void:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
+func _wait_for_pack_player_turn(pack:MultiEnemyEncounter,timeout_seconds:float=2.0)->bool:
+	var elapsed:=0.0
+	while pack.active and pack.action_locked and elapsed<timeout_seconds:
+		await create_timer(.02).timeout
+		elapsed+=.02
+	return pack.active and not pack.action_locked and StringName(pack.current_turn.get("actor_id",&""))==&"shadow"
+
 func _wait_for_pack_resolution(pack:MultiEnemyEncounter,timeout_seconds:float=2.0)->bool:
 	var elapsed:=0.0
 	while pack.active and pack.action_locked and elapsed<timeout_seconds:
@@ -101,6 +108,7 @@ func _run()->void:
 			_check(game.progression.stage==Act1Contract.STAGE_SEWER_ROOM3,"Room 3 fixture restores the pack stage")
 			game.enter_sewer_room(3)
 			_check(game.pack_active and game.pack_combat.active,"pack encounter is active before suspend")
+			_check(await _wait_for_pack_player_turn(game.pack_combat),"pack turn meter reaches Shadow before the first input")
 			game.pack_combat.shadow_action("A1")
 			_check(game.pack_combat.action_locked and game.pack_combat.rounds==0,"first pack round is accepted but not semantically resolved before presentation contacts")
 			game._notification(MainLoop.NOTIFICATION_APPLICATION_PAUSED)

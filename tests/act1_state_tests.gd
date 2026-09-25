@@ -12,6 +12,13 @@ func _check(condition:bool,message:String)->void:
 		failures+=1
 		push_error("FAIL: "+message)
 
+func _wait_for_pack_player_turn(pack:MultiEnemyEncounter,timeout_seconds:float=2.0)->bool:
+	var elapsed:=0.0
+	while pack.active and pack.action_locked and elapsed<timeout_seconds:
+		await create_timer(.02).timeout
+		elapsed+=.02
+	return pack.active and not pack.action_locked and StringName(pack.current_turn.get("actor_id",&""))==&"shadow"
+
 func _wait_for_pack_resolution(pack:MultiEnemyEncounter,timeout_seconds:float=2.0)->bool:
 	var elapsed:=0.0
 	while pack.active and pack.action_locked and elapsed<timeout_seconds:
@@ -81,11 +88,14 @@ func _run()->void:
 	pack.set_loadout("sword_shield")
 	pack.set_reduced_motion(true)
 	pack.set_presentation_timeline_enabled(true)
+	pack.set_turn_meter_mode_enabled(true)
 	var pack_shadow_presentations:Array=[]
 	var pack_enemy_presentations:Array=[]
 	pack.shadow_attack_presented.connect(func(target_index:int,skill:String,damage:float): pack_shadow_presentations.append([target_index,skill,damage]))
 	pack.enemy_attack_presented.connect(func(enemy_index:int,damage:float): pack_enemy_presentations.append([enemy_index,damage]))
 	_check(pack.start(SewerEncounterPlan.enemies(3),false,true),"Act 1 pack encounter starts as an authored solo limit")
+	_check(await _wait_for_pack_player_turn(pack),"turn meter advances to Shadow's first authored player turn")
+	_check(int(pack.turn_timeline.actor_snapshot(&"shadow").effective_speed)==MultiEnemyEncounter.SHADOW_BASE_SPEED,"pack turn timeline exposes Shadow SPD")
 	pack.shadow_action("A1")
 	_check(pack_shadow_presentations.size()==1 and int(pack_shadow_presentations[0][0])==0 and str(pack_shadow_presentations[0][1])=="A1","pack combat emits a target-specific Shadow presentation event")
 	_check(pack.active and pack.action_locked,"Act 1 pack locks rapid follow-up input while the turn is presenting")

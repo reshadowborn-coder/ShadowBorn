@@ -96,12 +96,18 @@ func _test_multi_enemy_trace() -> void:
 	var combat:=MultiEnemyEncounter.new()
 	root.add_child(combat)
 	combat.set_presentation_timeline_enabled(true)
+	combat.set_turn_meter_mode_enabled(true)
 	trace.attach_multi(combat)
 	var profiles:Array=[
 		{"id":"trace_rat_a","label":"Rat A","hp":30.0,"def":2.0,"damage":1.5},
 		{"id":"trace_rat_b","label":"Rat B","hp":30.0,"def":2.0,"damage":1.5}
 	]
 	_check(combat.start(profiles,false,true),"multi trace fixture starts a two-enemy encounter")
+	var ready_elapsed:=0.0
+	while combat.active and combat.action_locked and ready_elapsed<1.0:
+		await create_timer(.02).timeout
+		ready_elapsed+=.02
+	_check(not combat.action_locked and StringName(combat.current_turn.get("actor_id",&""))==&"shadow","turn meter yields the first player command window")
 	combat.shadow_action("A1")
 	_flush(trace)
 
