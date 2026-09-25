@@ -193,6 +193,20 @@ jobs:
           ! grep -q '^lib/x86/' build/android/apk-files.txt
           ! grep -q '^lib/x86_64/' build/android/apk-files.txt
           sha256sum "$APK" | tee build/android/Shadowborn-Act0-QA.apk.sha256
+          APK_SHA256="$(cut -d ' ' -f1 build/android/Shadowborn-Act0-QA.apk.sha256)"
+          cat > build/android/qa-build-manifest.txt <<EOF
+          repository=reshadowborn-coder/ShadowBorn
+          git_sha=$GITHUB_SHA
+          workflow_run_id=$GITHUB_RUN_ID
+          workflow_run_attempt=$GITHUB_RUN_ATTEMPT
+          godot_version=4.4.1
+          android_package=org.shadowborn.chapter0.qa
+          android_abi=arm64-v8a
+          apk_sha256=$APK_SHA256
+          trace_capability=SB_TRACE
+          EOF
+          grep -q "^git_sha=$GITHUB_SHA$" build/android/qa-build-manifest.txt
+          grep -q "^apk_sha256=$APK_SHA256$" build/android/qa-build-manifest.txt
 
       - name: Upload Android QA APK
         uses: actions/upload-artifact@v4
@@ -203,5 +217,6 @@ jobs:
             build/android/Shadowborn-Act0-QA.apk.sha256
             build/android/apk-badging.txt
             build/android/apk-package-id.txt
+            build/android/qa-build-manifest.txt
           if-no-files-found: error
           retention-days: 7
