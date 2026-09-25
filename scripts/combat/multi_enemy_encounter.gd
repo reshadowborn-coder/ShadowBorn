@@ -13,6 +13,9 @@ signal solo_limit_reached
 
 const FRAY_BONUS := 1.15
 const SOLO_LIMIT_ROUNDS := 2
+# Compatibility timing for the completed Act 0 Room 5 flow. Act 1 can opt
+# into the contact-synchronized presentation timeline without changing Act 0.
+const ACTION_LOCK_SECONDS := 0.42
 
 var enemies:Array=[]
 var selected:=0
@@ -28,6 +31,7 @@ var limit_reached:=false
 var fray:=false
 var veil:=0.0
 var reduced_motion:=false
+var presentation_timeline_enabled:=false
 var phase:="idle"
 var loadout:Dictionary=ShadowLoadout.profile("")
 
@@ -36,6 +40,9 @@ func set_loadout(family:String)->void:
 
 func set_reduced_motion(value:bool)->void:
 	reduced_motion=value
+
+func set_presentation_timeline_enabled(value:bool)->void:
+	presentation_timeline_enabled=value
 
 static func _valid_profile(profile)->bool:
 	if typeof(profile)!=TYPE_DICTIONARY:
@@ -106,6 +113,9 @@ func shadow_action(skill:String)->void:
 	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if skill=="A2" and a2_cd>0:
+		return
+	if not presentation_timeline_enabled:
+		_shadow_action_immediate(skill)
 		return
 
 	var generation:=encounter_generation
@@ -201,6 +211,115 @@ func shadow_action(skill:String)->void:
 	phase="ready"
 	_emit()
 
+func _shadow_action_immediate(skill:String)->void:
+	action_locked=true
+	command_committed.emit(skill)
+	var e:Dictionary=enemies[selected]
+	var coeff:=float(loadout.get("a1_coeff",1.0))
+	var guard_mult:=float(loadout.get("a1_guard_mult",0.65))
+	var state_mult:=1.0
+
+	if skill=="A2":
+		coeff=float(loadout.get("a2_coeff",1.30))
+		guard_mult=float(loadout.get("a2_guard_mult",0.55))
+		if fray:
+			state_mult*=FRAY_BONUS
+			fray=false
+		a2_cd=int(loadout.get("a2_cd",3))+1
+		veil=float(loadout.get("a2_veil",0.15))
+	else:
+		fray=true
+
+	if bool(e.get("guard",false)):
+		state_mult*=guard_mult
+
+	var damage:=CombatResolver.damage(8.0,coeff,float(e.def),state_mult)
+	shadow_attack_presented.emit(selected,skill,damage)
+	var next_hp:=maxf(0.0,float(e.current_hp)-damage)
+	if solo_limit_mode:
+		next_hp=maxf(1.0,next_hp)
+	e.current_hp=next_hp
+	enemies[selected]=e
+
+	if companion_active and not _all_dead():
+		_companion_assist_immediate()
+
+	if _all_dead():
+		active=false
+		action_locked=false
+		phase="terminal"
+		_emit()
+		finished.emit()
+		return
+
+	_enemy_phase_immediate()
+	rounds+=1
+	if a2_cd>0:
+		a2_cd-=1
+
+	if solo_limit_mode and rounds>=SOLO_LIMIT_ROUNDS:
+		active=false
+		action_locked=false
+		phase="terminal"
+		limit_reached=true
+		_emit()
+		solo_limit_reached.emit()
+		return
+
+	if shadow_hp<=0.0:
+		active=false
+		action_locked=false
+		phase="terminal"
+		_emit()
+		failed.emit()
+		return
+
+	_select_living()
+	phase="ready"
+	_emit()
+	_schedule_action_unlock()
+
+func _companion_assist_immediate()->void:
+	_select_living()
+	var e:Dictionary=enemies[selected]
+	var p:=StoryCompanion.profile()
+	var damage:=CombatResolver.damage(float(p.atk),float(p.a1.coeff),float(e.def))
+	companion_attack_presented.emit(selected,damage)
+	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
+	enemies[selected]=e
+
+func _enemy_phase_immediate()->void:
+	var veil_pending:=veil
+	for i in range(enemies.size()):
+		var e:Dictionary=enemies[i]
+		if float(e.current_hp)<=0.0:
+			continue
+		var incoming:=float(e.damage)
+		if veil_pending>0.0:
+			incoming*=(1.0-veil_pending)
+			veil_pending=0.0
+			veil=0.0
+		enemy_attack_presented.emit(i,incoming)
+		shadow_hp=maxf(0.0,shadow_hp-incoming)
+		if solo_limit_mode:
+			shadow_hp=maxf(1.0,shadow_hp)
+
+func _schedule_action_unlock()->void:
+	if not active:
+		action_locked=false
+		return
+	if not is_inside_tree():
+		action_locked=false
+		_emit()
+		return
+	var generation:=encounter_generation
+	get_tree().create_timer(ACTION_LOCK_SECONDS,false).timeout.connect(func():
+		if generation!=encounter_generation or not active:
+			return
+		action_locked=false
+		_emit()
+	)
+
 func _finish_victory()->void:
 	active=false
 	action_locked=false
@@ -294,5 +413,6 @@ func _emit()->void:
 		"veil":veil,
 		"phase":phase,
 		"reduced_motion":reduced_motion,
+		"presentation_timeline_enabled":presentation_timeline_enabled,
 		"loadout":loadout.duplicate(true)
 	})

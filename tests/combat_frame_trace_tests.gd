@@ -95,6 +95,7 @@ func _test_multi_enemy_trace() -> void:
 	trace.set_context("smooth60",false)
 	var combat:=MultiEnemyEncounter.new()
 	root.add_child(combat)
+	combat.set_presentation_timeline_enabled(true)
 	trace.attach_multi(combat)
 	var profiles:Array=[
 		{"id":"trace_rat_a","label":"Rat A","hp":30.0,"def":2.0,"damage":1.5},

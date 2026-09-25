@@ -80,6 +80,7 @@ func _run()->void:
 	root.add_child(pack)
 	pack.set_loadout("sword_shield")
 	pack.set_reduced_motion(true)
+	pack.set_presentation_timeline_enabled(true)
 	var pack_shadow_presentations:Array=[]
 	var pack_enemy_presentations:Array=[]
 	pack.shadow_attack_presented.connect(func(target_index:int,skill:String,damage:float): pack_shadow_presentations.append([target_index,skill,damage]))

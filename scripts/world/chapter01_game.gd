@@ -47,6 +47,7 @@ func _connect_runtime()->void:
 	encounter.reset_shadow()
 	encounter.set_reduced_motion(reduced_motion)
 	pack_combat.set_reduced_motion(reduced_motion)
+	pack_combat.set_presentation_timeline_enabled(true)
 	hud.skill_pressed.connect(_on_skill)
 	encounter.encounter_started.connect(func(id:String): hud.show_combat(id))
 	encounter.combat_state_changed.connect(hud.render_state)
