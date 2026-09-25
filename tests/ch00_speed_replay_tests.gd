@@ -47,6 +47,8 @@ func _run()->void:
 	)
 	_test_unequal_speed_opportunity_order()
 	_test_shield_first_opportunity_gate()
+	_test_tutorial_first_opportunity_seed()
+	_test_legacy_shield_speed88_is_not_neutral()
 	print("Chapter 0 Speed replay tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -131,3 +133,24 @@ func _test_shield_first_opportunity_gate()->void:
 	_check(str(exit.get("enemy_action",""))=="BRACE_EXIT","an enemy-first opportunity consumes BRACE_EXIT")
 	_check(not bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"enemy-first cadence removes Guard before any Shadow command")
 	_check(int(shield.snapshot().get("decision",-1))==0,"Guard can disappear with zero player decisions when enemy acts first")
+
+func _test_tutorial_first_opportunity_seed()->void:
+	var seeded:=CombatTurnTimeline.new()
+	seeded.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	seeded.add_actor(&"enemy",&"enemy",200)
+	var first:=seeded.next_turn()
+	_check(StringName(first.get("actor_id",&""))==&"shadow","initial meter can guarantee tutorial player-first opportunity without inflating Shadow Speed")
+	seeded.end_turn(&"shadow")
+	var second:=seeded.next_turn()
+	_check(StringName(second.get("actor_id",&""))==&"enemy","after seeded first action a genuinely faster enemy immediately regains scheduler authority")
+
+func _test_legacy_shield_speed88_is_not_neutral()->void:
+	var legacy:=CombatTurnTimeline.new()
+	legacy.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	legacy.add_actor(&"shield",&"enemy",88)
+	var order:Array[StringName]=[]
+	for _i in range(3):
+		var ticket:=legacy.next_turn()
+		order.append(StringName(ticket.get("actor_id",&"")))
+		legacy.end_turn(StringName(ticket.get("actor_id",&"")))
+	_check(order==[&"shadow",&"shadow",&"shield"],"legacy Shield SPD88 with Shadow100 changes the old alternating cadence and grants two Shadow opportunities before BRACE_EXIT")
