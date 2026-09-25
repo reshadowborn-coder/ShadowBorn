@@ -7,6 +7,9 @@ signal act0_finished
 
 var temple:Act0Progression
 var catacombs:CatacombProgression
+var _solo_limit_presented:=false
+var _companion_presented:=false
+var _complete_presented:=false
 
 func setup(t:Act0Progression,c:CatacombProgression,_save_manager:Node=null)->void:
 	temple=t
@@ -21,6 +24,10 @@ func setup(t:Act0Progression,c:CatacombProgression,_save_manager:Node=null)->voi
 func restore(state:Dictionary)->void:
 	temple.restore(state)
 	catacombs.restore(state)
+	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
+	_solo_limit_presented=stage in [Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH,Act0Contract.STAGE_COMPLETE]
+	_companion_presented=stage in [Act0Contract.STAGE_ROOM5_REMATCH,Act0Contract.STAGE_COMPLETE]
+	_complete_presented=stage==Act0Contract.STAGE_COMPLETE
 
 func enter_catacombs()->bool:
 	if not temple.first_forge_done:
@@ -55,19 +62,25 @@ func _on_act0_complete()->void:
 # External irreversible signals must describe committed state, not tentative
 # in-memory transitions. Chapter00Game calls these only after save succeeds.
 func commit_solo_limit_presentation()->bool:
-	if temple.stage!=Act0Contract.STAGE_ROOM5_RETURN or not catacombs.room5_solo_limit_seen:
+	if _solo_limit_presented or temple.stage!=Act0Contract.STAGE_ROOM5_RETURN or not catacombs.room5_solo_limit_seen:
 		return false
+	_solo_limit_presented=true
 	temple_return.emit("solo_limit")
 	return true
 
 func commit_story_handoff_presentation()->bool:
-	if temple.stage!=Act0Contract.STAGE_ROOM5_REMATCH or not catacombs.summon_unlocked or not catacombs.rematch_ready:
+	if _companion_presented or temple.stage!=Act0Contract.STAGE_ROOM5_REMATCH or not catacombs.summon_unlocked or not catacombs.rematch_ready:
 		return false
+	_solo_limit_presented=true
+	_companion_presented=true
 	companion_ready.emit(StoryCompanion.profile())
 	return true
 
 func commit_act0_completion_presentation()->bool:
-	if temple.stage!=Act0Contract.STAGE_COMPLETE or not catacombs.complete:
+	if _complete_presented or temple.stage!=Act0Contract.STAGE_COMPLETE or not catacombs.complete:
 		return false
+	_solo_limit_presented=true
+	_companion_presented=true
+	_complete_presented=true
 	act0_finished.emit()
 	return true
