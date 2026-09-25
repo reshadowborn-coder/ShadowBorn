@@ -4,7 +4,7 @@ config/name="Shadowborn Chapter 0"
 config/icon="res://assets/branding/shadowborn_ios_icon.svg"
 boot_splash/bg_color=Color(0.035294, 0.043137, 0.062745, 1)
 boot_splash/show_image=false
-run/main_scene="res://scenes/app/launch_shell.tscn"
+run/main_scene="res://scenes/presentation/raidlike_vertical_slice.tscn"
 
 [debug]
 
