@@ -30,6 +30,13 @@ var pre_temple_mode := false
 var pre_temple_model = null
 var reduced_motion := false
 
+# New turn-first effect contracts are authoritative for migrated effects.
+# Legacy poison_* dictionary fields remain a compatibility projection for
+# existing HUD/tests while the rest of combat migrates incrementally.
+var _shadow_effects:Dictionary = {}
+var _shadow_tags:CombatTagLedger = CombatTagLedger.new()
+var _effect_transaction_id:=0
+
 func set_loadout(family: String) -> void:
 	loadout = ShadowLoadout.profile(family)
 
@@ -39,7 +46,83 @@ func set_pre_temple_veil(value: float) -> void:
 func set_reduced_motion(value: bool) -> void:
 	reduced_motion = value
 
+func _next_effect_transaction_id()->int:
+	_effect_transaction_id+=1
+	return _effect_transaction_id
+
+func _clear_shadow_effects()->void:
+	_shadow_effects.clear()
+	_shadow_tags.clear()
+	_effect_transaction_id=0
+
+func _poison_definition(turns:int)->CombatEffectDefinition:
+	var definition:=CombatEffectDefinition.new()
+	definition.id=&"Status.Poison"
+	definition.semantic_tags.assign([&"Status.Poison"])
+	definition.duration_policy=CombatEffectDefinition.DurationPolicy.TURN_BASED
+	definition.base_duration_turns=maxi(1,turns)
+	definition.max_stacks=1
+	definition.stacking_policy=CombatEffectDefinition.StackingPolicy.REFRESH
+	definition.base_magnitudes={"damage_per_turn":0.0}
+	definition.cue_ids.assign([&"Cue.Poison.Apply",&"Cue.Poison.Tick"])
+	return definition
+
+func _sync_shadow_effect_compatibility_view()->void:
+	var spec=_shadow_effects.get(&"Status.Poison")
+	if spec is CombatEffectSpec:
+		shadow.poison_turns=maxi(0,(spec as CombatEffectSpec).remaining_turns)
+		shadow.poison_damage=maxf(0.0,float((spec as CombatEffectSpec).runtime_magnitudes.get("damage_per_turn",0.0)))
+	else:
+		shadow.poison_turns=0
+		shadow.poison_damage=0.0
+
+func _apply_shadow_poison(damage:float,turns:int,source_actor:StringName)->void:
+	if damage<=0.0 or turns<=0 or source_actor==&"":
+		return
+	var effect_id:=&"Status.Poison"
+	var spec=_shadow_effects.get(effect_id)
+	if not (spec is CombatEffectSpec):
+		var context:=CombatEffectContext.new(source_actor,&"shadow",0,_next_effect_transaction_id())
+		context.source_skill_id=&"enemy_poison_attack"
+		spec=_poison_definition(turns).create_spec(context)
+		(spec as CombatEffectSpec).runtime_magnitudes["damage_per_turn"]=damage
+		_shadow_effects[effect_id]=spec
+		_shadow_tags.add(effect_id,source_actor)
+	else:
+		# Preserve the existing authored Act 1 rule exactly: reapplication keeps
+		# the stronger damage value and the longer remaining duration.
+		(spec as CombatEffectSpec).remaining_turns=maxi((spec as CombatEffectSpec).remaining_turns,turns)
+		(spec as CombatEffectSpec).runtime_magnitudes["damage_per_turn"]=maxf(
+			float((spec as CombatEffectSpec).runtime_magnitudes.get("damage_per_turn",0.0)),
+			damage
+		)
+	_sync_shadow_effect_compatibility_view()
+
+func _tick_shadow_poison()->float:
+	var effect_id:=&"Status.Poison"
+	var spec=_shadow_effects.get(effect_id)
+	if not (spec is CombatEffectSpec):
+		_sync_shadow_effect_compatibility_view()
+		return 0.0
+	var poison:=spec as CombatEffectSpec
+	var before:=float(shadow.get("hp",0.0))
+	var damage:=maxf(0.0,float(poison.runtime_magnitudes.get("damage_per_turn",0.0)))
+	shadow.hp=maxf(0.0,before-damage)
+	var actual_delta:=float(shadow.hp)-before
+	poison.calculated_deltas.clear()
+	poison.record_delta(&"Health",actual_delta)
+	poison.advance_turn()
+	if poison.is_expired():
+		var source:=poison.context.source_actor_id
+		var contribution_count:=_shadow_tags.source_count(effect_id,source)
+		if contribution_count>0:
+			_shadow_tags.remove(effect_id,source,contribution_count)
+		_shadow_effects.erase(effect_id)
+	_sync_shadow_effect_compatibility_view()
+	return -actual_delta
+
 func reset_shadow() -> void:
+	_clear_shadow_effects()
 	shadow = {"hp":20.0,"max_hp":20.0,"atk":8.0,"def":4.0,"a2_cd":0,"veil":0.0,"fray":false,"poison_turns":0,"poison_damage":0.0}
 	pre_temple_model = null
 	pre_temple_mode = false
@@ -203,11 +286,7 @@ func _shadow_action_legacy(skill: String) -> void:
 	if skill == "A2" and int(shadow.get("a2_cd",0)) > 0:
 		return
 
-	if int(shadow.get("poison_turns",0))>0:
-		shadow.hp=maxf(0.0,float(shadow.hp)-float(shadow.get("poison_damage",0.0)))
-		shadow.poison_turns=maxi(0,int(shadow.poison_turns)-1)
-		if int(shadow.poison_turns)==0:
-			shadow.poison_damage=0.0
+	if _tick_shadow_poison()>0.0:
 		_emit_state()
 		if float(shadow.hp)<=0.0:
 			active=false
@@ -277,8 +356,7 @@ func _shadow_action_legacy(skill: String) -> void:
 	var poison_damage:=float(enemy.get("poison_damage",0.0))
 	var poison_turns:=int(enemy.get("poison_turns",0))
 	if poison_damage>0.0 and poison_turns>0 and shadow.hp>0.0:
-		shadow.poison_damage=maxf(float(shadow.get("poison_damage",0.0)),poison_damage)
-		shadow.poison_turns=maxi(int(shadow.get("poison_turns",0)),poison_turns)
+		_apply_shadow_poison(poison_damage,poison_turns,StringName(encounter_id))
 	if shadow.a2_cd > 0:
 		shadow.a2_cd -= 1
 	_emit_state()
