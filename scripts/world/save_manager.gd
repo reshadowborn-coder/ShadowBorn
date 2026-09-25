@@ -35,6 +35,9 @@ static func default_state() -> Dictionary:
 static func _vector3_array(v:Vector3)->Array:
 	return [v.x,v.y,v.z]
 
+static func _strict_bool(value,default_value:bool=false)->bool:
+	return bool(value) if typeof(value)==TYPE_BOOL else default_value
+
 static func _checkpoint_values(value)->Variant:
 	if typeof(value)!=TYPE_ARRAY or value.size()!=3:
 		return null
@@ -254,7 +257,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 
 	var mode:=str(state.get("performance_mode","smooth60"))
 	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
-	state.reduced_motion=bool(state.get("reduced_motion",false))
+	state.reduced_motion=_strict_bool(state.get("reduced_motion",false))
 	var identity:=str(state.get("shadow_identity",""))
 	state.shadow_identity = identity if identity in ["","male","female"] else ""
 
@@ -265,12 +268,12 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		family=""
 	state.weapon_family=family
 
-	var covenant:=bool(state.get("covenant_joined",false))
-	var forged:=bool(state.get("first_forge_done",false))
-	var solo_seen:=bool(state.get("room5_solo_limit_seen",false))
-	var summon:=bool(state.get("story_summon_unlocked",false))
-	var rematch:=bool(state.get("room5_rematch_ready",false))
-	var complete:=bool(state.get("act0_complete",false))
+	var covenant:=_strict_bool(state.get("covenant_joined",false))
+	var forged:=_strict_bool(state.get("first_forge_done",false))
+	var solo_seen:=_strict_bool(state.get("room5_solo_limit_seen",false))
+	var summon:=_strict_bool(state.get("story_summon_unlocked",false))
+	var rematch:=_strict_bool(state.get("room5_rematch_ready",false))
+	var complete:=_strict_bool(state.get("act0_complete",false))
 
 	# Any downstream state proves the exterior route had already completed.
 	# Recover forward rather than replaying irreversible rewards.
@@ -308,7 +311,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 
 	# Shield is unreachable in the canonical flow until the reveal has played.
 	# If a later state proves Shield was reached, converge the one-shot forward.
-	state.temple_reveal_seen=bool(state.get("temple_reveal_seen",false)) and armless_cleared
+	state.temple_reveal_seen=_strict_bool(state.get("temple_reveal_seen",false)) and armless_cleared
 	if shield_cleared:
 		state.temple_reveal_seen=true
 
@@ -323,7 +326,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		or complete
 		or str(state.act0_stage) not in [Act0Contract.STAGE_EXTERIOR,Act0Contract.STAGE_TEMPLE_ENTRY]
 	)
-	state.faded_sigil_activated=bool(state.get("faded_sigil_activated",false)) and shield_cleared
+	state.faded_sigil_activated=_strict_bool(state.get("faded_sigil_activated",false)) and shield_cleared
 	if shield_cleared and (source_version<SAVE_VERSION or downstream_after_sigil):
 		# Preserve access for v4 and older saves that already passed the old
 		# ungated threshold.
