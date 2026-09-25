@@ -14,9 +14,11 @@ func _check(condition:bool,message:String)->void:
 
 func _run()->void:
 	_test_temple_progression()
+	_test_all_weapon_families()
 	_test_catacomb_progression()
 	_test_combat_math()
 	_test_save_recovery()
+	_test_resume_transition_matrix()
 	_test_room5_limit_contract()
 	print("Act 0 state tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
@@ -43,6 +45,23 @@ func _test_temple_progression()->void:
 	_check(p.silver==0,"first forge debits exactly one Silver")
 	_check(p.first_forge_done and p.stage=="catacombs","first forge advances to Catacombs")
 	_check(int(p.forged_item.get("level",-1))==0 and not bool(p.forged_item.get("bonus_unlocked",true)),"+0 forge has no bonus")
+
+func _test_all_weapon_families()->void:
+	for family_value in Act0Progression.WEAPONS.keys():
+		var family:=str(family_value)
+		var state:=SaveManager.default_state()
+		state.act0_stage="temple_entry"
+		state.cleared_encounters=["shield_boss"]
+		state.silver=1
+		var p:=Act0Progression.new()
+		p.restore(state)
+		_check(p.join_covenant(),"%s can join the Covenant path"%family)
+		_check(p.choose_weapon(family),"%s can be selected as the irreversible family"%family)
+		var candidate:=p.first_forge_candidate()
+		_check(str(candidate.get("family",""))==family,"%s creates a matching first-forge candidate"%family)
+		_check(p.apply_first_forge(candidate),"%s completes the scripted first forge"%family)
+		_check(p.first_forge_done and p.stage=="catacombs","%s reaches Catacombs after forge"%family)
+		_check(bool(p.forged_item.get("equipped",false)) and int(p.forged_item.get("level",-1))==0,"%s first item is equipped at +0"%family)
 
 func _test_catacomb_progression()->void:
 	var c:=CatacombProgression.new()
@@ -104,6 +123,68 @@ func _test_save_recovery()->void:
 	var ledger:=SaveManager._migrate(late_room)
 	_check("cat_r1_skeleton" in ledger.cleared_encounters and "cat_r4_revenant" in ledger.cleared_encounters,"room progress rebuilds missing encounter visual ledger")
 	_check(int(ledger.route_index)==Chapter00Director.ROUTE.size()-1,"Temple/Catacomb progress repairs exterior route index")
+
+func _test_resume_transition_matrix()->void:
+	var exterior:=SaveManager._migrate(SaveManager.default_state())
+	_check(str(exterior.act0_stage)=="exterior","resume preserves fresh exterior state")
+
+	var temple:=SaveManager.default_state()
+	temple.cleared_encounters=["shield_boss"]
+	temple.act0_stage="temple_entry"
+	temple.silver=1
+	var temple_resume:=SaveManager._migrate(temple)
+	_check(str(temple_resume.act0_stage)=="temple_entry" and int(temple_resume.silver)>=1,"resume preserves Temple entry and first Silver")
+
+	var covenant:=temple.duplicate(true)
+	covenant.covenant_joined=true
+	covenant.act0_stage="weapon_choice"
+	var covenant_resume:=SaveManager._migrate(covenant)
+	_check(str(covenant_resume.act0_stage)=="weapon_choice" and bool(covenant_resume.covenant_joined),"resume preserves Forgotten Covenant handoff")
+
+	var weapon:=covenant.duplicate(true)
+	weapon.weapon_family="bow"
+	weapon.act0_stage="first_forge"
+	var weapon_resume:=SaveManager._migrate(weapon)
+	_check(str(weapon_resume.act0_stage)=="first_forge" and str(weapon_resume.weapon_family)=="bow","resume preserves irreversible weapon selection before forge")
+
+	var forged:=weapon.duplicate(true)
+	forged.first_forge_done=true
+	forged.forged_item={"id":"shadow_bow_01","family":"bow","level":0,"bonus_unlocked":false,"equipped":true}
+	forged.silver=0
+	forged.catacomb_room=1
+	forged.act0_stage="catacombs"
+	var forged_resume:=SaveManager._migrate(forged)
+	_check(str(forged_resume.act0_stage)=="catacombs" and bool(forged_resume.first_forge_done),"resume preserves committed first forge/equip")
+
+	for room in range(1,6):
+		var room_state:=forged.duplicate(true)
+		room_state.catacomb_room=room
+		var room_resume:=SaveManager._migrate(room_state)
+		_check(str(room_resume.act0_stage)=="catacombs" and int(room_resume.catacomb_room)==room,"resume preserves Catacomb Room %d progress"%room)
+
+	var room5_return:=forged.duplicate(true)
+	room5_return.catacomb_room=5
+	room5_return.room5_solo_limit_seen=true
+	room5_return.act0_stage="room5_return"
+	var return_resume:=SaveManager._migrate(room5_return)
+	_check(str(return_resume.act0_stage)=="room5_return" and not bool(return_resume.story_summon_unlocked),"resume preserves scripted solo-limit return before summon")
+
+	var rematch:=room5_return.duplicate(true)
+	rematch.story_summon_unlocked=true
+	rematch.room5_rematch_ready=true
+	rematch.act0_stage="room5_rematch"
+	var rematch_resume:=SaveManager._migrate(rematch)
+	_check(str(rematch_resume.act0_stage)=="room5_rematch" and bool(rematch_resume.room5_rematch_ready),"resume preserves first story summon and rematch readiness")
+	var team:=TeamState.new()
+	team.restore(rematch_resume)
+	_check(StoryCompanion.ID in team.active_ids(),"resume restores the first story team slot")
+
+	var complete:=rematch.duplicate(true)
+	complete.act0_complete=true
+	complete.act0_stage="act0_complete"
+	var complete_resume:=SaveManager._migrate(complete)
+	_check(str(complete_resume.act0_stage)=="act0_complete" and bool(complete_resume.act0_complete),"resume preserves final Act 0 completion")
+	_check("cat_r5_skeleton_a" in complete_resume.cleared_encounters and "cat_r5_skeleton_b" in complete_resume.cleared_encounters,"completed resume rebuilds Room 5 clear ledger")
 
 func _test_room5_limit_contract()->void:
 	var profiles:=CatacombEncounterPlan.enemies(5)
