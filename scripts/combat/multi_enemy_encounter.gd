@@ -35,7 +35,7 @@ static func _valid_profile(profile)->bool:
 		if typeof(value) not in [TYPE_INT,TYPE_FLOAT]:
 			return false
 		var number:=float(value)
-		if number!=number:
+		if number!=number or is_inf(number):
 			return false
 	if float(profile.get("hp",0.0))<=0.0 or float(profile.get("def",0.0))<0.0 or float(profile.get("damage",0.0))<0.0:
 		return false
