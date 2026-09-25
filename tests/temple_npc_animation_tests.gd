@@ -76,6 +76,14 @@ func _run()->void:
 	if smith:
 		_check(smith.get_node_or_null("Tool") is Node3D,"Smith owns an articulated hammer root")
 		_check(smith.get_node_or_null("Tool/HammerHead") is MeshInstance3D,"Smith hammer head follows the animated tool root")
+		var smith_tool:=smith.get_node("Tool") as Node3D
+		smith.visible=true
+		smith.elapsed=1.0
+		smith._process(0.0)
+		var smith_work_pose:=smith_tool.basis
+		smith.elapsed=6.0
+		smith._process(0.0)
+		_check(not smith_tool.basis.is_equal_approx(smith_work_pose),"Smith alternates hammer-work and rest poses")
 		var smith_head:=smith.get_node("Head") as Node3D
 		var smith_head_before:=smith_head.basis
 		smith.elapsed=0.0
@@ -87,6 +95,13 @@ func _run()->void:
 	var engraver:=chapter.get_node_or_null(paths["engraver"]) as TempleNpcIdle
 	if engraver:
 		_check(engraver.get_node_or_null("Tool") is Node3D,"Engraver owns an animated stylus/tool")
+		var stylus:=engraver.get_node("Tool") as Node3D
+		engraver.elapsed=1.0
+		engraver._process(0.0)
+		var engrave_pose:=stylus.basis
+		engraver.elapsed=5.4
+		engraver._process(0.0)
+		_check(not stylus.basis.is_equal_approx(engrave_pose),"Engraver alternates working and inspection poses")
 
 	var temple_visual:=chapter.get_node_or_null("TempleInterior/TempleVisual")
 	if temple_visual:
