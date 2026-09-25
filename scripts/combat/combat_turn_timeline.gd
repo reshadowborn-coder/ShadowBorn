@@ -301,7 +301,7 @@ func next_turn()->Dictionary:
 		return {}
 
 	while not _extra_turn_queue.is_empty():
-		var extra_id:=_extra_turn_queue.pop_front()
+		var extra_id:StringName=_extra_turn_queue.pop_front()
 		if actor_alive(extra_id):
 			return _open_ticket(extra_id,true)
 
