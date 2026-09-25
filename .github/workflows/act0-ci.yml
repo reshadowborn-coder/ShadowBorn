@@ -99,6 +99,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/act0_scene_smoke.gd 2>&1 | tee /tmp/act0-scene.log
           ! grep -q "SCRIPT ERROR:" /tmp/act0-scene.log
 
+      - name: Validate living Temple NPC presentation
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/temple_npc_animation_tests.gd 2>&1 | tee /tmp/temple-npc-animation.log
+          ! grep -q "SCRIPT ERROR:" /tmp/temple-npc-animation.log
+
       - name: Enforce iPhone runtime scene budgets
         run: |
           set -o pipefail
