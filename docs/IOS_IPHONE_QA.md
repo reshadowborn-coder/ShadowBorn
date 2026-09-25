@@ -7,6 +7,7 @@ Target for the current mobile slice: iPhone, landscape, Godot 4.4.1 Mobile rende
 - iPhone-only export target (application/targeted_device_family=0).
 - arm64 only.
 - Minimum iOS 16.0.
+- A12-class graphics capability or newer is required; A17 Gaming Tier is deliberately not required, so iPhone 13 Pro remains supported.
 - Native Metal rendering.
 - Sensor-landscape orientation: both landscape directions are supported.
 - Authored performance modes remain 60 FPS Smooth and 30 FPS Battery.
@@ -15,9 +16,14 @@ Target for the current mobile slice: iPhone, landscape, Godot 4.4.1 Mobile rende
 - Native iOS launch and the engine boot transition use the same dark Shadowborn background; the default Godot splash is not shown.
 - iOS edge-system gestures are suppressed so an accidental first swipe does not steal gameplay input.
 - HUD and movement controls use DisplayServer.get_display_safe_area() and are re-laid out after viewport changes/resume.
-- Covenant weapon choices use enlarged touch targets.
+- Launch, movement, combat, Room 5, Covenant and Settings controls target at least 44 physical points using the current display scale.
+- Losing focus to an iOS system overlay clears held virtual movement, preventing stuck D-pad input after Control Center or Notification Center.
 - On iOS suspension the game writes only the last committed save snapshot. Tentative combat/forge/Room 5 state is never promoted because the app moved to the background.
+- Save files are size-bounded, schema-whitelisted, read back before promotion, backed up and recover the fully flushed temporary generation if iOS terminates the process between atomic renames.
 - On iOS memory warning only rebuildable runtime caches are dropped; progression is not changed.
+- Combat math rejects non-finite/malformed tuning before it can propagate NaN/Infinity into HP or UI.
+- CI enforces scene/runtime and source-asset budgets before mobile builds are allowed to proceed.
+- iPhone exports exclude tests and fixtures from the shipped PCK.
 
 ## Signing boundary
 
@@ -80,4 +86,6 @@ For every physical-device run, record:
 - interruption point and resumed checkpoint;
 - screenshot or short screen recording for every failure.
 
-CI generates the iPhone-only Xcode project on macOS, resolves its build settings, compiles an unsigned `iphoneos` app, verifies the bundle contract, launch storyboard and privacy manifest, then uploads the source-bound QA artifact.\n\nPhysical-device QA is the final evidence layer. Automated Xcode compilation cannot prove real touch ergonomics, thermal behavior, system-gesture behavior, or device-specific Metal performance.
+CI generates the iPhone-only Xcode project on macOS, resolves its build settings, compiles unsigned Debug and true Godot Release exports for `iphoneos`, verifies the bundle/hardware-floor/launch/privacy contracts, and uploads a QA Xcode artifact that includes the generated Godot and MoltenVK frameworks.
+
+Physical-device QA is the final evidence layer. Automated Xcode compilation cannot prove real touch ergonomics, thermal behavior, system-gesture behavior, or device-specific Metal performance.
