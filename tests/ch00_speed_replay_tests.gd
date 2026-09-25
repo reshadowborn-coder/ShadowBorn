@@ -48,7 +48,7 @@ func _run()->void:
 	_test_unequal_speed_opportunity_order()
 	_test_shield_first_opportunity_gate()
 	_test_tutorial_first_opportunity_seed()
-	_test_legacy_shield_speed88_is_not_neutral()
+	_test_speed_and_initial_meter_are_one_cadence_contract()
 	print("Chapter 0 Speed replay tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -137,20 +137,30 @@ func _test_shield_first_opportunity_gate()->void:
 func _test_tutorial_first_opportunity_seed()->void:
 	var seeded:=CombatTurnTimeline.new()
 	seeded.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
-	seeded.add_actor(&"enemy",&"enemy",200)
+	seeded.add_actor(&"enemy",&"enemy",200,CombatTurnTimeline.GAUGE_MAX-1)
 	var first:=seeded.next_turn()
-	_check(StringName(first.get("actor_id",&""))==&"shadow","initial meter can guarantee tutorial player-first opportunity without inflating Shadow Speed")
+	_check(StringName(first.get("actor_id",&""))==&"shadow","10000/9999 meter seed guarantees the tutorial player-first opportunity even against a faster enemy")
 	seeded.end_turn(&"shadow")
 	var second:=seeded.next_turn()
-	_check(StringName(second.get("actor_id",&""))==&"enemy","after seeded first action a genuinely faster enemy immediately regains scheduler authority")
+	_check(StringName(second.get("actor_id",&""))==&"enemy","9999 enemy meter preserves immediate enemy follow-up after the seeded player-first opportunity")
 
-func _test_legacy_shield_speed88_is_not_neutral()->void:
-	var legacy:=CombatTurnTimeline.new()
-	legacy.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
-	legacy.add_actor(&"shield",&"enemy",88)
-	var order:Array[StringName]=[]
+func _test_speed_and_initial_meter_are_one_cadence_contract()->void:
+	var empty_enemy_meter:=CombatTurnTimeline.new()
+	empty_enemy_meter.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	empty_enemy_meter.add_actor(&"shield",&"enemy",88,0)
+	var empty_order:Array[StringName]=[]
 	for _i in range(3):
-		var ticket:=legacy.next_turn()
-		order.append(StringName(ticket.get("actor_id",&"")))
-		legacy.end_turn(StringName(ticket.get("actor_id",&"")))
-	_check(order==[&"shadow",&"shadow",&"shield"],"legacy Shield SPD88 with Shadow100 changes the old alternating cadence and grants two Shadow opportunities before BRACE_EXIT")
+		var ticket:=empty_enemy_meter.next_turn()
+		empty_order.append(StringName(ticket.get("actor_id",&"")))
+		empty_enemy_meter.end_turn(StringName(ticket.get("actor_id",&"")))
+	_check(empty_order==[&"shadow",&"shadow",&"shield"],"Shadow100/Shield88 with enemy meter 0 grants two Shadow opportunities before Shield acts")
+
+	var near_ready_enemy:=CombatTurnTimeline.new()
+	near_ready_enemy.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	near_ready_enemy.add_actor(&"shield",&"enemy",88,CombatTurnTimeline.GAUGE_MAX-1)
+	var seeded_order:Array[StringName]=[]
+	for _i in range(3):
+		var ticket:=near_ready_enemy.next_turn()
+		seeded_order.append(StringName(ticket.get("actor_id",&"")))
+		near_ready_enemy.end_turn(StringName(ticket.get("actor_id",&"")))
+	_check(seeded_order==[&"shadow",&"shield",&"shadow"],"the same Speed values with a 10000/9999 tutorial seed preserve the intended opening alternation")
