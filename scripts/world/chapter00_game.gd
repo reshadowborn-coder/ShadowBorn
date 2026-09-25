@@ -27,6 +27,7 @@ var act0_flow := Act0Orchestrator.new()
 var room5_active := false
 var room5_solo_attempt := false
 var room5_visual_cache:Array[Node3D]=[]
+var combat_trace:CombatFrameTrace
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
@@ -64,6 +65,11 @@ func _ready() -> void:
 	settings_button.pressed.connect(_open_settings)
 	settings_menu.performance_mode_changed.connect(_on_performance_mode_changed)
 	settings_menu.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	if OS.is_debug_build():
+		combat_trace=CombatFrameTrace.new()
+		add_child(combat_trace)
+		combat_trace.attach(encounter,presenter,hud)
+		combat_trace.set_context(performance_mode,reduced_motion)
 	call_deferred("_apply_cleared_visuals")
 
 func _restore_save() -> void:
@@ -88,11 +94,15 @@ func _open_settings() -> void:
 func _on_performance_mode_changed(mode: String) -> void:
 	performance_mode = mode
 	_apply_performance_mode()
+	if combat_trace:
+		combat_trace.set_context(performance_mode,reduced_motion)
 	_save_progress()
 
 func _on_reduced_motion_changed(value:bool)->void:
 	reduced_motion=value
 	_apply_presentation_settings()
+	if combat_trace:
+		combat_trace.set_context(performance_mode,reduced_motion)
 	_save_progress()
 
 func _apply_presentation_settings()->void:
