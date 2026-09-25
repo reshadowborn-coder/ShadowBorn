@@ -33,6 +33,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/act0_state_tests.gd 2>&1 | tee /tmp/act0-state.log
           ! grep -q "SCRIPT ERROR:" /tmp/act0-state.log
 
+      - name: Validate Act 0 combat content data
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/act0_content_validation_tests.gd 2>&1 | tee /tmp/act0-content-validation.log
+          ! grep -q "SCRIPT ERROR:" /tmp/act0-content-validation.log
+
       - name: Run save backup corruption recovery
         run: |
           set -o pipefail
