@@ -113,47 +113,64 @@ func _breathe(t:float,scale:float,amount:float=0.018)->void:
 
 func _animate_keeper(t:float,scale:float)->void:
 	_breathe(t,scale,0.022)
+	var prayer:=pow(maxf(0.0,sin(t*0.43-1.6)),6.0)
 	_set_rotation(body,body_basis,Vector3(0,0,sin(t*0.42)*deg_to_rad(1.2)*scale))
-	_set_rotation(head,head_basis,Vector3(sin(t*0.31)*deg_to_rad(1.2)*scale,sin(t*0.23)*deg_to_rad(8.0)*scale,0))
-	_set_rotation(arm_l,arm_l_basis,Vector3(sin(t*0.52)*deg_to_rad(2.0)*scale,0,deg_to_rad(-4.0)*scale))
-	_set_rotation(arm_r,arm_r_basis,Vector3(sin(t*0.49+1.2)*deg_to_rad(2.0)*scale,0,deg_to_rad(4.0)*scale))
+	_set_rotation(head,head_basis,Vector3((sin(t*0.31)*1.2-2.0*prayer)*deg_to_rad(1.0)*scale,sin(t*0.23)*deg_to_rad(8.0)*scale,0))
+	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-8.0*prayer+2.0*sin(t*0.52))*scale,0,deg_to_rad(-4.0-5.0*prayer)*scale))
+	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-8.0*prayer+2.0*sin(t*0.49+1.2))*scale,0,deg_to_rad(4.0+5.0*prayer)*scale))
 
 func _animate_smith(t:float,scale:float)->void:
 	_breathe(t,scale,0.016)
-	var cycle:=fmod(t,2.6)/2.6
+	var sequence:=fmod(t,7.2)
+	var working:=sequence<4.8
 	var lift:=0.0
-	if cycle<0.56:
-		lift=smoothstep(0.0,0.56,cycle)
-	elif cycle<0.72:
-		lift=1.0-smoothstep(0.56,0.72,cycle)
-	var hammer_angle:=deg_to_rad(-18.0-82.0*lift*scale)
+	if working:
+		var cycle:=fmod(sequence,1.6)/1.6
+		if cycle<0.56:
+			lift=smoothstep(0.0,0.56,cycle)
+		elif cycle<0.72:
+			lift=1.0-smoothstep(0.56,0.72,cycle)
+	var hammer_angle:=deg_to_rad((-18.0-82.0*lift) if working else -24.0)*scale
 	_set_rotation(arm_r,arm_r_basis,Vector3(hammer_angle,0,deg_to_rad(-8.0)*scale))
 	_set_rotation(tool,tool_basis,Vector3(hammer_angle*0.92,0,0))
-	_set_rotation(head,head_basis,Vector3(deg_to_rad(8.0+3.0*sin(t*0.7))*scale,deg_to_rad(-4.0)*scale,0))
+	if working:
+		_set_rotation(head,head_basis,Vector3(deg_to_rad(8.0+3.0*sin(t*0.7))*scale,deg_to_rad(-4.0)*scale,0))
+	else:
+		var rest_scan:=sin((sequence-4.8)*1.35)
+		_set_rotation(head,head_basis,Vector3(deg_to_rad(-2.0)*scale,deg_to_rad(14.0*rest_scan)*scale,0))
 	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-16.0+4.0*sin(t*1.1))*scale,0,deg_to_rad(10.0)*scale))
 
 func _animate_merchant(t:float,scale:float)->void:
 	_breathe(t,scale,0.020)
-	_set_rotation(head,head_basis,Vector3(0,sin(t*0.34)*deg_to_rad(12.0)*scale,0))
-	var gesture:=maxf(0.0,sin(t*1.15+0.7))
-	gesture*=gesture
-	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-8.0-12.0*gesture)*scale,0,deg_to_rad(-8.0)*scale))
-	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-10.0-18.0*gesture)*scale,0,deg_to_rad(9.0)*scale))
+	var sequence:=fmod(t,8.0)
+	var gesture:=0.0
+	if sequence>2.2 and sequence<3.8:
+		gesture=sin(((sequence-2.2)/1.6)*PI)
+	var count_coin:=0.0
+	if sequence>5.2 and sequence<6.7:
+		count_coin=sin(((sequence-5.2)/1.5)*PI)
+	_set_rotation(head,head_basis,Vector3(deg_to_rad(-3.0*count_coin)*scale,sin(t*0.34)*deg_to_rad(12.0)*scale,0))
+	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-8.0-12.0*gesture-7.0*count_coin)*scale,0,deg_to_rad(-8.0-4.0*count_coin)*scale))
+	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-10.0-18.0*gesture+5.0*count_coin)*scale,0,deg_to_rad(9.0+5.0*count_coin)*scale))
 	if head:
 		head.position=head_position+Vector3(0,sin(t*0.68)*0.010*scale,0)
 
 func _animate_engraver(t:float,scale:float)->void:
 	_breathe(t,scale,0.014)
-	_set_rotation(body,body_basis,Vector3(deg_to_rad(5.0)*scale,0,sin(t*0.5)*deg_to_rad(0.8)*scale))
-	_set_rotation(head,head_basis,Vector3(deg_to_rad(12.0+2.0*sin(t*0.8))*scale,sin(t*0.29)*deg_to_rad(4.0)*scale,0))
-	var scratch:=sin(t*4.1)
-	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-28.0+8.0*scratch)*scale,0,deg_to_rad(-6.0)*scale))
-	_set_rotation(tool,tool_basis,Vector3(deg_to_rad(-22.0+10.0*scratch)*scale,0,0))
-	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-18.0)*scale,0,deg_to_rad(7.0)*scale))
+	var sequence:=fmod(t,6.4)
+	var working:=sequence<4.5
+	var scratch:=sin(t*4.1) if working else 0.0
+	var inspect:=0.0 if working else sin(((sequence-4.5)/1.9)*PI)
+	_set_rotation(body,body_basis,Vector3(deg_to_rad((5.0-4.0*inspect))*scale,0,sin(t*0.5)*deg_to_rad(0.8)*scale))
+	_set_rotation(head,head_basis,Vector3(deg_to_rad(12.0+2.0*sin(t*0.8)-13.0*inspect)*scale,sin(t*0.29)*deg_to_rad(4.0)*scale,0))
+	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-28.0+8.0*scratch+13.0*inspect)*scale,0,deg_to_rad(-6.0)*scale))
+	_set_rotation(tool,tool_basis,Vector3(deg_to_rad(-22.0+10.0*scratch+15.0*inspect)*scale,0,0))
+	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-18.0+5.0*inspect)*scale,0,deg_to_rad(7.0)*scale))
 
 func _animate_warden(t:float,scale:float)->void:
 	_breathe(t,scale,0.010)
-	_set_rotation(body,body_basis,Vector3(0,sin(t*0.21)*deg_to_rad(1.2)*scale,sin(t*0.38)*deg_to_rad(.8)*scale))
-	_set_rotation(head,head_basis,Vector3(sin(t*0.27)*deg_to_rad(1.5)*scale,sin(t*0.19)*deg_to_rad(5.0)*scale,0))
-	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-6.0)*scale,0,deg_to_rad(-10.0)*scale))
-	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-5.0+2.0*sin(t*0.44))*scale,0,deg_to_rad(7.0)*scale))
+	var shift:=pow(maxf(0.0,sin(t*0.31-0.8)),8.0)
+	_set_rotation(body,body_basis,Vector3(0,deg_to_rad(2.2*shift+1.2*sin(t*0.21))*scale,sin(t*0.38)*deg_to_rad(.8)*scale))
+	_set_rotation(head,head_basis,Vector3(sin(t*0.27)*deg_to_rad(1.5)*scale,deg_to_rad(5.0*sin(t*0.19)+6.0*shift)*scale,0))
+	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-6.0-4.0*shift)*scale,0,deg_to_rad(-10.0-3.0*shift)*scale))
+	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-5.0+2.0*sin(t*0.44)+3.0*shift)*scale,0,deg_to_rad(7.0)*scale))
