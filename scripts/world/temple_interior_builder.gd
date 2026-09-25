@@ -200,6 +200,7 @@ func _build_smith(p:Vector3,parent:Node3D)->void:
 	box("Forge",Vector3(-1.2,.8,.9),Vector3(1.3,1.6,1.2),STONE,r)
 	glow_box("Ember",Vector3(-1.2,1.15,.25),Vector3(.75,.25,.08),EMBER,r,1.55)
 	var npc:=_build_npc_root("SmithNPC","smith",Vector3(-.92,0,.35),-90.0,LEATHER,IRON,r,.2)
+	npc.scale=Vector3(1.12,1.02,1.12)
 	var tool:=Node3D.new()
 	tool.name="Tool"
 	tool.position=Vector3(.52,1.12,-.20)
@@ -221,6 +222,7 @@ func _build_merchant(p:Vector3,parent:Node3D)->void:
 	for i in range(3):
 		box("Goods%02d"%i,Vector3(-.72+i*.58,1.46,.74),Vector3(.34,.30,.34),Color(.24,.16,.09),r)
 	var npc:=_build_npc_root("MerchantNPC","merchant",Vector3(.92,0,.52),90.0,CLOTH,WOOD,r,1.3)
+	npc.scale=Vector3(.94,.96,.94)
 	box("Hood",Vector3(0,2.16,.06),Vector3(.58,.42,.48),CLOTH,npc)
 
 func _build_engraver(p:Vector3,parent:Node3D)->void:
@@ -234,6 +236,7 @@ func _build_engraver(p:Vector3,parent:Node3D)->void:
 	for i in range(3):
 		box("RuneStone",Vector3(-.65+i*.65,1.4,0),Vector3(.32,.32,.32),RUNE,r)
 	var npc:=_build_npc_root("EngraverNPC","engraver",Vector3(-.92,0,.34),-90.0,ASH_CLOTH,RUNE,r,2.1)
+	npc.scale=Vector3(.86,1.06,.86)
 	var stylus:=box("Tool",Vector3(.48,1.12,-.18),Vector3(.06,.82,.06),RUNE,npc)
 	stylus.rotation_degrees.z=-22.0
 	box("RuneSatchel",Vector3(-.46,.90,.20),Vector3(.40,.52,.20),LEATHER,npc)
@@ -242,11 +245,13 @@ func _build_keeper(p:Vector3,parent:Node3D)->void:
 	box("KeeperBackdrop",p+Vector3(0,2.25,-.72),Vector3(4.4,4.5,.35),STONE,parent)
 	glow_box("KeeperSigil",p+Vector3(0,2.65,-.48),Vector3(.16,1.55,.10),RUNE,parent,1.25)
 	var r:=_build_npc_root("Keeper","keeper",p,180.0,CLOTH,RUNE,parent,.8)
+	r.scale=Vector3(.94,1.08,.94)
 	box("Hood",Vector3(0,2.17,.04),Vector3(.62,.48,.50),CLOTH,r)
 	box("PrayerCord",Vector3(0,1.25,-.27),Vector3(.08,.75,.08),RUNE,r)
 
 func _build_story_companion(parent:Node3D)->void:
 	var r:=_build_npc_root("GraveboundWarden","warden",Vector3(2.15,0,-99.2),165.0,Color(.12,.12,.13),IRON,parent,1.7)
+	r.scale=Vector3(1.08,1.04,1.08)
 	r.add_to_group("story_companion_visual")
 	r.visible=false
 	box("WardenShield",Vector3(-.55,1.08,-.18),Vector3(.72,1.05,.12),IRON,r)
