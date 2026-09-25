@@ -71,10 +71,16 @@ func _test_chapter_scene()->void:
 		var hound_box:=hound_shape.shape as BoxShape3D
 		_check(hound_box!=null and hound_box.size.x>=20.0,"exterior encounter trigger cannot be bypassed laterally")
 
+	var reveal_trigger:=chapter.get_node_or_null("Graybox/REVEAL_TEMPLE")
+	if reveal_trigger:
+		var reveal_shape:=reveal_trigger.get_child(0) as CollisionShape3D
+		var reveal_box:=reveal_shape.shape as BoxShape3D
+		_check(reveal_box!=null and reveal_box.size.x>=20.0,"Temple reveal trigger spans the exterior route")
+
 	var game:=chapter.get_node_or_null("Game")
 	if game:
 		_check(game.act0.stage==Act0Contract.STAGE_EXTERIOR,"fresh scene restores exterior Act 0 stage")
-		_check(not game.act0.faded_sigil_activated,"fresh scene keeps Temple threshold locked")
+		_check(not game.act0.temple_reveal_seen and not game.act0.faded_sigil_activated,"fresh scene keeps reveal and Temple threshold locked")
 		_check(game.catacombs.room==0,"fresh scene has no Catacomb progress")
 		_check(not game.room5_active,"Room 5 is inactive on fresh load")
 
