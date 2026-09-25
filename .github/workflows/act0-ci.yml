@@ -33,6 +33,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/act0_state_tests.gd 2>&1 | tee /tmp/act0-state.log
           ! grep -q "SCRIPT ERROR:" /tmp/act0-state.log
 
+      - name: Run save backup corruption recovery
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/save_manager_io_tests.gd 2>&1 | tee /tmp/save-manager-io.log
+          ! grep -q "SCRIPT ERROR:" /tmp/save-manager-io.log
+
       - name: Run Chapter 0 combat fixture parity
         run: |
           set -o pipefail
