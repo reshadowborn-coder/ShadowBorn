@@ -151,6 +151,10 @@ func _notification(what:int)->void:
 		if not is_node_ready():
 			return
 		call_deferred("_resume_mobile_session")
+	elif what==NOTIFICATION_OS_MEMORY_WARNING:
+		# iOS can request memory relief at any point. Only clear rebuildable
+		# references; progression and committed save state remain untouched.
+		room5_visual_cache.clear()
 
 func _resume_mobile_session()->void:
 	iphone_ui_layout.apply_safe_area()
