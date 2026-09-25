@@ -43,6 +43,8 @@ func _run()->void:
 	_check(presets.contains("architectures/arm64=true"),"iPhone QA preset exports arm64")
 	_check(presets.contains("application/targeted_device_family=0"),"iPhone QA preset targets iPhone only")
 	_check(presets.contains("application/min_ios_version=\"16.0\""),"iPhone QA preset requires iOS 16+ for Metal mobile rendering")
+	_check(presets.contains("capabilities/performance_a12=true"),"iPhone QA requires A12-class graphics or newer")
+	_check(presets.contains("capabilities/performance_gaming_tier=false"),"iPhone QA does not require A17 Gaming Tier, preserving iPhone 13 Pro support")
 	_check(presets.contains("application/bundle_identifier=\"org.shadowborn.chapter0.qa\""),"iPhone QA bundle identifier is stable")
 	_check(presets.contains("application/export_project_only=true"),"iPhone QA preset produces an Xcode project before signing")
 	_check(presets.contains("application/app_store_team_id=\"\""),"Apple Team ID is intentionally not committed to source control")
