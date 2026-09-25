@@ -361,7 +361,37 @@ static func _add_hound_undead_details(root: Node3D) -> void:
 
 static func _prepare_sword(root: Node3D) -> void:
 	root.scale = Vector3(0.92,0.92,0.92)
+	_apply_rust_to_meshes(root)
 	_enable_shadows(root)
+
+static func _apply_rust_to_meshes(root: Node) -> void:
+	if root is MeshInstance3D:
+		(root as MeshInstance3D).material_override = _rust_material()
+	for child in root.get_children():
+		_apply_rust_to_meshes(child)
+
+static func _rust_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+void fragment() {
+	float n1 = 0.5 + 0.5 * sin(UV.x * 71.0 + sin(UV.y * 39.0) * 2.0);
+	float n2 = 0.5 + 0.5 * sin(UV.y * 113.0 + UV.x * 17.0);
+	float rust = smoothstep(0.44,0.78,n1*0.65+n2*0.35);
+	vec3 steel = vec3(0.16,0.17,0.18);
+	vec3 oxide = vec3(0.34,0.085,0.018);
+	vec3 deep = vec3(0.085,0.027,0.012);
+	vec3 col = mix(steel,oxide,rust);
+	col = mix(col,deep,smoothstep(0.72,0.95,n2)*rust);
+	ALBEDO = col;
+	METALLIC = mix(0.62,0.08,rust);
+	ROUGHNESS = mix(0.48,0.96,rust);
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
 
 static func _enable_shadows(root: Node) -> void:
 	if root is MeshInstance3D:
