@@ -88,6 +88,9 @@ func _test_temple_progression()->void:
 	var tampered:=candidate.duplicate(true)
 	tampered["level"]=1
 	_check(not p.apply_first_forge(tampered),"first forge rejects non-canonical item payloads")
+	var injected:=candidate.duplicate(true)
+	injected["bonus_power"]=999
+	_check(not p.apply_first_forge(injected),"first forge rejects extra injected item fields")
 	_check(p.apply_first_forge(candidate),"first forge commits")
 	_check(p.silver==0,"first forge debits exactly one Silver")
 	_check(p.first_forge_done and p.stage=="catacombs","first forge advances to Catacombs")
@@ -186,6 +189,30 @@ func _test_save_recovery()->void:
 	var legacy_resume:=SaveManager._migrate(legacy)
 	_check(bool(legacy_resume.hound_residual_absorbed) and bool(legacy_resume.temple_reveal_seen) and bool(legacy_resume.faded_sigil_activated),"v4 saves migrate forward without replaying newly persisted one-shot beats")
 	_check("hound" in legacy_resume.cleared_encounters and "armless" in legacy_resume.cleared_encounters,"v4 Shield progress reconstructs skipped exterior prerequisites")
+
+
+	var malformed_flags:=SaveManager.default_state()
+	malformed_flags.covenant_joined="false"
+	malformed_flags.first_forge_done=1
+	malformed_flags.story_summon_unlocked="true"
+	malformed_flags.room5_rematch_ready=1
+	malformed_flags.act0_complete="false"
+	malformed_flags.reduced_motion="true"
+	var malformed_recovery:=SaveManager._migrate(malformed_flags)
+	_check(not bool(malformed_recovery.covenant_joined) and not bool(malformed_recovery.first_forge_done),"non-boolean Covenant/forge flags cannot unlock progression")
+	_check(not bool(malformed_recovery.story_summon_unlocked) and not bool(malformed_recovery.room5_rematch_ready) and not bool(malformed_recovery.act0_complete),"non-boolean late Act 0 flags are rejected")
+	_check(not bool(malformed_recovery.reduced_motion),"non-boolean settings flags fall back safely")
+
+	var injected_forge:=SaveManager.default_state()
+	injected_forge.cleared_encounters=["hound","armless","shield_boss"]
+	injected_forge.covenant_joined=true
+	injected_forge.weapon_family="bow"
+	injected_forge.first_forge_done=true
+	injected_forge.forged_item={"id":"shadow_bow_01","family":"bow","level":0,"bonus_unlocked":false,"equipped":true,"bonus_power":999}
+	injected_forge.silver=0
+	var injected_recovery:=SaveManager._migrate(injected_forge)
+	_check(not bool(injected_recovery.first_forge_done) and str(injected_recovery.act0_stage)==Act0Contract.STAGE_FIRST_FORGE,"save migration rolls back forged items with injected fields")
+	_check(int(injected_recovery.silver)==1,"invalid injected forge restores the one scripted Silver")
 
 	var bad_cat:=SaveManager.default_state()
 	bad_cat.cleared_encounters=["hound","armless","shield_boss"]
