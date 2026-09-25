@@ -128,6 +128,21 @@ func _save_progress()->bool:
 		push_error("Act 0 save transaction failed")
 	return ok
 
+func _restore_runtime_snapshot(state:Dictionary,restore_position:bool=true)->void:
+	act0.restore(state)
+	catacombs.restore(state)
+	team.restore(state)
+	cleared_encounters.assign(state.get("cleared_encounters",[]))
+	director.set_route_index(int(state.get("route_index",0)))
+	director.set_checkpoint(str(state.get("checkpoint","awakening")))
+	var p:Array=state.get("checkpoint_position",[0.0,0.9,8.0])
+	checkpoint_position=Vector3(float(p[0]),float(p[1]),float(p[2]))
+	_apply_equipment_state()
+	_apply_threshold_visual_state()
+	if restore_position:
+		shadow.global_position=checkpoint_position
+		shadow.velocity=Vector3.ZERO
+
 func _commit_first_forge_transaction()->bool:
 	var candidate:=act0.first_forge_candidate()
 	if candidate.is_empty():
@@ -202,33 +217,52 @@ func _on_combat_state(state: Dictionary) -> void:
 		shield.position.z = -0.42 if guarded else -0.18
 
 func _on_finished(id: String) -> void:
+	var before_state:=_build_save_state()
 	var first_clear := id not in cleared_encounters
 	var cat_room := _catacomb_room_for_encounter(id)
 	var residual_beat:=false
 	var shield_threshold_beat:=false
+	var transition_valid:=true
+	var defeated_visual:=active_enemy_visual
 	presenter.play_enemy_death()
 	await get_tree().create_timer(0.30).timeout
 	hud.hide_combat()
-	if active_enemy_visual: active_enemy_visual.visible = false
-	active_enemy_visual = null; presenter.clear(); camera_rig.exit_combat(); shadow.set_physics_process(true)
+	if defeated_visual:
+		defeated_visual.visible=false
+	active_enemy_visual = null
+	presenter.clear()
+	camera_rig.exit_combat()
+	shadow.set_physics_process(true)
 	_refresh_navigation()
+
 	if first_clear:
 		cleared_encounters.append(id)
 		if id=="hound":
 			residual_beat=act0.mark_hound_residual_absorbed()
+			transition_valid=residual_beat
 		elif id=="shield_boss":
 			act0.silver+=1
-			if not act0.transition_to(Act0Contract.STAGE_TEMPLE_ENTRY):
-				push_error("Shield clear could not advance Act 0 to Temple threshold")
-			else:
-				shield_threshold_beat=true
-	checkpoint_position = shadow.global_position
-	director.set_checkpoint(id + "_cleared")
+			transition_valid=act0.transition_to(Act0Contract.STAGE_TEMPLE_ENTRY)
+			shield_threshold_beat=transition_valid
+
+	checkpoint_position=shadow.global_position
+	director.set_checkpoint(id+"_cleared")
 	if first_clear and Act0Contract.is_exterior_encounter(id):
 		director.mark_exterior_encounter_cleared(id)
-	if cat_room > 0:
-		act0_flow.room_cleared(cat_room)
-	_save_progress()
+	if cat_room>0:
+		transition_valid=act0_flow.room_cleared(cat_room) and transition_valid
+
+	if not transition_valid or not _save_progress():
+		_restore_runtime_snapshot(before_state)
+		if defeated_visual:
+			defeated_visual.visible=true
+			if defeated_visual.has_meta("combat_home_position"):
+				defeated_visual.global_position=defeated_visual.get_meta("combat_home_position")
+		encounter.reset_shadow()
+		story_toast.show_message("The victory could not be anchored. The encounter must be faced again.")
+		_refresh_navigation()
+		return
+
 	if residual_beat:
 		shadow_proxy.play_residual_absorption()
 		story_toast.show_message("The fading residual answers the Shadow. Its echo is absorbed.",2.8)
@@ -304,16 +338,21 @@ func activate_faded_sigil()->bool:
 	story_toast.show_message("The Faded Sigil recognizes the wounded Shadow. The Temple threshold yields.",3.2)
 	return true
 
-func enter_temple() -> void:
+func enter_temple()->bool:
 	if not is_encounter_cleared("shield_boss") or not act0.faded_sigil_activated:
-		return
+		return false
 	if act0.stage!=Act0Contract.STAGE_TEMPLE_ENTRY:
-		return
+		return false
+	var before_state:=_build_save_state()
 	checkpoint_position=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
 	shadow.global_position=checkpoint_position
 	shadow.velocity=Vector3.ZERO
 	director.set_checkpoint("temple_entry")
-	_save_progress()
+	if not _save_progress():
+		_restore_runtime_snapshot(before_state)
+		story_toast.show_message("The Temple threshold rejects the crossing. Progress could not be saved.")
+		return false
+	return true
 
 func temple_interact(kind:String) -> void:
 	match kind:
@@ -476,6 +515,7 @@ func room5_action(skill:String) -> void:
 		room5_combat.shadow_action(skill)
 
 func _on_room5_finished() -> void:
+	var before_state:=_build_save_state()
 	room5_hud.close()
 	room5_active=false
 	room5_solo_attempt=false
@@ -490,16 +530,21 @@ func _on_room5_finished() -> void:
 	_show_room5_visuals(false)
 	director.set_checkpoint("act0_complete")
 	checkpoint_position=shadow.global_position
-	story_toast.show_message("The seal yields. The Cradle of Shadows is behind you.",4.2)
 	shadow.set_physics_process(true)
 	_refresh_navigation()
-	_save_progress()
+	if not _save_progress():
+		_restore_runtime_snapshot(before_state)
+		_show_room5_visuals(true)
+		story_toast.show_message("The final seal cannot hold without a save. The rematch remains unresolved.")
+		return
+	story_toast.show_message("The seal yields. The Cradle of Shadows is behind you.",4.2)
 
 func _on_room5_solo_limit()->void:
 	await get_tree().create_timer(0.70).timeout
 	_resolve_room5_solo_limit()
 
 func _resolve_room5_solo_limit()->void:
+	var before_state:=_build_save_state()
 	room5_hud.close()
 	room5_active=false
 	room5_solo_attempt=false
@@ -510,10 +555,16 @@ func _resolve_room5_solo_limit()->void:
 		shadow.global_position=checkpoint_position
 		shadow.velocity=Vector3.ZERO
 		director.set_checkpoint("room5_return")
+		shadow.set_physics_process(true)
+		_refresh_navigation()
+		if not _save_progress():
+			_restore_runtime_snapshot(before_state)
+			story_toast.show_message("The retreat could not be anchored. Room 5 remains uncommitted.")
+			return
 		story_toast.show_message("One shadow was not enough. Return to the Keeper.")
+		return
 	shadow.set_physics_process(true)
 	_refresh_navigation()
-	_save_progress()
 
 func _on_room5_failed() -> void:
 	if room5_solo_attempt:
