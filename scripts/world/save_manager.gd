@@ -158,11 +158,10 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	var hound_cleared:bool="hound" in state.cleared_encounters
 	var shield_cleared:bool="shield_boss" in state.cleared_encounters
 
-	state.hound_residual_absorbed=bool(state.get("hound_residual_absorbed",false)) and hound_cleared
-	if source_version<SAVE_VERSION and hound_cleared:
-		# The beat did not exist as a persisted flag in older saves. Mark it as
-		# consumed so migration never replays a one-shot presentation.
-		state.hound_residual_absorbed=true
+	# Hound clear and residual absorption are persisted by the same runtime
+	# transition. A save containing the clear but not the one-shot flag is
+	# incomplete/corrupt and must converge forward rather than replay it.
+	state.hound_residual_absorbed=hound_cleared
 
 	var downstream_after_sigil:bool=(
 		covenant
