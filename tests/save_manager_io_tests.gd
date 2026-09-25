@@ -47,5 +47,19 @@ func _run()->void:
 	_check(str(recovered.shadow_identity)=="male","backup recovery preserves gameplay identity")
 
 	_cleanup()
+	var replaced:=SaveManager.default_state()
+	replaced.shadow_identity="male"
+	replaced.reduced_motion=true
+	_check(SaveManager.save_state(replaced),"replacement fixture creates an old game")
+	_check(SaveManager.create_new_game("female"),"New Game replaces and reseeds both save generations")
+	var corrupt_new:=FileAccess.open(SaveManager.SAVE_PATH,FileAccess.WRITE)
+	if corrupt_new:
+		corrupt_new.store_string("{broken-new-game")
+		corrupt_new.close()
+	var recovered_new:=SaveManager.load_state()
+	_check(str(recovered_new.shadow_identity)=="female","New Game backup cannot resurrect the replaced identity")
+	_check(not bool(recovered_new.reduced_motion) and str(recovered_new.act0_stage)==Act0Contract.STAGE_EXTERIOR,"New Game backup contains the fresh default progression")
+
+	_cleanup()
 	print("Save manager IO recovery tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
