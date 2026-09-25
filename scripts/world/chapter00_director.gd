@@ -33,3 +33,15 @@ func set_checkpoint(id: String) -> void:
 
 func current_route() -> String:
 	return ROUTE[route_index]
+
+func mark_exterior_encounter_cleared(id:String)->void:
+	match id:
+		"hound":
+			set_route_index(ROUTE.find("ruins"))
+		"armless":
+			set_route_index(ROUTE.find("temple_reveal"))
+		"shield_boss":
+			set_route_index(ROUTE.find("temple_gate"))
+
+func mark_temple_reveal_seen()->void:
+	set_route_index(ROUTE.find("shield_boss"))
