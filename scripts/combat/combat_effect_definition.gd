@@ -12,12 +12,19 @@ enum StackingPolicy {
 	INDEPENDENT
 }
 
+enum MagnitudeMergePolicy {
+	REPLACE,
+	MAX_NUMERIC,
+	MIN_NUMERIC
+}
+
 @export var id:StringName = &""
 @export var semantic_tags:Array[StringName] = []
 @export var duration_policy:DurationPolicy = DurationPolicy.INSTANT
 @export_range(0,999,1) var base_duration_turns:int = 0
 @export_range(1,999,1) var max_stacks:int = 1
 @export var stacking_policy:StackingPolicy = StackingPolicy.REFRESH
+@export var magnitude_merge_policy:MagnitudeMergePolicy = MagnitudeMergePolicy.REPLACE
 @export var base_magnitudes:Dictionary = {}
 @export var cue_ids:Array[StringName] = []
 
