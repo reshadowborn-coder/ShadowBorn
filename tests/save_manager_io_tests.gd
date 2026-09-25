@@ -46,6 +46,16 @@ func _run()->void:
 	_check(not bool(recovered.reduced_motion),"corrupt primary falls back to previous valid generation")
 	_check(str(recovered.shadow_identity)=="male","backup recovery preserves gameplay identity")
 
+	# A syntactically valid but unreasonably large primary must be rejected
+	# before JSON parsing can allocate around attacker/corruption-controlled data.
+	var oversized:=FileAccess.open(SaveManager.SAVE_PATH,FileAccess.WRITE)
+	_check(oversized!=null,"test can open primary for oversized save fixture")
+	if oversized:
+		oversized.store_string("{\"junk\":\""+("x".repeat(SaveManager.MAX_SAVE_BYTES+64))+"\"}")
+		oversized.close()
+	var recovered_oversized:=SaveManager.load_state()
+	_check(str(recovered_oversized.shadow_identity)=="male","oversized primary falls back to bounded valid backup")
+
 	_cleanup()
 	var replaced:=SaveManager.default_state()
 	replaced.shadow_identity="male"
@@ -61,5 +71,14 @@ func _run()->void:
 	_check(not bool(recovered_new.reduced_motion) and str(recovered_new.act0_stage)==Act0Contract.STAGE_EXTERIOR,"New Game backup contains the fresh default progression")
 
 	_cleanup()
+
+	var canonical:=SaveManager.default_state()
+	canonical.shadow_identity="male"
+	canonical["unknown_future_blob"]="x".repeat(1024)
+	_check(SaveManager.save_state(canonical),"canonical save strips unknown top-level fields before promotion")
+	var canonical_loaded:=SaveManager.load_state()
+	_check(not canonical_loaded.has("unknown_future_blob"),"unknown top-level save fields cannot accumulate across iPhone saves")
+	_cleanup()
+
 	print("Save manager IO recovery tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
