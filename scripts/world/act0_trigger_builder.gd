@@ -3,7 +3,7 @@ extends Node3D
 
 func _ready()->void:
 	_gate(Act0Layout.TEMPLE_GATE_TRIGGER,"TempleGate","res://scripts/world/temple_gate.gd",Act0Layout.TEMPLE_GATE_TRIGGER_SIZE)
-	_gate(Act0Layout.FADED_SIGIL_TRIGGER,"FadedSigil","res://scripts/world/faded_sigil_threshold.gd",Vector3(18,2.5,3))
+	_gate(Act0Layout.FADED_SIGIL_TRIGGER,"FadedSigil","res://scripts/world/faded_sigil_threshold.gd",Act0Layout.FADED_SIGIL_TRIGGER_SIZE)
 	_interact(Act0Layout.KEEPER_TRIGGER,"Keeper","keeper")
 	_interact(Act0Layout.COVENANT_TRIGGER,"Covenant","covenant")
 	_interact(Act0Layout.SMITH_TRIGGER,"Smith","smith")
