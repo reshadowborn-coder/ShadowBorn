@@ -8,3 +8,5 @@ These assets are temporary production-development stand-ins. Shadowborn's final 
 Original creator: Quaternius (https://quaternius.com/)
 
 The original license files are preserved beside the assets.
+
+- `shadow_sword.gltf` — Quaternius, Pirate Kit, CC0 1.0. Imported as a temporary sword prop for Checkpoint 01.
