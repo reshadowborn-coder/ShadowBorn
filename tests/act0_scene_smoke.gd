@@ -107,6 +107,9 @@ func _test_chapter_scene()->void:
 	var cat_wall:=chapter.get_node_or_null("Catacombs/CatacombVisual/Room01WallL") as MeshInstance3D
 	if cat_wall and cat_wall.mesh is BoxMesh:
 		_check((cat_wall.mesh as BoxMesh).size.z>=13.0,"Catacomb side walls close the inter-room bypass gaps")
+	var room5_seal:=chapter.get_node_or_null("Catacombs/CatacombVisual/Room5Seal") as MeshInstance3D
+	if room5_seal and room5_seal.mesh is BoxMesh:
+		_check((room5_seal.mesh as BoxMesh).size.x>=11.2,"Room 5 terminal seal spans the full playable corridor")
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
@@ -146,6 +149,11 @@ func _test_chapter_scene()->void:
 			cat_gate_runtime._sync_catacomb_blocker()
 			await process_frame
 			_check(cat_gate_runtime.get_node_or_null("ProgressionBlocker")==null,"story summon re-opens the Catacomb passage for the Room 5 rematch")
+
+			game.act0.stage=Act0Contract.STAGE_COMPLETE
+			cat_gate_runtime._sync_catacomb_blocker()
+			await process_frame
+			_check(cat_gate_runtime.get_node_or_null("ProgressionBlocker")==null,"Act 0 completion keeps the return route to the Temple open")
 
 	chapter.queue_free()
 	await process_frame
