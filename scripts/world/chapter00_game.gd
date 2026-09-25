@@ -122,7 +122,10 @@ func _build_save_state()->Dictionary:
 	return state
 
 func _save_progress()->bool:
-	return SaveManager.save_state(_build_save_state())
+	var ok:=SaveManager.save_state(_build_save_state())
+	if not ok:
+		push_error("Act 0 save transaction failed")
+	return ok
 
 func _commit_first_forge_transaction()->bool:
 	var candidate:=act0.first_forge_candidate()
@@ -132,7 +135,7 @@ func _commit_first_forge_transaction()->bool:
 	state["silver"]=act0.silver-1
 	state["forged_item"]=candidate.duplicate(true)
 	state["first_forge_done"]=true
-	state["act0_stage"]="catacombs"
+	state["act0_stage"]=Act0Contract.STAGE_CATACOMBS
 	if not SaveManager.save_state(state):
 		return false
 	if act0.apply_first_forge(candidate):
@@ -147,8 +150,12 @@ func _commit_first_forge_transaction()->bool:
 func is_encounter_cleared(id: String) -> bool:
 	return id in cleared_encounters
 
-func begin_encounter(id: String, profile: Dictionary) -> void:
-	if is_encounter_cleared(id): return
+func begin_encounter(id: String, profile: Dictionary) -> bool:
+	if is_encounter_cleared(id):
+		return false
+	if Act0Contract.is_exterior_encounter(id) and not Act0Contract.can_start_exterior_encounter(id,cleared_encounters):
+		story_toast.show_message("The path refuses to advance. An earlier threat still remains.")
+		return false
 	shadow.set_physics_process(false)
 	active_enemy_visual = _find_enemy_visual(id)
 	if active_enemy_visual:
@@ -156,6 +163,7 @@ func begin_encounter(id: String, profile: Dictionary) -> void:
 		camera_rig.enter_combat(shadow.global_position, active_enemy_visual.global_position)
 		presenter.bind_combatants(shadow, active_enemy_visual)
 	encounter.start_encounter(id, profile)
+	return encounter.active
 
 func _find_enemy_visual(id: String) -> Node3D:
 	for node in get_tree().get_nodes_in_group("encounter_visual"):
@@ -195,6 +203,7 @@ func _on_combat_state(state: Dictionary) -> void:
 func _on_finished(id: String) -> void:
 	var first_clear := id not in cleared_encounters
 	var cat_room := _catacomb_room_for_encounter(id)
+	var residual_beat:=false
 	presenter.play_enemy_death()
 	await get_tree().create_timer(0.30).timeout
 	hud.hide_combat()
@@ -203,14 +212,21 @@ func _on_finished(id: String) -> void:
 	_refresh_navigation()
 	if first_clear:
 		cleared_encounters.append(id)
-		if id == "shield_boss":
-			act0.silver += 1
-			act0.stage = "temple_entry"
+		if id=="hound":
+			residual_beat=act0.mark_hound_residual_absorbed()
+		elif id=="shield_boss":
+			act0.silver+=1
+			if not act0.transition_to(Act0Contract.STAGE_TEMPLE_ENTRY):
+				push_error("Shield clear could not advance Act 0 to Temple threshold")
 	checkpoint_position = shadow.global_position
 	director.set_checkpoint(id + "_cleared")
 	director.advance()
-	if cat_room > 0: act0_flow.room_cleared(cat_room)
+	if cat_room > 0:
+		act0_flow.room_cleared(cat_room)
 	_save_progress()
+	if residual_beat:
+		shadow_proxy.play_residual_absorption()
+		story_toast.show_message("The fading residual answers the Shadow. Its echo is absorbed.",2.8)
 
 func _on_failed(_id: String) -> void:
 	hud.hide_combat()
@@ -237,19 +253,36 @@ func play_world_reveal(id: String) -> void:
 	_refresh_navigation()
 
 
+func activate_faded_sigil()->bool:
+	if not is_encounter_cleared("shield_boss") or act0.stage!=Act0Contract.STAGE_TEMPLE_ENTRY:
+		return false
+	if not act0.activate_faded_sigil():
+		return false
+	checkpoint_position=Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z)
+	director.set_checkpoint("faded_sigil")
+	_save_progress()
+	shadow_proxy.play_residual_absorption()
+	story_toast.show_message("The Faded Sigil recognizes the wounded Shadow. The Temple threshold yields.",3.2)
+	return true
+
 func enter_temple() -> void:
-	if not is_encounter_cleared("shield_boss"): return
-	if act0.stage not in ["exterior","temple_entry"]: return
-	act0.stage="temple_entry"; checkpoint_position=Vector3(0,0.9,-78); shadow.global_position=checkpoint_position
-	director.set_checkpoint("temple_entry"); _save_progress()
+	if not is_encounter_cleared("shield_boss") or not act0.faded_sigil_activated:
+		return
+	if act0.stage!=Act0Contract.STAGE_TEMPLE_ENTRY:
+		return
+	checkpoint_position=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
+	shadow.global_position=checkpoint_position
+	shadow.velocity=Vector3.ZERO
+	director.set_checkpoint("temple_entry")
+	_save_progress()
 
 func temple_interact(kind:String) -> void:
 	match kind:
 		"keeper":
-			if act0.stage=="temple_entry" and act0.join_covenant():
+			if act0.stage==Act0Contract.STAGE_TEMPLE_ENTRY and act0.join_covenant():
 				story_toast.show_message("Keeper: The dead do not fear the dark. Only what wakes inside it. Bind your shape to the Forgotten Covenant.")
 				_save_progress()
-			elif act0.stage=="room5_return" and act0_flow.temple_story_handoff():
+			elif act0.stage==Act0Contract.STAGE_ROOM5_RETURN and act0_flow.temple_story_handoff():
 				story_toast.show_message("Keeper: One shadow has found its limit. Call the one who still answers beneath the stone.")
 				_save_progress()
 		"covenant":
@@ -258,7 +291,7 @@ func temple_interact(kind:String) -> void:
 			elif not act0.covenant_joined:
 				story_toast.show_message("The Covenant stone is silent. The Keeper has not named you yet.")
 		"smith":
-			if act0.stage=="first_forge":
+			if act0.stage==Act0Contract.STAGE_FIRST_FORGE:
 				if _commit_first_forge_transaction():
 					story_toast.show_message("Smith: Silver remembers heat. Your chosen form has an edge now.")
 			elif not act0.first_forge_done:
@@ -269,8 +302,9 @@ func temple_interact(kind:String) -> void:
 			story_toast.show_message("The engraver's stones are dormant. Runes will answer later.")
 		"catacombs":
 			if act0_flow.enter_catacombs():
-				checkpoint_position=Vector3(0,0.9,-117)
+				checkpoint_position=Act0Layout.CATACOMB_ENTRY_CHECKPOINT
 				shadow.global_position=checkpoint_position
+				shadow.velocity=Vector3.ZERO
 				story_toast.show_message("The lower passage opens. The air below carries old bone-dust.")
 				_save_progress()
 			else:
@@ -282,14 +316,14 @@ func choose_covenant_weapon(family:String) -> bool:
 	return ok
 
 func enter_catacomb_room(room:int) -> void:
-	if catacombs.complete or act0.stage=="act0_complete":
+	if catacombs.complete or act0.stage==Act0Contract.STAGE_COMPLETE:
 		return
 	if room!=catacombs.room:
 		return
 	var enemies:=CatacombEncounterPlan.enemies(room)
 	if room==5 and not catacombs.summon_unlocked:
 		if catacombs.room5_solo_limit_seen:
-			checkpoint_position=Vector3(0,0.9,-96)
+			checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
 			shadow.global_position=checkpoint_position
 			shadow.velocity=Vector3.ZERO
 			director.set_checkpoint("room5_return")
@@ -315,14 +349,14 @@ func _room5_visuals()->Array[Node3D]:
 
 func _stage_room5_scene()->void:
 	var visuals:=_room5_visuals()
-	var focus:=Vector3(0,1.0,-175.5)
+	var focus:=Act0Layout.ROOM5_FOCUS_ANCHOR
 	for v in visuals:
 		v.visible=true
 		v.scale=Vector3.ONE
 		focus+=v.global_position
 	if not visuals.is_empty():
 		focus/=float(visuals.size()+1)
-	shadow.global_position=Vector3(0,0.9,-171.5)
+	shadow.global_position=Act0Layout.ROOM5_SHADOW_POSITION
 	shadow.look_at(Vector3(focus.x,shadow.global_position.y,focus.z),Vector3.UP)
 	for v in visuals:
 		v.look_at(Vector3(shadow.global_position.x,v.global_position.y,shadow.global_position.z),Vector3.UP)
@@ -402,7 +436,7 @@ func _resolve_room5_solo_limit()->void:
 	camera_rig.exit_combat()
 	_show_room5_visuals(true)
 	if act0_flow.room5_first_contact():
-		checkpoint_position=Vector3(0,0.9,-96)
+		checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
 		shadow.global_position=checkpoint_position
 		shadow.velocity=Vector3.ZERO
 		director.set_checkpoint("room5_return")
@@ -441,17 +475,18 @@ func _catacomb_room_for_encounter(id:String)->int:
 func _on_companion_ready(profile:Dictionary)->void:
 	team.unlock_story_slot()
 	story_toast.show_message("%s answers the call. A second formation slot is now active."%str(profile.get("name","A forgotten guardian")))
-	# Keep the player in the Temple after the story handoff instead of
-	# teleporting straight back to the Catacombs.
-	checkpoint_position=shadow.global_position
+	# Keep the live player at the Keeper, but persist a deterministic safe
+	# resume point in the Temple instead of an arbitrary overlap position.
+	checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
 	director.set_checkpoint("room5_rematch")
 
 func _restore_act0_position()->void:
-	if act0.stage=="room5_return":
-		checkpoint_position=Vector3(0,0.9,-96)
-	elif act0.stage=="act0_complete":
+	if act0.stage in [Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH]:
+		checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
+	elif act0.stage==Act0Contract.STAGE_COMPLETE:
 		return
 	shadow.global_position=checkpoint_position
+	shadow.velocity=Vector3.ZERO
 
 
 func _apply_equipment_state()->void:
