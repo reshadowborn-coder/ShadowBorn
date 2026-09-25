@@ -180,10 +180,10 @@ func _ticket_order(shadow_speed:int,enemy_speed:int,count:int)->Array[StringName
 
 func _test_five_decision_alternation_diagnostic_band()->void:
 	var expected:Array[StringName]=[&"shadow",&"enemy",&"shadow",&"enemy",&"shadow",&"enemy",&"shadow",&"enemy",&"shadow"]
-	for enemy_speed in range(76,102):
+	for enemy_speed in range(76,101):
 		_check(
 			_ticket_order(100,enemy_speed,9)==expected,
 			"diagnostic Shadow100/enemy%d with 10000/9999 seed preserves alternating cadence through five Shadow decisions"%enemy_speed
 		)
 	_check(_ticket_order(100,75,9)!=expected,"enemy SPD75 falls outside the five-decision alternating diagnostic band")
-	_check(_ticket_order(100,102,9)!=expected,"enemy SPD102 falls outside the five-decision alternating diagnostic band")
+	_check(_ticket_order(100,101,9)!=expected,"enemy SPD101 falls outside the five-decision alternating diagnostic band because retained overflow creates an extra enemy opportunity")
