@@ -24,6 +24,10 @@ func _run()->void:
 	await process_frame
 	await process_frame
 
+	var shadow:=chapter.get_node_or_null("Shadow") as Node3D
+	if shadow:
+		shadow.global_position=Vector3(0,.9,-90.0)
+
 	var paths:={
 		"keeper":"TempleInterior/TempleVisual/Keeper",
 		"smith":"TempleInterior/TempleVisual/SmithStation/SmithNPC",
@@ -48,6 +52,17 @@ func _run()->void:
 		npc.set_reduced_motion(false)
 		npc._process(1.37)
 		_check(not head.basis.is_equal_approx(before),"%s idle cycle changes pose instead of remaining statue-still"%profile)
+
+	if shadow:
+		var keeper_sleep:=chapter.get_node_or_null(paths["keeper"]) as TempleNpcIdle
+		if keeper_sleep:
+			keeper_sleep.set_process(false)
+			shadow.global_position=Vector3(0,.9,8.0)
+			var sleeping_head:=keeper_sleep.get_node("Head") as Node3D
+			var sleeping_before:=sleeping_head.basis
+			keeper_sleep._process(.75)
+			_check(sleeping_head.basis.is_equal_approx(sleeping_before),"Temple NPC pose work sleeps while player is far outside the hub")
+			shadow.global_position=Vector3(0,.9,-90.0)
 
 	var smith:=chapter.get_node_or_null(paths["smith"]) as TempleNpcIdle
 	if smith:
