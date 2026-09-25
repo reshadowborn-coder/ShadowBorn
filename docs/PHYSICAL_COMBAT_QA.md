@@ -26,7 +26,30 @@ Use at least 20 repetitions for each representative contact path after warm-up. 
 
 For Shield, preserve the D1 visible Guard decision and record the HOLD line separately from the deliberate A2-into-Guard line. Veil 15% vs 20% remains a separate A/B build/configuration; do not change the value during one capture series.
 
-## Capture Godot trace on Android
+## Capture on physical iPhone — primary product gate
+
+iPhone is the primary physical authority for the current slice. Launch the exact QA Xcode artifact on the target device and keep the Xcode debug console attached so `SB_TRACE` JSON rows are captured with the run.
+
+The first `trace_capabilities` row must report:
+- `platform = iOS`;
+- `actual_present = external_xcode_instruments_or_metal_system_trace`.
+
+For every measured Shield/Hound/Armless segment, keep the `SB_TRACE` log and one matching Apple performance capture from the same installed build and git SHA.
+
+Use Xcode / Instruments Metal tooling to measure physical presentation rather than treating a Godot render callback as proof of display:
+1. start from the Apple Game Performance or Metal System Trace workflow in Instruments;
+2. capture the exact combat segment while recording the app's `SB_TRACE` console output;
+3. inspect the display / frame-interval timeline around semantic contact, HUD/VFX projection and recovery;
+4. record requested mode (30/60), measured frame-interval distribution, visible hitch clusters and thermal state;
+5. if GPU cost or a transient stall is unclear, use the Metal Performance HUD / performance report as supporting evidence.
+
+The engine trace and Apple trace answer different questions:
+- `SB_TRACE` proves resolver/presentation ordering and first eligible Godot render frame;
+- Instruments / Metal evidence proves what cadence actually reached the physical display and whether CPU/GPU/thermal pressure delayed it.
+
+Do not infer physical-present time from `Engine.max_fps`, frame index, or `RenderingServer.frame_post_draw` alone.
+
+## Capture Godot trace on Android — secondary compatibility gate
 
 Clear prior logs, then start logcat using the Android monotonic clock and microsecond precision:
 
@@ -88,6 +111,8 @@ The current trace records HUD and VFX timing but reports `sfx=false` in `trace_c
 - Godot Time `get_ticks_usec()` monotonic timing
 - Android Logcat `monotonic` and `usec` modifiers
 - Android game frame-rate measurement with SurfaceFlinger / Android Performance Analyzer
+- Apple Instruments Game Performance / Metal System Trace for CPU, GPU and display-timeline correlation
+- Apple Metal Performance HUD for live frame interval, GPU time, thermal and performance-report evidence
 
 
 ## Observer-effect control
