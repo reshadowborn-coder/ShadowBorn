@@ -131,6 +131,7 @@ func _build_route() -> void:
 	_box("EntryColumnR",Vector3(3.1,3.0,-69.9),Vector3(0.75,6.0,0.75),STONE)
 	_build_faded_sigil_marker()
 	_build_environment_props()
+	_build_enemy_ecology_traces()
 	_build_route_occlusion()
 	_add_reveal_zone("temple",Act0Layout.TEMPLE_REVEAL_TRIGGER,Act0Layout.TEMPLE_REVEAL_TRIGGER_SIZE)
 	_add_encounter("hound",Act0Layout.HOUND_TRIGGER,12,2,2)
@@ -204,6 +205,59 @@ func _build_environment_props() -> void:
 	_broken_column("ForecourtColumnL",Vector3(-6.2,0,-55),2.9,-3.0)
 	_broken_column("ForecourtColumnR",Vector3(6.2,0,-55),2.2,6.0)
 	_broken_column("FallenColumn",Vector3(-5.0,0.15,-58.5),2.6,82.0)
+
+func _build_enemy_ecology_traces()->void:
+	# Chapter 0 enemies should begin as environmental evidence before they
+	# become combat targets. These are deliberately static and non-colliding:
+	# world causality/readability without adding runtime simulation.
+	var hound_trace:=Node3D.new()
+	hound_trace.name="HoundEcologyTrace"
+	_visual_root.add_child(hound_trace)
+	_box("TetherPost",Vector3(-3.05,.62,-10.7),Vector3(.24,1.24,.24),DEADWOOD,hound_trace)
+	for i in range(3):
+		var link:=_box(
+			"TetherLink%02d"%i,
+			Vector3(-2.78+float(i)*.42,.09,-11.15-float(i)*.38),
+			Vector3(.10,.08,.62),
+			RUST,
+			hound_trace
+		)
+		link.rotation_degrees.y=31.0
+	for i in range(2):
+		var scratch:=_box(
+			"ClawScrape%02d"%i,
+			Vector3(-.42+float(i)*.30,.025,-11.82),
+			Vector3(.055,.035,1.18),
+			Color(.09,.085,.075),
+			hound_trace
+		)
+		scratch.rotation_degrees.y=-6.0
+
+	var armless_trace:=Node3D.new()
+	armless_trace.name="ArmlessEcologyTrace"
+	_visual_root.add_child(armless_trace)
+	var disturbed:=_box("DisturbedBurialSlab",Vector3(3.55,.16,-36.65),Vector3(2.15,.22,.82),STONE,armless_trace)
+	disturbed.rotation_degrees.y=-13.0
+	_box("OpenBurialDark",Vector3(3.45,.055,-37.05),Vector3(1.55,.05,.72),Color(.075,.078,.073),armless_trace).rotation_degrees.y=-13.0
+	for i in range(2):
+		var gouge:=_box(
+			"LungeGouge%02d"%i,
+			Vector3(.62+float(i)*.34,.024,-37.95-float(i)*.12),
+			Vector3(.07,.035,1.65),
+			Color(.10,.095,.082),
+			armless_trace
+		)
+		gouge.rotation_degrees.y=-4.0
+	_box("BoneDustTrace",Vector3(1.35,.035,-37.25),Vector3(.64,.045,.34),BONE,armless_trace)
+
+	var guard_trace:=Node3D.new()
+	guard_trace.name="ShieldbearerEcologyTrace"
+	_visual_root.add_child(guard_trace)
+	var drag:=_box("ShieldDragMark",Vector3(-.55,.025,-58.55),Vector3(.12,.035,2.65),RUST,guard_trace)
+	drag.rotation_degrees.y=7.0
+	_box("GuardStandingWear",Vector3(0,.022,-59.45),Vector3(1.25,.035,.84),Color(.095,.09,.08),guard_trace)
+	var brace:=_box("ShieldBraceScar",Vector3(-5.73,1.12,-55.05),Vector3(.07,.72,.55),RUST,guard_trace)
+	brace.rotation_degrees.z=-8.0
 
 func _enemy_root(id:String,pos:Vector3) -> Node3D:
 	var root:=Node3D.new(); root.name="VIS_"+id.to_upper(); root.position=pos; root.add_to_group("encounter_visual"); root.set_meta("encounter_id",id); _visual_root.add_child(root); return root
