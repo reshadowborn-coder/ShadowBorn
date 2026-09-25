@@ -75,7 +75,8 @@ func report_state(domain:String,label:String,metadata:Dictionary={})->void:
 		_bridge.call("report_state",domain,label,snapshot.metadata)
 
 func current_reported_state(domain:String)->Dictionary:
-	return (_reported_states.get(domain,{}) as Dictionary).duplicate(true)
+	var state:Dictionary=_reported_states.get(domain,{})
+	return state.duplicate(true)
 
 func play_haptic(event_id:String,intensity:float=1.0)->void:
 	if event_id.is_empty():
