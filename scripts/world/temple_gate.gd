@@ -29,8 +29,16 @@ func _process(_delta:float)->void:
 		blocker=null
 		set_process(false)
 
+func _approaching_from_exterior(body:Node)->bool:
+	if not (body is Node3D):
+		return false
+	# Exterior lies on the positive-Z side of the threshold. A loaded player
+	# already inside the Temple must be free to cross back out without the
+	# entrance transition teleporting them inward again.
+	return (body as Node3D).global_position.z>=global_position.z
+
 func _enter(body:Node)->void:
-	if used or not body.is_in_group("player"):
+	if used or not body.is_in_group("player") or not _approaching_from_exterior(body):
 		return
 	var game:=get_tree().get_first_node_in_group("chapter00_game")
 	if game==null:
