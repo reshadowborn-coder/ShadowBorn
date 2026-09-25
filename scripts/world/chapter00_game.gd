@@ -35,8 +35,8 @@ var mobile_reflow_pending:=false
 func _ready() -> void:
 	add_to_group("chapter00_game")
 	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow)
-	_restore_save()
 	var persisted := SaveManager.load_state()
+	_restore_save(persisted)
 	last_committed_state=persisted.duplicate(true)
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
 	act0_flow.restore(persisted); team.restore(persisted)
@@ -81,8 +81,7 @@ func _ready() -> void:
 		combat_trace.set_context(performance_mode,reduced_motion)
 	call_deferred("_apply_cleared_visuals")
 
-func _restore_save() -> void:
-	var state := SaveManager.load_state()
+func _restore_save(state:Dictionary) -> void:
 	director.checkpoint = str(state.checkpoint)
 	director.set_route_index(int(state.route_index))
 	var p: Array = state.checkpoint_position
