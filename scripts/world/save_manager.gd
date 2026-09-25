@@ -50,24 +50,62 @@ static func _checkpoint_values(value)->Variant:
 		return null
 	return Vector3(x,y,z)
 
-static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
+static func _near_checkpoint(p:Vector3,target:Vector3,horizontal:float=1.75,vertical:float=1.5)->bool:
+	return absf(p.x-target.x)<=horizontal and absf(p.z-target.z)<=horizontal and absf(p.y-target.y)<=vertical
+
+static func _checkpoint_id_matches_stage(state:Dictionary)->bool:
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
+	var checkpoint:=str(state.get("checkpoint",""))
 	match stage:
 		Act0Contract.STAGE_EXTERIOR:
-			return p.z>=-75.0
-		Act0Contract.STAGE_TEMPLE_ENTRY,Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
-			return p.z<=-63.0 and p.z>=-117.0
+			return checkpoint in ["awakening","hound_cleared","armless_cleared","temple_reveal_seen"]
+		Act0Contract.STAGE_TEMPLE_ENTRY:
+			return checkpoint in ["faded_sigil","temple_entry"]
+		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
+			return checkpoint=="temple_entry"
 		Act0Contract.STAGE_CATACOMBS:
-			return p.z<=-109.0 and p.z>=-182.0
-		Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH:
-			return p.z<=-70.0 and p.z>=-117.0
+			return checkpoint in [
+				"catacombs_entry",
+				"cat_r1_skeleton_cleared",
+				"cat_r2_hound_cleared",
+				"cat_r3_guard_cleared",
+				"cat_r4_revenant_cleared"
+			]
+		Act0Contract.STAGE_ROOM5_RETURN:
+			return checkpoint=="room5_return"
+		Act0Contract.STAGE_ROOM5_REMATCH:
+			return checkpoint=="room5_rematch"
 		Act0Contract.STAGE_COMPLETE:
-			return p.z<=-109.0 and p.z>=-182.0
+			return checkpoint=="act0_complete"
+	return false
+
+static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
+	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
+	if p.y<0.35 or p.y>2.2:
+		return false
+	match stage:
+		Act0Contract.STAGE_EXTERIOR:
+			# Exterior floors are wider than the Temple/Catacombs but still
+			# bounded. Reject positions outside authored walkable geometry.
+			return p.x>=-8.5 and p.x<=10.0 and p.z>=-63.0 and p.z<=10.5
+		Act0Contract.STAGE_TEMPLE_ENTRY:
+			return (
+				_near_checkpoint(p,Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z),2.0)
+				or _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
+			)
+		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
+			return _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
+		Act0Contract.STAGE_CATACOMBS:
+			return absf(p.x)<=5.15 and p.z<=-116.0 and p.z>=-178.5
+		Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH:
+			return _near_checkpoint(p,Act0Layout.ROOM5_RETURN_CHECKPOINT,2.0)
+		Act0Contract.STAGE_COMPLETE:
+			return absf(p.x)<=5.15 and p.z<=-169.0 and p.z>=-178.5
 	return false
 
 static func _repair_checkpoint(state:Dictionary)->Dictionary:
 	var parsed=_checkpoint_values(state.get("checkpoint_position"))
-	if parsed!=null and _checkpoint_matches_stage(state,parsed):
+	if parsed!=null and _checkpoint_matches_stage(state,parsed) and _checkpoint_id_matches_stage(state):
 		return state
 
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
