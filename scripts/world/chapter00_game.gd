@@ -70,6 +70,10 @@ func _ready() -> void:
 	settings_button.pressed.connect(_open_settings)
 	settings_menu.performance_mode_changed.connect(_on_performance_mode_changed)
 	settings_menu.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	if not PlatformRuntime.memory_pressure.is_connected(_on_platform_memory_pressure):
+		PlatformRuntime.memory_pressure.connect(_on_platform_memory_pressure)
+	PlatformRuntime.report_state("com.shadowborn.gameplay","act0",{"chapter":"act0"})
+	PlatformRuntime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	if OS.is_debug_build():
 		combat_trace=CombatFrameTrace.new()
 		var trace_console:=bool(ProjectSettings.get_setting("debug/shadowborn/combat_trace_console",true))
@@ -95,7 +99,7 @@ func _restore_save(state:Dictionary) -> void:
 	_apply_presentation_settings()
 
 func _apply_performance_mode() -> void:
-	Engine.max_fps = 30 if performance_mode == "battery30" else 60
+	PlatformRuntime.set_requested_mode(performance_mode)
 
 func _open_settings() -> void:
 	if encounter.active or room5_active or covenant_menu.panel.visible:
@@ -107,6 +111,7 @@ func _on_performance_mode_changed(mode: String) -> void:
 	_apply_performance_mode()
 	if combat_trace:
 		combat_trace.set_context(performance_mode,reduced_motion)
+	PlatformRuntime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	_save_progress()
 
 func _on_reduced_motion_changed(value:bool)->void:
@@ -114,6 +119,7 @@ func _on_reduced_motion_changed(value:bool)->void:
 	_apply_presentation_settings()
 	if combat_trace:
 		combat_trace.set_context(performance_mode,reduced_motion)
+	PlatformRuntime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	_save_progress()
 
 func _apply_presentation_settings()->void:
@@ -158,10 +164,11 @@ func _notification(what:int)->void:
 		if not is_node_ready():
 			return
 		_queue_mobile_reflow()
-	elif what==NOTIFICATION_OS_MEMORY_WARNING:
-		# iOS can request memory relief at any point. Only clear rebuildable
-		# references; progression and committed save state remain untouched.
-		room5_visual_cache.clear()
+
+func _on_platform_memory_pressure(_count:int)->void:
+	# PlatformRuntime owns the OS signal. Chapter 0 only decides which
+	# reconstructible cache it can safely discard.
+	room5_visual_cache.clear()
 
 func _queue_mobile_reflow()->void:
 	if mobile_reflow_pending:
@@ -281,6 +288,7 @@ func _restore_enemy_visual_home()->void:
 
 func _on_started(id: String) -> void:
 	hud.show_combat(id)
+	PlatformRuntime.report_state("com.shadowborn.encounter","single",{"id":id})
 	_refresh_navigation()
 
 func _on_combat_state(state: Dictionary) -> void:
@@ -293,6 +301,7 @@ func _on_combat_state(state: Dictionary) -> void:
 		shield.position.z = -0.42 if guarded else -0.18
 
 func _on_finished(id: String) -> void:
+	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
 	var before_state:=_build_save_state()
 	var first_clear := id not in cleared_encounters
 	var cat_room := _catacomb_room_for_encounter(id)
@@ -345,6 +354,7 @@ func _on_finished(id: String) -> void:
 		story_toast.show_message("Silver remains in the broken shield. Ahead, a Faded Sigil stirs at the Temple threshold.",3.6)
 
 func _on_failed(_id: String) -> void:
+	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
 	hud.hide_combat()
 	_restore_enemy_visual_home()
 	active_enemy_visual = null
@@ -601,6 +611,7 @@ func _start_room5_solo_attempt(enemies:Array)->void:
 		return
 	room5_active=true
 	room5_solo_attempt=true
+	PlatformRuntime.report_state("com.shadowborn.encounter","room5_solo",{})
 	shadow.set_physics_process(false)
 	_refresh_navigation()
 	_stage_room5_scene()
@@ -628,6 +639,7 @@ func _start_room5_rematch(enemies:Array) -> void:
 		return
 	room5_active=true
 	room5_solo_attempt=false
+	PlatformRuntime.report_state("com.shadowborn.encounter","room5_team",{})
 	shadow.set_physics_process(false)
 	_refresh_navigation()
 	_stage_room5_scene()
@@ -644,6 +656,7 @@ func room5_action(skill:String) -> void:
 		room5_combat.shadow_action(skill)
 
 func _on_room5_finished() -> void:
+	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
 	var before_state:=_build_save_state()
 	room5_hud.close()
 	room5_active=false
@@ -675,6 +688,7 @@ func _on_room5_solo_limit()->void:
 	_resolve_room5_solo_limit()
 
 func _resolve_room5_solo_limit()->void:
+	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
 	var before_state:=_build_save_state()
 	room5_hud.close()
 	room5_active=false
@@ -701,6 +715,7 @@ func _resolve_room5_solo_limit()->void:
 	_refresh_navigation()
 
 func _on_room5_failed() -> void:
+	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
 	if room5_solo_attempt:
 		_resolve_room5_solo_limit()
 		return
