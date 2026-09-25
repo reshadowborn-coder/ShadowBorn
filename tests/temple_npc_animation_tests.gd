@@ -68,6 +68,16 @@ func _run()->void:
 	if temple_visual:
 		for node_name in ["CovenantSpineL","CovenantSpineR","CovenantCrown","CovenantRuneCore"]:
 			_check(temple_visual.get_node_or_null(node_name) is MeshInstance3D,"Covenant focal architecture exists: "+node_name)
+		for ruined_detail in ["BrokenRoofRibL","BrokenRoofRibR","TornBannerL","TornBannerR","BrokenPewL","BrokenPewR"]:
+			_check(temple_visual.get_node_or_null(ruined_detail) is MeshInstance3D,"Temple keeps low-cost ruined nave storytelling: "+ruined_detail)
+		var rune_core:=temple_visual.get_node_or_null("CovenantRuneCore") as MeshInstance3D
+		if rune_core:
+			var material:=rune_core.material_override as StandardMaterial3D
+			_check(material!=null and material.emission_enabled,"Covenant rune core uses emissive focus without an extra Light3D")
+		var ember:=temple_visual.get_node_or_null("SmithStation/Ember") as MeshInstance3D
+		if ember:
+			var ember_material:=ember.material_override as StandardMaterial3D
+			_check(ember_material!=null and ember_material.emission_enabled,"Smith ember uses emissive material instead of a dynamic light")
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
