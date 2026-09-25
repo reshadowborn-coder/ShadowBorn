@@ -185,8 +185,11 @@ func _test_shield_adapter() -> void:
 func _test_post_forge_separation() -> void:
 	var controller := _controller()
 	controller.set_loadout("bow")
-	controller.start_encounter("cat_r1_skeleton",{"hp":10.0,"def":2.0,"damage":1.0})
+	_check(controller.start_encounter("cat_r1_skeleton",{"hp":10.0,"def":2.0,"damage":1.0}),"valid post-forge encounter explicitly reports a successful start")
 	_check(not controller.pre_temple_mode,"post-forge Catacomb encounter stays on weapon-loadout path")
 	_check(_close(float(controller.shadow.hp),20.0),"post-forge test profile remains isolated from pre-Temple 80/60 HP contract")
+	var first_id:=controller.encounter_id
+	_check(not controller.start_encounter("cat_r2_hound",{"hp":14.0,"def":2.0,"damage":2.6}),"active encounter rejects a second overlapping start")
+	_check(controller.encounter_id==first_id,"rejected overlapping start cannot replace the active encounter identity")
 	controller.active = false
 	controller.queue_free()
