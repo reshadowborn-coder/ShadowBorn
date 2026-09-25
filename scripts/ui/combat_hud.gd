@@ -43,5 +43,7 @@ func render_state(state: Dictionary) -> void:
 	if not intent.is_empty(): states.append(intent.to_upper())
 	if s.get("veil",0.0) > 0.0: states.append("VEIL")
 	if s.get("fray",false): states.append("FRAY")
+	if int(s.get("poison_turns",0))>0:
+		states.append("POISON %d"%int(s.get("poison_turns",0)))
 	state_label.text = "  •  ".join(states)
 	emit_signal("visual_state_updated",player_hp.text,enemy_hp.text,state_label.text,locked,cd)
