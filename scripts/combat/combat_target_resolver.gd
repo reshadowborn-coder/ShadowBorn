@@ -26,12 +26,14 @@ static func resolve(selector:String,context:Dictionary)->Array[StringName]:
 	return []
 
 static func _one_if_alive(actor_id:StringName,actors:Dictionary)->Array[StringName]:
+	var out:Array[StringName]=[]
 	if actor_id==&"":
-		return []
+		return out
 	var actor:Dictionary=actors.get(str(actor_id),actors.get(actor_id,{}))
 	if actor.is_empty() or not bool(actor.get("alive",true)):
-		return []
-	return [actor_id]
+		return out
+	out.append(actor_id)
+	return out
 
 static func _team_ids(actors:Dictionary,self_team:String,want_same:bool)->Array[StringName]:
 	var out:Array[StringName]=[]
@@ -57,7 +59,10 @@ static func _lowest_hp(ids:Array[StringName],actors:Dictionary)->Array[StringNam
 		if ratio<best_ratio or (is_equal_approx(ratio,best_ratio) and (best==&"" or str(id)<str(best))):
 			best=id
 			best_ratio=ratio
-	return [] if best==&"" else [best]
+	var out:Array[StringName]=[]
+	if best!=&"":
+		out.append(best)
+	return out
 
 static func _highest_turn_meter(ids:Array[StringName],actors:Dictionary)->Array[StringName]:
 	var best:=&""
@@ -68,4 +73,7 @@ static func _highest_turn_meter(ids:Array[StringName],actors:Dictionary)->Array[
 		if meter>best_meter or (meter==best_meter and (best==&"" or str(id)<str(best))):
 			best=id
 			best_meter=meter
-	return [] if best==&"" else [best]
+	var out:Array[StringName]=[]
+	if best!=&"":
+		out.append(best)
+	return out
