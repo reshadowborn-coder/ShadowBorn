@@ -5,6 +5,7 @@ signal slot_unlocked(index:int)
 var slots:Array=[{"id":"shadow","locked":false},{"id":"","locked":true}]
 
 func restore(state:Dictionary)->void:
+	slots=[{"id":"shadow","locked":false},{"id":"","locked":true}]
 	if bool(state.get("story_summon_unlocked",false)):
 		slots[1]={"id":StoryCompanion.ID,"locked":false}
 
