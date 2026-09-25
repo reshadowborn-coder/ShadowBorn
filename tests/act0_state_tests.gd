@@ -47,6 +47,7 @@ func _test_fixed_contract()->void:
 			actual_ids.append(str(profile.get("id","")))
 		_check(actual_ids==expected_ids,"Catacomb Room %d matches the fixed encounter membership contract"%room)
 	_check(Act0Contract.catacomb_encounter_ids(5).size()==2,"fixed Room 5 contract remains the authored 1v2")
+	_check(not Act0Contract.can_start_exterior_encounter("unknown_enemy",[],false),"unknown exterior encounter IDs are rejected by the fixed contract")
 
 func _test_director_route_contract()->void:
 	var d:=Chapter00Director.new()
@@ -204,6 +205,24 @@ func _test_save_recovery()->void:
 	impossible_story.room5_rematch_ready=true
 	var story_repair:=SaveManager._migrate(impossible_story)
 	_check(not story_repair.story_summon_unlocked and int(story_repair.catacomb_room)==0,"story summon cannot survive without Covenant/forge chain")
+
+	var future_clear:=SaveManager.default_state()
+	future_clear.cleared_encounters=["cat_r4_revenant","unknown_injected_enemy"]
+	var future_clear_repair:=SaveManager._migrate(future_clear)
+	_check("cat_r4_revenant" not in future_clear_repair.cleared_encounters,"future Catacomb clear ID cannot survive without room progress")
+	_check("unknown_injected_enemy" not in future_clear_repair.cleared_encounters,"unknown encounter IDs are removed from the Act 0 save ledger")
+
+	var room3_future_clear:=SaveManager.default_state()
+	room3_future_clear.cleared_encounters=["hound","armless","shield_boss","cat_r5_skeleton_a","cat_r4_revenant"]
+	room3_future_clear.covenant_joined=true
+	room3_future_clear.weapon_family="bow"
+	room3_future_clear.first_forge_done=true
+	room3_future_clear.forged_item=Act0Progression.canonical_first_forge_item("bow")
+	room3_future_clear.catacomb_room=3
+	room3_future_clear.act0_stage=Act0Contract.STAGE_CATACOMBS
+	var room3_ledger:=SaveManager._migrate(room3_future_clear)
+	_check("cat_r1_skeleton" in room3_ledger.cleared_encounters and "cat_r2_hound" in room3_ledger.cleared_encounters,"Room 3 reconstructs exactly the two completed Catacomb fights")
+	_check("cat_r3_guard" not in room3_ledger.cleared_encounters and "cat_r4_revenant" not in room3_ledger.cleared_encounters and "cat_r5_skeleton_a" not in room3_ledger.cleared_encounters,"future Catacomb clear IDs cannot skip the current or later rooms")
 
 	var late_room:=SaveManager.default_state()
 	late_room.cleared_encounters=["shield_boss"]
