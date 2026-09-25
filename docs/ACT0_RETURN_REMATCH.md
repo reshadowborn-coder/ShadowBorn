@@ -17,5 +17,5 @@ Rematch state:
 Reload rules:
 - Reload before solo-limit: no companion.
 - Reload after solo-limit but before Keeper: return state remains.
-- Reload after Keeper: companion and slot 2 remain unlocked.
+- Reload after Keeper: companion and slot 2 remain unlocked; resume stays on the Temple Keeper route and the player walks back to the Catacombs.
 - Reload after rematch: Act 0 remains complete and must not replay irreversible onboarding.
