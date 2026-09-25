@@ -474,12 +474,30 @@ static func create_new_game(identity:String)->bool:
 		return false
 	var state:=default_state()
 	state.shadow_identity=identity
-	# First promotion replaces the old game. The second identical promotion
-	# seeds the retained backup with the new game too, so corruption cannot
-	# resurrect progress the player explicitly replaced.
+
+	# The first successful promotion is the authoritative replacement point.
 	if not save_state(state):
 		return false
-	return save_state(state)
+
+	# Never allow the pre-replacement generation to survive once the new
+	# primary is committed. A later primary corruption must not resurrect the
+	# game the player explicitly replaced.
+	if FileAccess.file_exists(BAK_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BAK_PATH))
+
+	# Best-effort reseed of the backup with the same fresh game. save_state()
+	# restores its own previous primary if promotion fails, so a failure here
+	# still leaves the already-committed new game authoritative.
+	if save_state(state):
+		return true
+
+	var verify:=load_state()
+	return (
+		str(verify.get("shadow_identity",""))==identity
+		and str(verify.get("act0_stage",""))==Act0Contract.STAGE_EXTERIOR
+		and int(verify.get("catacomb_room",0))==0
+		and not verify.get("act0_complete",false)
+	)
 
 static func set_identity_on_existing_save(identity:String)->bool:
 	if identity not in ["male","female"] or not has_save():
