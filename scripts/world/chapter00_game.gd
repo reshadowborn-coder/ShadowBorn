@@ -68,6 +68,10 @@ func _ready() -> void:
 	settings_menu.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	if OS.is_debug_build():
 		combat_trace=CombatFrameTrace.new()
+		var trace_console:=bool(ProjectSettings.get_setting("debug/shadowborn/combat_trace_console",true))
+		if "--shadowborn-trace-quiet" in OS.get_cmdline_args():
+			trace_console=false
+		combat_trace.set_console_output(trace_console)
 		add_child(combat_trace)
 		combat_trace.attach(encounter,presenter,hud)
 		combat_trace.set_context(performance_mode,reduced_motion)
