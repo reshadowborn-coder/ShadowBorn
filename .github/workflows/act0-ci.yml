@@ -111,6 +111,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_build_status_rules_tests.gd 2>&1 | tee /tmp/combat-build-status-rules.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-build-status-rules.log
 
+      - name: Validate passive event routing guards
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_event_router_tests.gd 2>&1 | tee /tmp/combat-event-router.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-event-router.log
+
       - name: Validate Act 1 speed-driven combat integration
         run: |
           set -o pipefail
