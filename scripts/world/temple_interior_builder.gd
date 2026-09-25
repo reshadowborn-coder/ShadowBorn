@@ -133,6 +133,7 @@ func _build()->void:
 	_build_merchant(Act0Layout.floor_anchor(Act0Layout.MERCHANT_TRIGGER),visual)
 	_build_engraver(Act0Layout.floor_anchor(Act0Layout.ENGRAVER_TRIGGER),visual)
 	_build_keeper(Act0Layout.floor_anchor(Act0Layout.KEEPER_TRIGGER),visual)
+	_build_temple_guard(visual)
 	_build_story_companion(visual)
 	_build_weapon_altar(Act0Layout.floor_anchor(Act0Layout.COVENANT_TRIGGER),visual)
 	_build_ruined_nave_story(visual)
@@ -248,6 +249,21 @@ func _build_keeper(p:Vector3,parent:Node3D)->void:
 	r.scale=Vector3(.94,1.08,.94)
 	box("Hood",Vector3(0,2.17,.04),Vector3(.62,.48,.50),CLOTH,r)
 	box("PrayerCord",Vector3(0,1.25,-.27),Vector3(.08,.75,.08),RUNE,r)
+
+func _build_temple_guard(parent:Node3D)->void:
+	var r:=_build_npc_root("TempleGuard","guard",Act1Layout.GUARD_POSITION,180.0,Color(.11,.115,.125),IRON,parent,2.45)
+	r.scale=Vector3(1.10,1.06,1.10)
+	r.add_to_group("temple_guard_visual")
+	box("GuardHelm",Vector3(0,2.14,-.03),Vector3(.60,.54,.54),IRON,r)
+	box("GuardVisor",Vector3(0,2.12,-.31),Vector3(.44,.09,.08),Color(.045,.05,.055),r)
+	var sword:=Node3D.new()
+	sword.name="Tool"
+	sword.position=Vector3(0,1.0,-.30)
+	sword.rotation_degrees=Vector3(0,0,0)
+	box("GreatswordGrip",Vector3(0,-.20,0),Vector3(.10,.60,.10),WOOD,sword)
+	box("GreatswordBlade",Vector3(0,.72,0),Vector3(.16,1.45,.08),IRON,sword)
+	box("GreatswordGuard",Vector3(0,.05,0),Vector3(.62,.10,.10),IRON,sword)
+	r.add_child(sword)
 
 func _build_story_companion(parent:Node3D)->void:
 	var r:=_build_npc_root("GraveboundWarden","warden",Vector3(2.15,0,-99.2),165.0,Color(.12,.12,.13),IRON,parent,1.7)
