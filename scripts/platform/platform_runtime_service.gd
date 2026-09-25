@@ -22,6 +22,7 @@ var quality_pressure := 0
 var thermal_state := THERMAL_NOMINAL
 var low_power_mode := false
 var memory_pressure_count := 0
+var effective_reason := "nominal"
 
 var _bridge:Object
 var _reported_states:Dictionary={}
@@ -93,8 +94,6 @@ func _bind_native_bridge()->void:
 			_bridge.connect("thermal_state_changed",Callable(self,"_on_native_thermal"))
 		if _bridge.has_signal("low_power_mode_changed"):
 			_bridge.connect("low_power_mode_changed",Callable(self,"_on_native_low_power"))
-		if _bridge.has_signal("memory_warning"):
-			_bridge.connect("memory_warning",Callable(self,"_on_native_memory_warning"))
 
 func _refresh_native_snapshot()->void:
 	if not _bridge:
@@ -125,10 +124,6 @@ func _on_native_thermal(value)->void:
 func _on_native_low_power(enabled:bool)->void:
 	apply_system_snapshot(thermal_state,enabled)
 
-func _on_native_memory_warning()->void:
-	memory_pressure_count+=1
-	memory_pressure.emit(memory_pressure_count)
-
 func _recompute_policy()->void:
 	var next_pressure:=0
 	match thermal_state:
@@ -138,18 +133,39 @@ func _recompute_policy()->void:
 			next_pressure=2
 		THERMAL_CRITICAL:
 			next_pressure=3
-	if low_power_mode:
+	if low_power_mode or requested_mode==MODE_BATTERY_30:
 		next_pressure=maxi(next_pressure,1)
 
 	var force_30:=requested_mode==MODE_BATTERY_30 or low_power_mode or thermal_state in [THERMAL_SERIOUS,THERMAL_CRITICAL]
 	var next_mode:=MODE_BATTERY_30 if force_30 else MODE_SMOOTH_60
 	var next_fps:=30 if force_30 else 60
-	var changed:=effective_mode!=next_mode or target_fps!=next_fps or quality_pressure!=next_pressure
+	var next_reason:="nominal"
+	if thermal_state==THERMAL_CRITICAL:
+		next_reason="thermal_critical"
+	elif thermal_state==THERMAL_SERIOUS:
+		next_reason="thermal_serious"
+	elif low_power_mode:
+		next_reason="low_power"
+	elif requested_mode==MODE_BATTERY_30:
+		next_reason="user_battery"
+	elif thermal_state==THERMAL_FAIR:
+		next_reason="thermal_fair"
+
+	var changed:=effective_mode!=next_mode or target_fps!=next_fps or quality_pressure!=next_pressure or effective_reason!=next_reason
 
 	effective_mode=next_mode
 	target_fps=next_fps
 	quality_pressure=next_pressure
+	effective_reason=next_reason
 	Engine.max_fps=target_fps
+
+	report_state("com.shadowborn.runtime","fps_%d"%target_fps,{
+		"requested":requested_mode,
+		"thermal":thermal_state,
+		"low_power":low_power_mode,
+		"pressure":quality_pressure,
+		"reason":effective_reason
+	})
 
 	if changed:
 		effective_profile_changed.emit(requested_mode,effective_mode,target_fps,quality_pressure)
