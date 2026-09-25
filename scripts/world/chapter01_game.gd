@@ -15,6 +15,7 @@ extends Node
 @onready var story_toast:StoryToast=$StoryToast
 @onready var iphone_ui_layout:IPhoneUILayout=$IPhoneUILayout
 @onready var watch_menu:TempleWatchMenu=$TempleWatchMenu
+@onready var platform_runtime:PlatformRuntimeService=get_node("/root/PlatformRuntime") as PlatformRuntimeService
 
 var progression:=Act1Progression.new()
 var cleared_encounters:Array[String]=[]
@@ -74,9 +75,9 @@ func _connect_runtime()->void:
 	settings_menu.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	settings_menu.menu_opened.connect(_refresh_navigation)
 	settings_menu.menu_closed.connect(_refresh_navigation)
-	if not PlatformRuntime.memory_pressure.is_connected(_on_platform_memory_pressure):
-		PlatformRuntime.memory_pressure.connect(_on_platform_memory_pressure)
-	PlatformRuntime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
+	if not platform_runtime.memory_pressure.is_connected(_on_platform_memory_pressure):
+		platform_runtime.memory_pressure.connect(_on_platform_memory_pressure)
+	platform_runtime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	watch_menu.accepted.connect(_accept_temple_watch)
 	watch_menu.menu_opened.connect(_refresh_navigation)
 	watch_menu.menu_closed.connect(_refresh_navigation)
@@ -159,7 +160,7 @@ func enter_sewer_room(room:int)->void:
 
 func _on_single_started(id:String)->void:
 	hud.show_combat(id)
-	PlatformRuntime.report_state("com.shadowborn.encounter","single",{"id":id})
+	platform_runtime.report_state("com.shadowborn.encounter","single",{"id":id})
 
 func _report_gameplay_state()->void:
 	var in_temple:=progression.stage in [
@@ -169,7 +170,7 @@ func _report_gameplay_state()->void:
 		Act1Contract.STAGE_GUARD_COVENANT,
 		Act1Contract.STAGE_ACT1_1_COMPLETE
 	]
-	PlatformRuntime.report_state(
+	platform_runtime.report_state(
 		"com.shadowborn.gameplay",
 		"temple" if in_temple else "act1_sewer",
 		{"chapter":"act1"}
@@ -219,7 +220,7 @@ func _room_for_enemy(id:String)->int:
 	return 0
 
 func _on_single_finished(id:String)->void:
-	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
+	platform_runtime.report_state("com.shadowborn.encounter","none",{})
 	var room:=_room_for_enemy(id)
 	if room==0: return
 	var before:=_build_save_state()
@@ -253,7 +254,7 @@ func _on_single_finished(id:String)->void:
 	_refresh_navigation()
 
 func _on_single_failed(_id:String)->void:
-	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
+	platform_runtime.report_state("com.shadowborn.encounter","none",{})
 	hud.hide_combat()
 	camera_rig.exit_combat()
 	_restore_single_visual()
@@ -281,7 +282,7 @@ func _start_pack(enemies:Array)->void:
 	if not pack_combat.start(enemies,false,true):
 		return
 	pack_active=true
-	PlatformRuntime.report_state("com.shadowborn.encounter","pack",{"id":"a1_room3_pack"})
+	platform_runtime.report_state("com.shadowborn.encounter","pack",{"id":"a1_room3_pack"})
 	shadow.set_physics_process(false)
 	shadow.global_position=Act1Layout.ROOM3_SHADOW_POSITION
 	for v in _pack_visuals():
@@ -337,7 +338,7 @@ func _on_pack_semantic_contact(actor:String,index:int,_action:String)->void:
 func _resolve_pack_defeat()->void:
 	if not pack_active and progression.stage!=Act1Contract.STAGE_SEWER_ROOM3:
 		return
-	PlatformRuntime.report_state("com.shadowborn.encounter","none",{})
+	platform_runtime.report_state("com.shadowborn.encounter","none",{})
 	var before:=_build_save_state()
 	pack_hud.close()
 	pack_active=false
@@ -503,7 +504,7 @@ func _on_performance_mode_changed(mode:String)->void:
 	_apply_performance_mode()
 	if combat_trace:
 		combat_trace.set_context(performance_mode,reduced_motion)
-	PlatformRuntime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
+	platform_runtime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	_save_progress()
 
 func _on_reduced_motion_changed(value:bool)->void:
@@ -511,11 +512,11 @@ func _on_reduced_motion_changed(value:bool)->void:
 	_apply_presentation_settings()
 	if combat_trace:
 		combat_trace.set_context(performance_mode,reduced_motion)
-	PlatformRuntime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
+	platform_runtime.report_state("com.shadowborn.presentation",performance_mode,{"reduced_motion":reduced_motion})
 	_save_progress()
 
 func _apply_performance_mode()->void:
-	PlatformRuntime.set_requested_mode(performance_mode)
+	platform_runtime.set_requested_mode(performance_mode)
 
 func _apply_presentation_settings()->void:
 	camera_rig.set_reduced_motion(reduced_motion)
