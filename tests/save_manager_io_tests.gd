@@ -72,6 +72,40 @@ func _run()->void:
 
 	_cleanup()
 
+	# Simulate iOS terminating the process in the only atomic rename window:
+	# newest tmp is fully flushed, primary has moved to backup, promotion has
+	# not happened yet. Continue must recover the newest tmp generation.
+	var crash_base:=SaveManager.default_state()
+	crash_base.shadow_identity="male"
+	crash_base.reduced_motion=false
+	_check(SaveManager.save_state(crash_base),"crash-window fixture creates primary")
+	var crash_newer:=crash_base.duplicate(true)
+	crash_newer.reduced_motion=true
+	var crash_tmp:=FileAccess.open(SaveManager.TMP_PATH,FileAccess.WRITE)
+	_check(crash_tmp!=null,"crash-window fixture can create flushed tmp")
+	if crash_tmp:
+		crash_tmp.store_string(JSON.stringify(SaveManager._migrate(crash_newer)))
+		crash_tmp.flush()
+		crash_tmp.close()
+	var crash_rename:=DirAccess.rename_absolute(
+		ProjectSettings.globalize_path(SaveManager.SAVE_PATH),
+		ProjectSettings.globalize_path(SaveManager.BAK_PATH)
+	)
+	_check(crash_rename==OK,"crash-window fixture moves primary to backup")
+	_check(not FileAccess.file_exists(SaveManager.SAVE_PATH) and FileAccess.file_exists(SaveManager.TMP_PATH),"crash-window fixture matches interrupted atomic promotion")
+	_check(SaveManager.has_save(),"Continue remains available during interrupted promotion recovery")
+	var crash_recovered:=SaveManager.load_state()
+	_check(bool(crash_recovered.reduced_motion),"interrupted promotion recovers newest flushed tmp instead of older backup")
+
+	# An invalid tmp must never outrank a valid backup.
+	var broken_tmp:=FileAccess.open(SaveManager.TMP_PATH,FileAccess.WRITE)
+	if broken_tmp:
+		broken_tmp.store_string("{broken-tmp")
+		broken_tmp.close()
+	var crash_fallback:=SaveManager.load_state()
+	_check(not bool(crash_fallback.reduced_motion),"invalid interrupted tmp falls back to previous valid backup")
+	_cleanup()
+
 	var canonical:=SaveManager.default_state()
 	canonical.shadow_identity="male"
 	canonical["unknown_future_blob"]="x".repeat(1024)
