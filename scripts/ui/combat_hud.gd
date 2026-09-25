@@ -4,14 +4,18 @@ extends CanvasLayer
 signal skill_requested(index: int)
 signal auto_changed(enabled: bool)
 signal speed_changed(multiplier: float)
-signal leave_requested
+signal replay_requested
+signal title_requested
 
 var root: Control
-var wave_label: Label
-var timeline_label: Label
-var player_label: Label
+var player_hp: ProgressBar
+var enemy_hp: ProgressBar
+var player_name: Label
+var enemy_name: Label
+var turn_label: Label
 var message_label: Label
-var skill_buttons: Array[Button] = []
+var a1: Button
+var a2: Button
 var auto_button: Button
 var speed_button: Button
 var result_panel: Panel
@@ -23,42 +27,49 @@ func _ready() -> void:
 	_build()
 
 func apply_state(snapshot: Dictionary) -> void:
-	wave_label.text = "WAVE %d / %d" % [int(snapshot.get("wave",1)),int(snapshot.get("wave_count",1))]
 	var units: Array = snapshot.get("units",[])
+	var player: Dictionary = {}
+	var enemy: Dictionary = {}
+	for unit_variant in units:
+		var unit: Dictionary = unit_variant
+		if str(unit["team"]) == "player":
+			player = unit
+		else:
+			enemy = unit
+
+	if not player.is_empty():
+		player_name.text = "SHADOW"
+		player_hp.max_value = float(player["max_hp"])
+		player_hp.value = float(player["hp"])
+		var cds: Array = player.get("cooldowns",[0,0])
+		var ready := bool(snapshot.get("player_ready",false))
+		a1.disabled = not ready
+		a2.disabled = (not ready) or int(cds[1]) > 0
+		a2.text = "A2\nSHADOW LUNGE" if int(cds[1]) == 0 else "A2\nCOOLDOWN %d" % int(cds[1])
+
+	if not enemy.is_empty():
+		enemy_name.text = str(enemy["name"]).to_upper()
+		enemy_hp.max_value = float(enemy["max_hp"])
+		enemy_hp.value = float(enemy["hp"])
+
 	var ordered := units.duplicate(true)
 	ordered.sort_custom(func(a: Dictionary,b: Dictionary): return float(a.get("meter",0.0)) > float(b.get("meter",0.0)))
-	var names: Array[String] = []
-	var player: Dictionary = {}
+	var order: Array[String] = []
 	for unit_variant in ordered:
 		var unit: Dictionary = unit_variant
-		if int(unit.get("hp",0)) <= 0:
-			continue
-		names.append("%s %d%%" % [str(unit["name"]),mini(100,int(unit.get("meter",0.0)))])
-		if str(unit.get("id","")) == "shadow":
-			player = unit
-	timeline_label.text = "  →  ".join(names)
-	if not player.is_empty():
-		var status_names: Array[String] = []
-		var statuses: Dictionary = player.get("statuses",{})
-		for key in statuses.keys():
-			if int(statuses[key]) > 0:
-				status_names.append("%s %d" % [str(key).to_upper(),int(statuses[key])])
-		var status_text := " • ".join(status_names)
-		player_label.text = "SHADOW   HP %d / %d%s" % [int(player["hp"]),int(player["max_hp"]),("   •   "+status_text) if not status_text.is_empty() else ""]
-		var cds: Array = player.get("cooldowns",[0,0])
-		if skill_buttons.size() > 1:
-			skill_buttons[0].text = "A1\nBASIC SLASH"
-			skill_buttons[1].text = "A2\nSHADOW LUNGE" if int(cds[1]) == 0 else "A2\nCOOLDOWN %d" % int(cds[1])
-			skill_buttons[1].disabled = (not bool(snapshot.get("player_ready",false))) or int(cds[1]) > 0
-		skill_buttons[0].disabled = not bool(snapshot.get("player_ready",false))
+		if int(unit["hp"]) > 0:
+			order.append("%s %d%%" % [str(unit["name"]),mini(100,int(unit["meter"]))])
+	turn_label.text = "   →   ".join(order)
+
 	auto_enabled = bool(snapshot.get("auto",false))
 	speed = float(snapshot.get("speed",1.0))
-	auto_button.text = "AUTO  ON" if auto_enabled else "AUTO  OFF"
+	auto_button.text = "AUTO ON" if auto_enabled else "AUTO OFF"
 	speed_button.text = "x2" if speed > 1.5 else "x1"
 
 func set_player_ready(value: bool) -> void:
-	for i in range(mini(2,skill_buttons.size())):
-		skill_buttons[i].disabled = not value
+	a1.disabled = not value
+	if value:
+		message_label.text = "Choose an action"
 
 func show_message(text: String) -> void:
 	message_label.text = text
@@ -66,9 +77,9 @@ func show_message(text: String) -> void:
 func show_result(victory: bool) -> void:
 	result_panel.visible = true
 	var title := result_panel.get_node("Title") as Label
-	title.text = "VICTORY" if victory else "DEFEAT"
 	var body := result_panel.get_node("Body") as Label
-	body.text = "The path through the sewers opens." if victory else "The Shadow is cast back toward the Temple."
+	title.text = "CHECKPOINT COMPLETE" if victory else "DEFEAT"
+	body.text = "Awakening + first battle are ready for your test." if victory else "Replay the checkpoint and test the battle again."
 
 func _build() -> void:
 	root = Control.new()
@@ -77,113 +88,73 @@ func _build() -> void:
 
 	var top := Panel.new()
 	top.position = Vector2(250,20)
-	top.size = Vector2(1420,112)
-	top.add_theme_stylebox_override("panel",_panel_style(Color(0.018,0.024,0.035,0.88),18))
+	top.size = Vector2(1420,110)
+	top.add_theme_stylebox_override("panel",_panel(Color(0.012,0.018,0.029,0.86),18))
 	root.add_child(top)
 
-	wave_label = Label.new()
-	wave_label.position = Vector2(24,12)
-	wave_label.size = Vector2(220,36)
-	wave_label.add_theme_font_size_override("font_size",22)
-	top.add_child(wave_label)
+	player_name = _label(top,"SHADOW",Vector2(28,12),Vector2(340,30),20,HORIZONTAL_ALIGNMENT_LEFT)
+	enemy_name = _label(top,"GRAVE HOUND",Vector2(1052,12),Vector2(340,30),20,HORIZONTAL_ALIGNMENT_RIGHT)
 
-	timeline_label = Label.new()
-	timeline_label.position = Vector2(250,12)
-	timeline_label.size = Vector2(1140,36)
-	timeline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	timeline_label.add_theme_font_size_override("font_size",20)
-	top.add_child(timeline_label)
+	player_hp = _bar(top,Vector2(28,52),Vector2(420,18))
+	enemy_hp = _bar(top,Vector2(972,52),Vector2(420,18))
 
-	player_label = Label.new()
-	player_label.position = Vector2(24,57)
-	player_label.size = Vector2(1360,36)
-	player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	player_label.add_theme_font_size_override("font_size",22)
-	top.add_child(player_label)
+	turn_label = _label(top,"",Vector2(455,24),Vector2(510,60),18,HORIZONTAL_ALIGNMENT_CENTER)
 
-	auto_button = _button(root,"AUTO  OFF",Vector2(26,26),Vector2(170,62),20)
+	auto_button = _button(root,"AUTO OFF",Vector2(28,28),Vector2(165,60),18)
 	auto_button.pressed.connect(func():
 		auto_enabled = not auto_enabled
-		auto_button.text = "AUTO  ON" if auto_enabled else "AUTO  OFF"
 		auto_changed.emit(auto_enabled)
 	)
 
-	speed_button = _button(root,"x1",Vector2(26,102),Vector2(100,58),22)
+	speed_button = _button(root,"x1",Vector2(28,102),Vector2(95,56),20)
 	speed_button.pressed.connect(func():
 		speed = 2.0 if speed < 1.5 else 1.0
-		speed_button.text = "x2" if speed > 1.5 else "x1"
 		speed_changed.emit(speed)
 	)
 
-	message_label = Label.new()
-	message_label.anchor_left = 0.5
-	message_label.anchor_right = 0.5
-	message_label.anchor_top = 1.0
-	message_label.anchor_bottom = 1.0
-	message_label.offset_left = -360
-	message_label.offset_right = 360
-	message_label.offset_top = -258
-	message_label.offset_bottom = -214
-	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	message_label.add_theme_font_size_override("font_size",20)
-	root.add_child(message_label)
+	message_label = _label(root,"",Vector2(600,835),Vector2(720,42),20,HORIZONTAL_ALIGNMENT_CENTER)
 
 	var skill_panel := Panel.new()
-	skill_panel.anchor_left = 1.0
-	skill_panel.anchor_right = 1.0
-	skill_panel.anchor_top = 1.0
-	skill_panel.anchor_bottom = 1.0
-	skill_panel.offset_left = -690
-	skill_panel.offset_right = -28
-	skill_panel.offset_top = -200
-	skill_panel.offset_bottom = -26
-	skill_panel.add_theme_stylebox_override("panel",_panel_style(Color(0.015,0.020,0.030,0.90),24))
+	skill_panel.position = Vector2(1248,858)
+	skill_panel.size = Vector2(640,190)
+	skill_panel.add_theme_stylebox_override("panel",_panel(Color(0.010,0.015,0.025,0.92),28))
 	root.add_child(skill_panel)
 
-	var names := ["A1\nBASIC SLASH","A2\nSHADOW LUNGE","A3\nLOCKED","A4\nLOCKED"]
-	for i in range(4):
-		var b := _button(skill_panel,names[i],Vector2(20+i*158,20),Vector2(142,132),16)
-		b.add_theme_stylebox_override("normal",_skill_style(Color(0.07,0.09,0.13,0.98)))
-		b.add_theme_stylebox_override("hover",_skill_style(Color(0.11,0.14,0.20,1.0)))
-		b.add_theme_stylebox_override("pressed",_skill_style(Color(0.17,0.21,0.30,1.0)))
-		b.add_theme_stylebox_override("disabled",_skill_style(Color(0.035,0.04,0.052,0.82)))
-		b.disabled = true
-		if i < 2:
-			b.pressed.connect(func(index:=i): skill_requested.emit(index))
-		skill_panel.add_child(b)
-		skill_buttons.append(b)
+	a1 = _skill(skill_panel,"A1\nBASIC SLASH",Vector2(24,24))
+	a2 = _skill(skill_panel,"A2\nSHADOW LUNGE",Vector2(180,24))
+	var a3 := _skill(skill_panel,"A3\nLOCKED",Vector2(336,24))
+	var a4 := _skill(skill_panel,"A4\nLOCKED",Vector2(492,24))
+	a1.disabled = true
+	a2.disabled = true
+	a3.disabled = true
+	a4.disabled = true
+	a1.pressed.connect(func(): skill_requested.emit(0))
+	a2.pressed.connect(func(): skill_requested.emit(1))
 
 	result_panel = Panel.new()
 	result_panel.visible = false
-	result_panel.anchor_left = 0.5
-	result_panel.anchor_right = 0.5
-	result_panel.anchor_top = 0.5
-	result_panel.anchor_bottom = 0.5
-	result_panel.offset_left = -330
-	result_panel.offset_right = 330
-	result_panel.offset_top = -170
-	result_panel.offset_bottom = 170
-	result_panel.add_theme_stylebox_override("panel",_panel_style(Color(0.012,0.016,0.025,0.96),28))
+	result_panel.position = Vector2(610,350)
+	result_panel.size = Vector2(700,380)
+	result_panel.add_theme_stylebox_override("panel",_panel(Color(0.008,0.012,0.022,0.97),30))
 	root.add_child(result_panel)
 
-	var title := Label.new()
-	title.name = "Title"
-	title.position = Vector2(30,34)
-	title.size = Vector2(600,64)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size",42)
-	result_panel.add_child(title)
-	var body := Label.new()
-	body.name = "Body"
-	body.position = Vector2(45,112)
-	body.size = Vector2(570,70)
-	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_size_override("font_size",19)
-	result_panel.add_child(body)
-	var leave := _button(result_panel,"RETURN TO CAMPAIGN",Vector2(145,224),Vector2(370,72),20)
-	leave.pressed.connect(func(): leave_requested.emit())
-	result_panel.add_child(leave)
+	var result_title := _label(result_panel,"",Vector2(40,42),Vector2(620,66),40,HORIZONTAL_ALIGNMENT_CENTER)
+	result_title.name = "Title"
+	var result_body := _label(result_panel,"",Vector2(65,126),Vector2(570,72),20,HORIZONTAL_ALIGNMENT_CENTER)
+	result_body.name = "Body"
+	result_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var replay := _button(result_panel,"REPLAY CHECKPOINT",Vector2(80,250),Vector2(250,72),19)
+	var title_btn := _button(result_panel,"RETURN TO TITLE",Vector2(370,250),Vector2(250,72),19)
+	replay.pressed.connect(func(): replay_requested.emit())
+	title_btn.pressed.connect(func(): title_requested.emit())
+
+func _skill(parent: Control,text_: String,pos: Vector2) -> Button:
+	var b := _button(parent,text_,pos,Vector2(132,142),15)
+	b.add_theme_stylebox_override("normal",_panel(Color(0.060,0.078,0.120,0.98),48))
+	b.add_theme_stylebox_override("hover",_panel(Color(0.105,0.135,0.205,1.0),48))
+	b.add_theme_stylebox_override("pressed",_panel(Color(0.16,0.20,0.30,1.0),48))
+	b.add_theme_stylebox_override("disabled",_panel(Color(0.026,0.032,0.045,0.86),48))
+	return b
 
 func _button(parent: Control,text_: String,pos: Vector2,size_: Vector2,font_size: int) -> Button:
 	var b := Button.new()
@@ -192,12 +163,38 @@ func _button(parent: Control,text_: String,pos: Vector2,size_: Vector2,font_size
 	b.size = size_
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size",font_size)
-	b.add_theme_stylebox_override("normal",_panel_style(Color(0.045,0.055,0.078,0.94),14))
-	b.add_theme_stylebox_override("hover",_panel_style(Color(0.075,0.09,0.13,1.0),14))
-	b.add_theme_stylebox_override("pressed",_panel_style(Color(0.10,0.13,0.19,1.0),14))
+	b.add_theme_stylebox_override("normal",_panel(Color(0.045,0.058,0.090,0.95),14))
+	b.add_theme_stylebox_override("hover",_panel(Color(0.075,0.095,0.145,1.0),14))
+	b.add_theme_stylebox_override("pressed",_panel(Color(0.11,0.14,0.21,1.0),14))
+	parent.add_child(b)
 	return b
 
-func _panel_style(color: Color,radius: int) -> StyleBoxFlat:
+func _label(parent: Control,text_: String,pos: Vector2,size_: Vector2,font_size: int,align: HorizontalAlignment) -> Label:
+	var l := Label.new()
+	l.text = text_
+	l.position = pos
+	l.size = size_
+	l.horizontal_alignment = align
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size",font_size)
+	parent.add_child(l)
+	return l
+
+func _bar(parent: Control,pos: Vector2,size_: Vector2) -> ProgressBar:
+	var p := ProgressBar.new()
+	p.position = pos
+	p.size = size_
+	p.max_value = 100
+	p.value = 100
+	p.show_percentage = false
+	var bg := _panel(Color(0.025,0.03,0.04,0.95),7)
+	var fill := _panel(Color(0.22,0.52,0.34,1.0),7)
+	p.add_theme_stylebox_override("background",bg)
+	p.add_theme_stylebox_override("fill",fill)
+	parent.add_child(p)
+	return p
+
+func _panel(color: Color,radius: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = color
 	s.corner_radius_top_left = radius
@@ -208,14 +205,5 @@ func _panel_style(color: Color,radius: int) -> StyleBoxFlat:
 	s.border_width_right = 1
 	s.border_width_top = 1
 	s.border_width_bottom = 1
-	s.border_color = Color(0.22,0.27,0.36,0.55)
-	return s
-
-func _skill_style(color: Color) -> StyleBoxFlat:
-	var s := _panel_style(color,42)
-	s.border_width_left = 2
-	s.border_width_right = 2
-	s.border_width_top = 2
-	s.border_width_bottom = 2
-	s.border_color = Color(0.34,0.41,0.56,0.72)
+	s.border_color = Color(0.26,0.33,0.48,0.58)
 	return s

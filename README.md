@@ -1,40 +1,33 @@
-# Shadowborn
+# Shadowborn — Checkpoint 01
 
-Fresh gameplay reboot of Shadowborn as an iPhone-first, fixed-camera, turn-meter dark-fantasy RPG.
+The reboot branch is deliberately restricted to two things:
 
-## Core loop
+1. Awakening cinematic.
+2. First battle against the Grave Hound.
 
-Title → Campaign node → authored battle room → turn-meter combat → result.
+Nothing else should expand until this checkpoint is tested and approved.
 
-There is no free-roam joystick layer in the primary loop. The world is navigated through authored nodes and encounters; combat is presented in staged 3D rooms.
+## Test flow
 
-## Current playable slice
+Title → BEGIN → awakening cinematic → first battle → checkpoint result → replay/title.
 
-- Act I / 1.1 Sewers
-- Three waves
-- Shadow basic attack + Shadow Lunge
-- Enemy basic + poison attack
-- Speed-driven turn meter
-- Poison, stun, freeze and sleep rules in the combat core
-- Manual / AUTO
-- x1 / x2
-- Fixed cinematic three-quarter camera
-- Attack windup, impact, hit reaction, death and damage callouts
-- Mobile-first 1920×1080 reference canvas and iOS Metal/mobile renderer
+## Controls
 
-## Art pipeline
+- Tap/click during the awakening cinematic to skip.
+- A1: Basic Slash.
+- A2: Shadow Lunge.
+- AUTO: on/off.
+- x1/x2 battle speed.
 
-The runtime checks for:
+## Final-art hooks
+
+The runtime automatically looks for:
 
 - `assets/characters/shadow/shadow.glb`
-- `assets/characters/rat/rat.glb`
+- `assets/characters/grave_hound/grave_hound.glb`
 
-When those files exist, they replace development fallback visuals automatically. Fallback meshes exist only so mechanics, framing and animation timing can be tested before final skinned assets land.
+If present, those skinned assets replace the procedural development stand-ins.
 
-## Performance baseline
+## Target
 
-Primary target: iPhone 13 Pro, 60 FPS. A 30 FPS battery mode will be added only after the visual slice is stable.
-
-## Important
-
-The old Act 0/Act 1 graybox architecture is intentionally absent from the reboot branch. It remains preserved in Git history and on `main`.
+Godot 4.4.1, iPhone-first, iPhone 13 Pro baseline, 60 FPS target.
