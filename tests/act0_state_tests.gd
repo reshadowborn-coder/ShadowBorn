@@ -305,8 +305,8 @@ func _test_save_recovery()->void:
 	huge_numbers.catacomb_room=1.0e300
 	var huge_numeric_recovery:=SaveManager._migrate(huge_numbers)
 	_check(int(huge_numeric_recovery.route_index)>=0 and int(huge_numeric_recovery.route_index)<Chapter00Director.ROUTE.size(),"huge route_index is clamped before integer conversion")
-	_check(int(huge_numeric_recovery.silver)==0,"huge negative Silver is clamped safely")
-	_check(int(huge_numeric_recovery.catacomb_room)==0,"impossible future Catacomb room cannot manufacture progression without forge evidence")
+	_check(int(huge_numeric_recovery.silver)==1,"huge numeric corruption still converges to the one canonical pre-forge Silver after late-progress repair")
+	_check(int(huge_numeric_recovery.catacomb_room)==0,"impossible future Catacomb room rolls back safely without forge evidence")
 
 	var malformed_flags:=SaveManager.default_state()
 	malformed_flags.covenant_joined="false"
