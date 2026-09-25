@@ -35,6 +35,8 @@ func _run()->void:
 	_check(project.contains("renderer/rendering_device/driver.ios=\"metal\""),"iPhone renderer uses native Metal")
 	_check(project.contains("config/icon=\"res://assets/branding/shadowborn_ios_icon.svg\""),"iPhone export has a single opaque Shadowborn icon source")
 	_check(FileAccess.file_exists("res://assets/branding/shadowborn_ios_icon.svg"),"Shadowborn iPhone icon source exists")
+	_check(project.contains("boot_splash/show_image=false"),"engine boot uses the clean Shadowborn background without default Godot branding")
+	_check(project.contains("boot_splash/bg_color=Color(0.035294, 0.043137, 0.062745, 1)"),"engine boot background matches Shadowborn launch color")
 
 	_check(presets.contains("name=\"iPhone QA\""),"iPhone QA export preset exists")
 	_check(presets.contains("platform=\"iOS\""),"iPhone QA preset targets iOS")
@@ -44,6 +46,10 @@ func _run()->void:
 	_check(presets.contains("application/bundle_identifier=\"org.shadowborn.chapter0.qa\""),"iPhone QA bundle identifier is stable")
 	_check(presets.contains("application/export_project_only=true"),"iPhone QA preset produces an Xcode project before signing")
 	_check(presets.contains("application/app_store_team_id=\"\""),"Apple Team ID is intentionally not committed to source control")
+	_check(presets.contains("storyboard/custom_image@2x=\"res://assets/branding/shadowborn_ios_launch_pixel.png\""),"iPhone native launch storyboard uses Shadowborn launch asset")
+	_check(presets.contains("storyboard/custom_image@3x=\"res://assets/branding/shadowborn_ios_launch_pixel.png\""),"iPhone native launch asset covers @3x devices")
+	_check(presets.contains("storyboard/use_custom_bg_color=true"),"iPhone native launch storyboard uses custom background color")
+	_check(FileAccess.file_exists("res://assets/branding/shadowborn_ios_launch_pixel.png"),"Shadowborn iPhone launch asset exists")
 
 	_check(game.contains("NOTIFICATION_APPLICATION_PAUSED"),"iPhone suspend notification is handled")
 	_check(game.contains("last_committed_state"),"iPhone suspend path keeps a last committed snapshot")

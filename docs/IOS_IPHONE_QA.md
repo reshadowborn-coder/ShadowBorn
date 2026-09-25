@@ -12,6 +12,7 @@ Target for the current mobile slice: iPhone, landscape, Godot 4.4.1 Mobile rende
 - Authored performance modes remain 60 FPS Smooth and 30 FPS Battery.
 - ProMotion 120 Hz is intentionally disabled for Act 0 so timing, thermals and battery behavior stay bounded by the authored 60 FPS ceiling.
 - Status bar and home indicator are hidden during gameplay.
+- Native iOS launch and the engine boot transition use the same dark Shadowborn background; the default Godot splash is not shown.
 - iOS edge-system gestures are suppressed so an accidental first swipe does not steal gameplay input.
 - HUD and movement controls use DisplayServer.get_display_safe_area() and are re-laid out after viewport changes/resume.
 - Covenant weapon choices use enlarged touch targets.
@@ -79,4 +80,4 @@ For every physical-device run, record:
 - interruption point and resumed checkpoint;
 - screenshot or short screen recording for every failure.
 
-Physical-device QA is the final evidence layer. Headless CI and Xcode-project generation cannot prove real touch ergonomics, thermal behavior, system-gesture behavior, or device-specific Metal performance.
+CI generates the iPhone-only Xcode project on macOS, resolves its build settings, compiles an unsigned `iphoneos` app, verifies the bundle contract, launch storyboard and privacy manifest, then uploads the source-bound QA artifact.\n\nPhysical-device QA is the final evidence layer. Automated Xcode compilation cannot prove real touch ergonomics, thermal behavior, system-gesture behavior, or device-specific Metal performance.

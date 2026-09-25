@@ -311,6 +311,9 @@ jobs:
           APPICON="$(find build/ios/Shadowborn-Act0-iPhone-QA/Images.xcassets -type d -name '*.appiconset' -print -quit)"
           test -n "$APPICON"
           test -f "$APPICON/Contents.json"
+          test -f build/ios/PrivacyInfo.xcprivacy
+          test -f build/ios/Shadowborn-Act0-iPhone-QA/Images.xcassets/SplashImage.imageset/splash@2x.png
+          test -f build/ios/Shadowborn-Act0-iPhone-QA/Images.xcassets/SplashImage.imageset/splash@3x.png
 
       - name: Compile unsigned iPhone QA app
         run: |
@@ -342,6 +345,8 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
           test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' "$APP/Info.plist")" = "Launch Screen"
+          test -f "$APP/PrivacyInfo.xcprivacy"
           if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
             echo "Unexpected second device family: build is not iPhone-only" >&2
             exit 1
