@@ -46,12 +46,20 @@ func _run()->void:
 			_check(npc.get_node_or_null(child_name) is Node3D,"%s has articulated %s"%[profile,child_name])
 
 		npc.set_process(false)
+		var was_visible:=npc.visible
+		if profile=="warden":
+			var hidden_head:=npc.get_node("Head") as Node3D
+			var hidden_before:=hidden_head.basis
+			npc._process(.5)
+			_check(hidden_head.basis.is_equal_approx(hidden_before),"hidden Warden skips idle pose work")
+			npc.visible=true
 		var head:=npc.get_node("Head") as Node3D
 		var before:=head.basis
 		npc.elapsed=0.0
 		npc.set_reduced_motion(false)
 		npc._process(1.37)
 		_check(not head.basis.is_equal_approx(before),"%s idle cycle changes pose instead of remaining statue-still"%profile)
+		npc.visible=was_visible
 
 	if shadow:
 		var keeper_sleep:=chapter.get_node_or_null(paths["keeper"]) as TempleNpcIdle
