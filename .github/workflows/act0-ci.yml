@@ -87,6 +87,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_effect_contract_tests.gd 2>&1 | tee /tmp/combat-effect-contracts.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-effect-contracts.log
 
+      - name: Validate speed and turn-meter combat timeline
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_turn_timeline_tests.gd 2>&1 | tee /tmp/combat-turn-timeline.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-turn-timeline.log
+
       - name: Audit starter weapon visual contract
         run: |
           set -o pipefail
