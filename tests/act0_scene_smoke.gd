@@ -52,11 +52,29 @@ func _test_chapter_scene()->void:
 	_check(get_nodes_in_group("encounter_visual").size()>=5,"Catacomb encounter visuals are generated")
 
 	var triggers:=chapter.get_node_or_null("Act0Triggers")
-	_check(triggers!=null and triggers.get_child_count()>=12,"Act 0 Temple/Catacomb triggers are generated")
+	_check(triggers!=null and triggers.get_child_count()>=13,"Act 0 Temple/Catacomb/Sigil triggers are generated")
+	if triggers:
+		_check(triggers.get_node_or_null("FadedSigil")!=null,"Faded Sigil threshold trigger exists")
+		var temple_gate:=triggers.get_node_or_null("TempleGate")
+		_check(temple_gate!=null and temple_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Temple has a physical progression blocker")
+		var cat_gate:=triggers.get_node_or_null("CatacombsEntry")
+		_check(cat_gate!=null and cat_gate.get_node_or_null("ProgressionBlocker") is StaticBody3D,"Catacombs are physically blocked before first forge")
+		var room1:=triggers.get_node_or_null("CatacombRoom1")
+		if room1:
+			var room_shape:=room1.get_child(0) as CollisionShape3D
+			var room_box:=room_shape.shape as BoxShape3D
+			_check(room_box!=null and room_box.size.x>=10.0,"Catacomb room trigger spans the playable corridor")
+
+	var hound_trigger:=chapter.get_node_or_null("Graybox/ENC_HOUND")
+	if hound_trigger:
+		var hound_shape:=hound_trigger.get_child(0) as CollisionShape3D
+		var hound_box:=hound_shape.shape as BoxShape3D
+		_check(hound_box!=null and hound_box.size.x>=20.0,"exterior encounter trigger cannot be bypassed laterally")
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
-		_check(game.act0.stage=="exterior","fresh scene restores exterior Act 0 stage")
+		_check(game.act0.stage==Act0Contract.STAGE_EXTERIOR,"fresh scene restores exterior Act 0 stage")
+		_check(not game.act0.faded_sigil_activated,"fresh scene keeps Temple threshold locked")
 		_check(game.catacombs.room==0,"fresh scene has no Catacomb progress")
 		_check(not game.room5_active,"Room 5 is inactive on fresh load")
 
