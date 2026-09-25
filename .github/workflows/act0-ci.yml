@@ -75,6 +75,18 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ios_iphone_policy_tests.gd 2>&1 | tee /tmp/ios-iphone-policy.log
           ! grep -q "SCRIPT ERROR:" /tmp/ios-iphone-policy.log
 
+      - name: Run performance and visual consistency regressions
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/perf_visual_consistency_tests.gd 2>&1 | tee /tmp/perf-visual-consistency.log
+          ! grep -q "SCRIPT ERROR:" /tmp/perf-visual-consistency.log
+
+      - name: Audit starter weapon visual contract
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/starter_weapon_visual_contract_tests.gd 2>&1 | tee /tmp/starter-weapon-visual-contract.log
+          ! grep -q "SCRIPT ERROR:" /tmp/starter-weapon-visual-contract.log
+
       - name: Probe all Catacomb weapon-family paths
         run: |
           set -o pipefail

@@ -26,6 +26,7 @@ func _run()->void:
 	var game:=_read("res://scripts/world/chapter00_game.gd")
 	var controls:=_read("res://scripts/ui/mobile_controls.gd")
 	var hud_layout:=_read("res://scripts/ui/iphone_ui_layout.gd")
+	var launch_shell:=_read("res://scripts/ui/launch_shell.gd")
 
 	_check(project.contains("window/handheld/orientation=4"),"project is locked to sensor-landscape orientation")
 	_check(project.contains("window/ios/allow_high_refresh_rate=false"),"iPhone runtime is capped to the authored 60 FPS modes")
@@ -37,6 +38,7 @@ func _run()->void:
 	_check(FileAccess.file_exists("res://assets/branding/shadowborn_ios_icon.svg"),"Shadowborn iPhone icon source exists")
 	_check(project.contains("boot_splash/show_image=false"),"engine boot uses the clean Shadowborn background without default Godot branding")
 	_check(project.contains("boot_splash/bg_color=Color(0.035294, 0.043137, 0.062745, 1)"),"engine boot background matches Shadowborn launch color")
+	_check(launch_shell.contains("LAUNCH_BACKGROUND := Color(0.035294, 0.043137, 0.062745, 1.0)"),"LaunchShell background matches the iPhone boot color exactly")
 
 	_check(presets.contains("name=\"iPhone QA\""),"iPhone QA export preset exists")
 	_check(presets.contains("platform=\"iOS\""),"iPhone QA preset targets iOS")
@@ -65,19 +67,21 @@ func _run()->void:
 	_check(controls.contains("reset_input()"),"touch input can be cleared before iOS suspension")
 	_check(hud_layout.contains("MobileSafeArea.current"),"combat HUD is positioned from iPhone Safe Area")
 
+	# iPhone 13 Pro target fixture: 2532x1170 physical landscape pixels.
+	# Runtime DisplayServer safe-area data remains authoritative on device.
 	var margins:=MobileSafeArea.logical_margins(
 		Vector2(1920,1080),
-		Vector2(2796,1290),
-		Rect2(132,0,2532,1251)
+		Vector2(2532,1170),
+		Rect2(141,0,2250,1107)
 	)
-	_check(margins.x>80.0 and margins.z>80.0,"safe-area conversion protects both landscape cutout edges")
-	_check(margins.w>24.0,"safe-area conversion protects the home-indicator edge")
+	_check(margins.x>100.0 and margins.z>100.0,"iPhone 13 Pro safe-area conversion protects both landscape cutout edges")
+	_check(margins.w>50.0,"iPhone 13 Pro safe-area conversion protects the home-indicator edge")
 	var fallback:=MobileSafeArea.logical_margins(Vector2.ZERO,Vector2.ZERO,Rect2())
 	_check(fallback==Vector4(24,24,24,24),"safe-area conversion has deterministic fallback padding")
 
-	var target_3x:=MobileSafeArea.logical_points_to_viewport(44.0,Vector2(2341,1080),Vector2(2796,1290),3.0,80.0)
+	var target_13pro:=MobileSafeArea.logical_points_to_viewport(44.0,Vector2(1920,1080),Vector2(2532,1170),3.0,80.0)
 	var target_2x:=MobileSafeArea.logical_points_to_viewport(44.0,Vector2(1921,1080),Vector2(1334,750),2.0,80.0)
-	_check(target_3x>=110.0,"44pt hit target expands correctly for a representative @3x landscape iPhone")
+	_check(target_13pro>=120.0,"44pt hit target expands correctly for the iPhone 13 Pro target fixture")
 	_check(target_2x>=126.0,"44pt hit target expands correctly for a representative @2x landscape iPhone")
 	_check(MobileSafeArea.logical_points_to_viewport(44.0,Vector2.ZERO,Vector2.ZERO,0.0,80.0)==80.0,"hit-target conversion has a deterministic fallback")
 

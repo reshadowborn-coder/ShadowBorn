@@ -2,6 +2,7 @@ class_name LaunchShell
 extends Control
 
 const CHAPTER_SCENE := "res://scenes/chapter00/chapter00_graybox.tscn"
+const LAUNCH_BACKGROUND := Color(0.035294, 0.043137, 0.062745, 1.0)
 
 var main_panel:Panel
 var identity_panel:Panel
@@ -22,7 +23,7 @@ func _ready()->void:
 
 func _build_background()->void:
 	var bg:=ColorRect.new()
-	bg.color=Color(0.025,0.03,0.04,1.0)
+	bg.color=LAUNCH_BACKGROUND
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
