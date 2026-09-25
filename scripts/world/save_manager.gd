@@ -4,7 +4,7 @@ extends Node
 const SAVE_PATH := "user://chapter00_save.json"
 const TMP_PATH := SAVE_PATH + ".tmp"
 const BAK_PATH := SAVE_PATH + ".bak"
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 const MAX_SAVE_BYTES := 262144
 
 static func default_state() -> Dictionary:
@@ -30,7 +30,14 @@ static func default_state() -> Dictionary:
 		"catacomb_room": 0,
 		"room5_solo_limit_seen": false,
 		"room5_rematch_ready": false,
-		"act0_complete": false
+		"act0_complete": false,
+		"act1_stage": Act1Contract.STAGE_LOCKED,
+		"act1_sewer_room": 0,
+		"act1_sewer_defeat_seen": false,
+		"act1_keeper_briefed": false,
+		"act1_smith_handoff_done": false,
+		"temple_watch_covenant_joined": false,
+		"act1_1_complete": false
 	}
 
 static func _vector3_array(v:Vector3)->Array:
@@ -66,14 +73,37 @@ static func _checkpoint_values(value)->Variant:
 	var z:=float(value[2])
 	if x!=x or y!=y or z!=z:
 		return null
-	if absf(x)>15.0 or y < -1.0 or y > 5.0 or z > 15.0 or z < -182.0:
+	if absf(x)>40.0 or y < -1.0 or y > 5.0 or z > 15.0 or z < -182.0:
 		return null
 	return Vector3(x,y,z)
 
 static func _near_checkpoint(p:Vector3,target:Vector3,horizontal:float=1.75,vertical:float=1.5)->bool:
 	return absf(p.x-target.x)<=horizontal and absf(p.z-target.z)<=horizontal and absf(p.y-target.y)<=vertical
 
+static func _act1_active(state:Dictionary)->bool:
+	return bool(state.get("act0_complete",false)) and str(state.get("act1_stage",Act1Contract.STAGE_LOCKED))!=Act1Contract.STAGE_LOCKED
+
+static func _act1_expected_checkpoint_id(state:Dictionary)->String:
+	match str(state.get("act1_stage",Act1Contract.STAGE_LOCKED)):
+		Act1Contract.STAGE_SEWER_ROOM1:
+			return "act1_sewer_entry"
+		Act1Contract.STAGE_SEWER_ROOM2:
+			return "act1_room1_cleared"
+		Act1Contract.STAGE_SEWER_ROOM3:
+			return "act1_room2_cleared"
+		Act1Contract.STAGE_TEMPLE_RETURN:
+			return "act1_temple_return"
+		Act1Contract.STAGE_KEEPER_BRIEFING:
+			return "act1_keeper_briefed"
+		Act1Contract.STAGE_SMITH_HANDOFF:
+			return "act1_smith_handoff"
+		Act1Contract.STAGE_GUARD_COVENANT,Act1Contract.STAGE_ACT1_1_COMPLETE:
+			return "act1_guard_covenant"
+	return ""
+
 static func _expected_checkpoint_id(state:Dictionary)->String:
+	if _act1_active(state):
+		return _act1_expected_checkpoint_id(state)
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
 	match stage:
 		Act0Contract.STAGE_EXTERIOR:
@@ -106,10 +136,25 @@ static func _checkpoint_id_matches_stage(state:Dictionary)->bool:
 	return str(state.get("checkpoint",""))==expected
 
 static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
-	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
 	var checkpoint:=str(state.get("checkpoint",""))
 	if p.y<0.35 or p.y>2.2:
 		return false
+	if _act1_active(state):
+		match str(state.get("act1_stage",Act1Contract.STAGE_LOCKED)):
+			Act1Contract.STAGE_SEWER_ROOM1:
+				return checkpoint=="act1_sewer_entry" and _near_checkpoint(p,Act1Layout.SEWER_ENTRY,3.0)
+			Act1Contract.STAGE_SEWER_ROOM2:
+				return checkpoint=="act1_room1_cleared" and _near_checkpoint(p,Act1Layout.room_checkpoint(2),3.0)
+			Act1Contract.STAGE_SEWER_ROOM3:
+				return checkpoint=="act1_room2_cleared" and _near_checkpoint(p,Act1Layout.room_checkpoint(3),3.0)
+			Act1Contract.STAGE_TEMPLE_RETURN,Act1Contract.STAGE_KEEPER_BRIEFING:
+				return p.x<8.0 and checkpoint in ["act1_temple_return","act1_keeper_briefed"] and _near_checkpoint(p,Act1Layout.TEMPLE_RETURN,5.0)
+			Act1Contract.STAGE_SMITH_HANDOFF:
+				return checkpoint=="act1_smith_handoff" and _near_checkpoint(p,Vector3(Act1Layout.SMITH_HANDOFF.x,0.9,Act1Layout.SMITH_HANDOFF.z),5.0)
+			Act1Contract.STAGE_GUARD_COVENANT,Act1Contract.STAGE_ACT1_1_COMPLETE:
+				return checkpoint=="act1_guard_covenant" and _near_checkpoint(p,Vector3(Act1Layout.GUARD_POSITION.x,0.9,Act1Layout.GUARD_POSITION.z),5.0)
+		return false
+	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
 	match stage:
 		Act0Contract.STAGE_EXTERIOR:
 			match checkpoint:
@@ -148,6 +193,32 @@ static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
 static func _repair_checkpoint(state:Dictionary)->Dictionary:
 	var parsed=_checkpoint_values(state.get("checkpoint_position"))
 	if parsed!=null and _checkpoint_matches_stage(state,parsed) and _checkpoint_id_matches_stage(state):
+		return state
+
+	if _act1_active(state):
+		var act1_recovery:=Act1Layout.SEWER_ENTRY
+		var act1_checkpoint:="act1_sewer_entry"
+		match str(state.get("act1_stage",Act1Contract.STAGE_LOCKED)):
+			Act1Contract.STAGE_SEWER_ROOM2:
+				act1_recovery=Act1Layout.room_checkpoint(2)
+				act1_checkpoint="act1_room1_cleared"
+			Act1Contract.STAGE_SEWER_ROOM3:
+				act1_recovery=Act1Layout.room_checkpoint(3)
+				act1_checkpoint="act1_room2_cleared"
+			Act1Contract.STAGE_TEMPLE_RETURN:
+				act1_recovery=Act1Layout.TEMPLE_RETURN
+				act1_checkpoint="act1_temple_return"
+			Act1Contract.STAGE_KEEPER_BRIEFING:
+				act1_recovery=Act1Layout.TEMPLE_RETURN
+				act1_checkpoint="act1_keeper_briefed"
+			Act1Contract.STAGE_SMITH_HANDOFF:
+				act1_recovery=Vector3(Act1Layout.SMITH_HANDOFF.x,0.9,Act1Layout.SMITH_HANDOFF.z)
+				act1_checkpoint="act1_smith_handoff"
+			Act1Contract.STAGE_GUARD_COVENANT,Act1Contract.STAGE_ACT1_1_COMPLETE:
+				act1_recovery=Vector3(Act1Layout.GUARD_POSITION.x,0.9,Act1Layout.GUARD_POSITION.z)
+				act1_checkpoint="act1_guard_covenant"
+		state.checkpoint_position=_vector3_array(act1_recovery)
+		state.checkpoint=act1_checkpoint
 		return state
 
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
@@ -292,6 +363,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		var clean:Array=[]
 		var seen:Dictionary={}
 		var known_ids:=Act0Contract.all_encounter_ids()
+		known_ids.append_array(Act1Contract.all_encounter_ids())
 		var raw_clears:Array=state.cleared_encounters
 		for i in range(mini(raw_clears.size(),64)):
 			var id:=_strict_string(raw_clears[i],"",64)
@@ -307,6 +379,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	state.route_index = _bounded_int(state.get("route_index",0),0,Chapter00Director.ROUTE.size()-1,0)
 	state.silver = _bounded_int(state.get("silver",0),0,1,0)
 	state.catacomb_room = _bounded_int(state.get("catacomb_room",0),0,5,0)
+	state.act1_sewer_room = _bounded_int(state.get("act1_sewer_room",0),0,3,0)
 
 	state.checkpoint=_strict_string(state.get("checkpoint","awakening"),"awakening",64)
 	var mode:=_strict_string(state.get("performance_mode","smooth60"),"smooth60",32)
@@ -526,6 +599,81 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.room5_rematch_ready=false
 		state.act0_complete=false
 		state.act0_stage=Act0Contract.STAGE_CATACOMBS
+
+	if not bool(state.act0_complete):
+		state.act1_stage=Act1Contract.STAGE_LOCKED
+		state.act1_sewer_room=0
+		state.act1_sewer_defeat_seen=false
+		state.act1_keeper_briefed=false
+		state.act1_smith_handoff_done=false
+		state.temple_watch_covenant_joined=false
+		state.act1_1_complete=false
+		for id in Act1Contract.all_encounter_ids():
+			state.cleared_encounters.erase(id)
+		return _repair_checkpoint(state)
+
+	# Completed Act 0 saves migrate directly into the first Act 1.1 sewer
+	# checkpoint. Act 1 progression evidence is then canonicalized forward.
+	var raw_act1_stage:=_strict_string(state.get("act1_stage",Act1Contract.STAGE_LOCKED),Act1Contract.STAGE_LOCKED,64)
+	var defeat:=_strict_bool(state.get("act1_sewer_defeat_seen",false))
+	var keeper:=_strict_bool(state.get("act1_keeper_briefed",false))
+	var smith:=_strict_bool(state.get("act1_smith_handoff_done",false))
+	var watch:=_strict_bool(state.get("temple_watch_covenant_joined",false))
+	var act1_complete:=_strict_bool(state.get("act1_1_complete",false))
+
+	for id in Act1Contract.all_encounter_ids():
+		state.cleared_encounters.erase(id)
+
+	if act1_complete:
+		defeat=true
+		keeper=true
+		smith=true
+		watch=true
+		state.act1_stage=Act1Contract.STAGE_ACT1_1_COMPLETE
+		state.act1_sewer_room=0
+	elif watch:
+		defeat=true
+		keeper=true
+		smith=true
+		state.act1_stage=Act1Contract.STAGE_GUARD_COVENANT
+		state.act1_sewer_room=0
+	elif smith:
+		defeat=true
+		keeper=true
+		state.act1_stage=Act1Contract.STAGE_SMITH_HANDOFF
+		state.act1_sewer_room=0
+	elif keeper:
+		defeat=true
+		state.act1_stage=Act1Contract.STAGE_KEEPER_BRIEFING
+		state.act1_sewer_room=0
+	elif defeat:
+		state.act1_stage=Act1Contract.STAGE_TEMPLE_RETURN
+		state.act1_sewer_room=0
+	else:
+		var room:=_bounded_int(state.get("act1_sewer_room",1),1,3,1)
+		var normalized:=Act1Contract.normalize_stage(raw_act1_stage,true)
+		var stage_room:=Act1Contract.room_for_stage(normalized)
+		if stage_room>0:
+			room=stage_room
+		state.act1_sewer_room=room
+		state.act1_stage=[
+			Act1Contract.STAGE_SEWER_ROOM1,
+			Act1Contract.STAGE_SEWER_ROOM2,
+			Act1Contract.STAGE_SEWER_ROOM3
+		][room-1]
+
+	state.act1_sewer_defeat_seen=defeat
+	state.act1_keeper_briefed=keeper
+	state.act1_smith_handoff_done=smith
+	state.temple_watch_covenant_joined=watch
+	state.act1_1_complete=act1_complete
+
+	if defeat or int(state.act1_sewer_room)>=2:
+		if "a1_r1_rat" not in state.cleared_encounters:
+			state.cleared_encounters.append("a1_r1_rat")
+	if defeat or int(state.act1_sewer_room)>=3:
+		if "a1_r2_poison_rat" not in state.cleared_encounters:
+			state.cleared_encounters.append("a1_r2_poison_rat")
 
 	return _repair_checkpoint(state)
 
