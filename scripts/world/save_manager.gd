@@ -4,7 +4,7 @@ extends Node
 const SAVE_PATH := "user://chapter00_save.json"
 const TMP_PATH := SAVE_PATH + ".tmp"
 const BAK_PATH := SAVE_PATH + ".bak"
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
 
 static func default_state() -> Dictionary:
 	return {
@@ -16,7 +16,9 @@ static func default_state() -> Dictionary:
 		"performance_mode": "smooth60",
 		"reduced_motion": false,
 		"shadow_identity": "",
-		"act0_stage": "exterior",
+		"act0_stage": Act0Contract.STAGE_EXTERIOR,
+		"hound_residual_absorbed": false,
+		"faded_sigil_activated": false,
 		"covenant_joined": false,
 		"weapon_family": "",
 		"silver": 0,
@@ -82,6 +84,7 @@ static func save_state(state: Dictionary) -> bool:
 	return true
 
 static func _migrate(raw: Dictionary) -> Dictionary:
+	var source_version:=int(raw.get("version",0))
 	var state := default_state()
 	for key in raw.keys():
 		state[key] = raw[key]
@@ -113,12 +116,10 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	var identity:=str(state.get("shadow_identity",""))
 	state.shadow_identity = identity if identity in ["","male","female"] else ""
 
-	var valid_stages:=["exterior","temple_entry","weapon_choice","first_forge","catacombs","room5_return","room5_rematch","act0_complete"]
-	var stage:=str(state.get("act0_stage","exterior"))
-	state.act0_stage = stage if stage in valid_stages else "exterior"
+	state.act0_stage=Act0Contract.normalize_stage(str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR)))
 
 	var family:=str(state.get("weapon_family",""))
-	if not family.is_empty() and not Act0Progression.WEAPONS.has(family):
+	if not family.is_empty() and (family not in Act0Contract.WEAPON_FAMILIES or not Act0Progression.WEAPONS.has(family)):
 		family=""
 	state.weapon_family=family
 
@@ -129,19 +130,68 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	var rematch:=bool(state.get("room5_rematch_ready",false))
 	var complete:=bool(state.get("act0_complete",false))
 
-	# Later progress proves the Shield route was already cleared. Repair the
-	# reward ledger instead of allowing the boss/Silver transition to replay.
-	var later_progress: bool = covenant or not family.is_empty() or forged or int(state.catacomb_room) > 0 or solo_seen or summon or rematch or complete or str(state.act0_stage) not in ["exterior","temple_entry"]
+	# Any downstream state proves the exterior route had already completed.
+	# Recover forward rather than replaying irreversible rewards.
+	var later_progress: bool = (
+		covenant
+		or not family.is_empty()
+		or forged
+		or int(state.catacomb_room)>0
+		or solo_seen
+		or summon
+		or rematch
+		or complete
+		or str(state.act0_stage) not in [Act0Contract.STAGE_EXTERIOR,Act0Contract.STAGE_TEMPLE_ENTRY]
+	)
 	if later_progress and "shield_boss" not in state.cleared_encounters:
 		state.cleared_encounters.append("shield_boss")
-	var shield_cleared: bool = "shield_boss" in state.cleared_encounters
+
+	# Exterior fights are a fixed chain. Repair old/corrupt ledgers so a later
+	# encounter can never exist without all mandatory prerequisites.
+	if "shield_boss" in state.cleared_encounters:
+		for id in ["hound","armless"]:
+			if id not in state.cleared_encounters:
+				state.cleared_encounters.append(id)
+	elif "armless" in state.cleared_encounters and "hound" not in state.cleared_encounters:
+		state.cleared_encounters.append("hound")
+
+	var hound_cleared:bool="hound" in state.cleared_encounters
+	var shield_cleared:bool="shield_boss" in state.cleared_encounters
+
+	state.hound_residual_absorbed=bool(state.get("hound_residual_absorbed",false)) and hound_cleared
+	if source_version<SAVE_VERSION and hound_cleared:
+		# The beat did not exist as a persisted flag in older saves. Mark it as
+		# consumed so migration never replays a one-shot presentation.
+		state.hound_residual_absorbed=true
+
+	var downstream_after_sigil:bool=(
+		covenant
+		or not family.is_empty()
+		or forged
+		or int(state.catacomb_room)>0
+		or solo_seen
+		or summon
+		or rematch
+		or complete
+		or str(state.act0_stage) not in [Act0Contract.STAGE_EXTERIOR,Act0Contract.STAGE_TEMPLE_ENTRY]
+	)
+	state.faded_sigil_activated=bool(state.get("faded_sigil_activated",false)) and shield_cleared
+	if shield_cleared and (source_version<SAVE_VERSION or downstream_after_sigil):
+		# Preserve access for v4 and older saves that already passed the old
+		# ungated threshold.
+		state.faded_sigil_activated=true
+
 	if shield_cleared:
 		state.route_index=maxi(state.route_index,Chapter00Director.ROUTE.size()-1)
 
 	# Validate a committed forge before trusting downstream Catacomb state.
 	if forged:
 		var item=state.get("forged_item",{})
-		if family.is_empty() or typeof(item)!=TYPE_DICTIONARY or str(item.get("family",""))!=family or not bool(item.get("equipped",false)):
+		if (
+			family.is_empty()
+			or typeof(item)!=TYPE_DICTIONARY
+			or not Act0Progression.is_valid_first_forge_item(item,family)
+		):
 			forged=false
 			state.first_forge_done=false
 			state.forged_item={}
@@ -156,12 +206,13 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.story_summon_unlocked=false
 		state.room5_rematch_ready=false
 		state.act0_complete=false
-		state.act0_stage="temple_entry" if shield_cleared else "exterior"
+		state.act0_stage=Act0Contract.STAGE_TEMPLE_ENTRY if shield_cleared else Act0Contract.STAGE_EXTERIOR
 		if shield_cleared:
 			state.silver=maxi(1,state.silver)
 		return state
 
 	state.covenant_joined=true
+	state.faded_sigil_activated=true
 
 	if family.is_empty():
 		state.forged_item={}
@@ -171,7 +222,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.story_summon_unlocked=false
 		state.room5_rematch_ready=false
 		state.act0_complete=false
-		state.act0_stage="weapon_choice"
+		state.act0_stage=Act0Contract.STAGE_WEAPON_CHOICE
 		if shield_cleared:
 			state.silver=maxi(1,state.silver)
 		return state
@@ -184,7 +235,7 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.story_summon_unlocked=false
 		state.room5_rematch_ready=false
 		state.act0_complete=false
-		state.act0_stage="first_forge"
+		state.act0_stage=Act0Contract.STAGE_FIRST_FORGE
 		state.silver=maxi(1,state.silver)
 		return state
 
@@ -212,25 +263,25 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.story_summon_unlocked=true
 		state.room5_rematch_ready=true
 		state.catacomb_room=5
-		state.act0_stage="act0_complete"
+		state.act0_stage=Act0Contract.STAGE_COMPLETE
 	elif summon or rematch:
 		state.room5_solo_limit_seen=true
 		state.story_summon_unlocked=true
 		state.room5_rematch_ready=true
 		state.catacomb_room=5
-		state.act0_stage="room5_rematch"
+		state.act0_stage=Act0Contract.STAGE_ROOM5_REMATCH
 	elif solo_seen:
 		state.room5_solo_limit_seen=true
 		state.story_summon_unlocked=false
 		state.room5_rematch_ready=false
 		state.catacomb_room=5
-		state.act0_stage="room5_return"
+		state.act0_stage=Act0Contract.STAGE_ROOM5_RETURN
 	else:
 		state.room5_solo_limit_seen=false
 		state.story_summon_unlocked=false
 		state.room5_rematch_ready=false
 		state.act0_complete=false
-		state.act0_stage="catacombs"
+		state.act0_stage=Act0Contract.STAGE_CATACOMBS
 
 	return state
 
@@ -239,7 +290,6 @@ func patch_and_save(patch:Dictionary)->bool:
 	for key in patch:
 		state[key]=patch[key]
 	return save_state(state)
-
 
 static func has_save()->bool:
 	return _read_dictionary(SAVE_PATH)!=null or _read_dictionary(BAK_PATH)!=null
