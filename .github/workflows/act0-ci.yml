@@ -256,9 +256,10 @@ jobs:
           rm -rf /tmp/godot-templates
           mkdir -p /tmp/godot-templates
           unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
-          mkdir -p "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
-          cp -a /tmp/godot-templates/templates/. "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/"
-          test -f "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/ios.zip"
+          TEMPLATE_DIR="$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
+          mkdir -p "$TEMPLATE_DIR"
+          cp -a /tmp/godot-templates/templates/. "$TEMPLATE_DIR/"
+          test -f "$TEMPLATE_DIR/ios.zip"
 
       - name: Inject CI-only iPhone Team ID
         run: |
@@ -272,18 +273,19 @@ jobs:
               raise SystemExit("iPhone Team ID placeholder missing")
           p.write_text(text.replace(needle, 'application/app_store_team_id="ABCDE12345"', 1))
           PY
-          grep -q 'application/app_store_team_id="ABCDE12345"' export_presets.cfg
+          grep -Fq 'application/app_store_team_id="ABCDE12345"' export_presets.cfg
 
       - name: Export iPhone QA Xcode project
         run: |
-          set -o pipefail
+          set -euo pipefail
           rm -rf build/ios
           mkdir -p build/ios
+          set -o pipefail
           /tmp/godot-macos/Godot.app/Contents/MacOS/Godot --verbose --headless --path . \
             --export-debug "iPhone QA" build/ios/Shadowborn-Act0-iPhone-QA.zip \
             2>&1 | tee /tmp/iphone-xcode-export.log
-          ! grep -q "SCRIPT ERROR:" /tmp/iphone-xcode-export.log
-          ! grep -q "Project export for preset .* failed" /tmp/iphone-xcode-export.log
+          ! grep -Fq "SCRIPT ERROR:" /tmp/iphone-xcode-export.log
+          ! grep -Fq "Project export for preset \"iPhone QA\" failed" /tmp/iphone-xcode-export.log
           test -f build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj/project.pbxproj
           test -f build/ios/Shadowborn-Act0-iPhone-QA/Shadowborn-Act0-iPhone-QA-Info.plist
 
@@ -291,7 +293,6 @@ jobs:
         run: |
           set -euo pipefail
           XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          test -f "$XCODEPROJ/project.pbxproj"
           SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
           test -n "$SCHEME_FILE"
           SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
@@ -301,377 +302,12 @@ jobs:
             -configuration Debug \
             -sdk iphoneos \
             -showBuildSettings > /tmp/iphone-build-settings.txt
-          cat /tmp/iphone-build-settings.txt | grep -E 'TARGETED_DEVICE_FAMILY|IPHONEOS_DEPLOYMENT_TARGET|PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|ASSETCATALOG_COMPILER_APPICON_NAME'
-          grep -Eq '^[[:space:]]*TARGETED_DEVICE_FAMILY = 1[[:space:]]*
-      - name: Compile unsigned iPhone QA app
-        run: |
-          set -euo pipefail
-          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          xcodebuild -project "$XCODEPROJ" -list
-          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
-          test -n "$SCHEME_FILE"
-          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
-          test -n "$SCHEME"
-          rm -rf build/ios/DerivedData
-          set -o pipefail
-          xcodebuild \
-            -project "$XCODEPROJ" \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee /tmp/iphone-xcodebuild.log
-          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
-          APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
-          test -n "$APP"
-          test -f "$APP/Info.plist"
-          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
-          test -n "$EXECUTABLE"
-          test -f "$APP/$EXECUTABLE"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
-          if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
-            echo "Unexpected second device family: build is not iPhone-only" >&2
-            exit 1
-          fi
-
-      - name: Package iPhone QA Xcode artifact
-        run: |
-          set -euo pipefail
-          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          (
-            cd build/ios
-            zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
-              Shadowborn-Act0-iPhone-QA.xcodeproj \
-              Shadowborn-Act0-iPhone-QA
-          )
-          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-          cat > build/ios/qa-build-manifest.txt <<EOF
-          repository=reshadowborn-coder/ShadowBorn
-          git_sha=$GITHUB_SHA
-          workflow_run_id=$GITHUB_RUN_ID
-          godot_version=4.4.1
-          platform=iOS
-          target_device=iPhone
-          min_ios=16.0
-          renderer=Metal
-          bundle_id=org.shadowborn.chapter0.qa
-          xcode_compile=unsigned-iphoneos
-          signing=not-included
-          EOF
-
-      - name: Upload iPhone QA Xcode project
-        uses: actions/upload-artifact@v4
-        with:
-          name: shadowborn-act0-iphone-xcode-qa
-          path: |
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-            build/ios/qa-build-manifest.txt
-          if-no-files-found: error
-          retention-days: 7
- /tmp/iphone-build-settings.txt
-          grep -Eq '^[[:space:]]*IPHONEOS_DEPLOYMENT_TARGET = 16\.0[[:space:]]*
-      - name: Compile unsigned iPhone QA app
-        run: |
-          set -euo pipefail
-          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          xcodebuild -project "$XCODEPROJ" -list
-          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
-          test -n "$SCHEME_FILE"
-          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
-          test -n "$SCHEME"
-          rm -rf build/ios/DerivedData
-          set -o pipefail
-          xcodebuild \
-            -project "$XCODEPROJ" \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee /tmp/iphone-xcodebuild.log
-          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
-          APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
-          test -n "$APP"
-          test -f "$APP/Info.plist"
-          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
-          test -n "$EXECUTABLE"
-          test -f "$APP/$EXECUTABLE"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
-          if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
-            echo "Unexpected second device family: build is not iPhone-only" >&2
-            exit 1
-          fi
-
-      - name: Package iPhone QA Xcode artifact
-        run: |
-          set -euo pipefail
-          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          (
-            cd build/ios
-            zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
-              Shadowborn-Act0-iPhone-QA.xcodeproj \
-              Shadowborn-Act0-iPhone-QA
-          )
-          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-          cat > build/ios/qa-build-manifest.txt <<EOF
-          repository=reshadowborn-coder/ShadowBorn
-          git_sha=$GITHUB_SHA
-          workflow_run_id=$GITHUB_RUN_ID
-          godot_version=4.4.1
-          platform=iOS
-          target_device=iPhone
-          min_ios=16.0
-          renderer=Metal
-          bundle_id=org.shadowborn.chapter0.qa
-          xcode_compile=unsigned-iphoneos
-          signing=not-included
-          EOF
-
-      - name: Upload iPhone QA Xcode project
-        uses: actions/upload-artifact@v4
-        with:
-          name: shadowborn-act0-iphone-xcode-qa
-          path: |
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-            build/ios/qa-build-manifest.txt
-          if-no-files-found: error
-          retention-days: 7
- /tmp/iphone-build-settings.txt
-          grep -Eq '^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = org\.shadowborn\.chapter0\.qa[[:space:]]*
-      - name: Compile unsigned iPhone QA app
-        run: |
-          set -euo pipefail
-          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          xcodebuild -project "$XCODEPROJ" -list
-          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
-          test -n "$SCHEME_FILE"
-          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
-          test -n "$SCHEME"
-          rm -rf build/ios/DerivedData
-          set -o pipefail
-          xcodebuild \
-            -project "$XCODEPROJ" \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee /tmp/iphone-xcodebuild.log
-          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
-          APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
-          test -n "$APP"
-          test -f "$APP/Info.plist"
-          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
-          test -n "$EXECUTABLE"
-          test -f "$APP/$EXECUTABLE"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
-          if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
-            echo "Unexpected second device family: build is not iPhone-only" >&2
-            exit 1
-          fi
-
-      - name: Package iPhone QA Xcode artifact
-        run: |
-          set -euo pipefail
-          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          (
-            cd build/ios
-            zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
-              Shadowborn-Act0-iPhone-QA.xcodeproj \
-              Shadowborn-Act0-iPhone-QA
-          )
-          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-          cat > build/ios/qa-build-manifest.txt <<EOF
-          repository=reshadowborn-coder/ShadowBorn
-          git_sha=$GITHUB_SHA
-          workflow_run_id=$GITHUB_RUN_ID
-          godot_version=4.4.1
-          platform=iOS
-          target_device=iPhone
-          min_ios=16.0
-          renderer=Metal
-          bundle_id=org.shadowborn.chapter0.qa
-          xcode_compile=unsigned-iphoneos
-          signing=not-included
-          EOF
-
-      - name: Upload iPhone QA Xcode project
-        uses: actions/upload-artifact@v4
-        with:
-          name: shadowborn-act0-iphone-xcode-qa
-          path: |
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-            build/ios/qa-build-manifest.txt
-          if-no-files-found: error
-          retention-days: 7
- /tmp/iphone-build-settings.txt
-          grep -Eq '^[[:space:]]*DEVELOPMENT_TEAM = ABCDE12345[[:space:]]*
-      - name: Compile unsigned iPhone QA app
-        run: |
-          set -euo pipefail
-          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          xcodebuild -project "$XCODEPROJ" -list
-          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
-          test -n "$SCHEME_FILE"
-          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
-          test -n "$SCHEME"
-          rm -rf build/ios/DerivedData
-          set -o pipefail
-          xcodebuild \
-            -project "$XCODEPROJ" \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee /tmp/iphone-xcodebuild.log
-          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
-          APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
-          test -n "$APP"
-          test -f "$APP/Info.plist"
-          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
-          test -n "$EXECUTABLE"
-          test -f "$APP/$EXECUTABLE"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
-          if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
-            echo "Unexpected second device family: build is not iPhone-only" >&2
-            exit 1
-          fi
-
-      - name: Package iPhone QA Xcode artifact
-        run: |
-          set -euo pipefail
-          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          (
-            cd build/ios
-            zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
-              Shadowborn-Act0-iPhone-QA.xcodeproj \
-              Shadowborn-Act0-iPhone-QA
-          )
-          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-          cat > build/ios/qa-build-manifest.txt <<EOF
-          repository=reshadowborn-coder/ShadowBorn
-          git_sha=$GITHUB_SHA
-          workflow_run_id=$GITHUB_RUN_ID
-          godot_version=4.4.1
-          platform=iOS
-          target_device=iPhone
-          min_ios=16.0
-          renderer=Metal
-          bundle_id=org.shadowborn.chapter0.qa
-          xcode_compile=unsigned-iphoneos
-          signing=not-included
-          EOF
-
-      - name: Upload iPhone QA Xcode project
-        uses: actions/upload-artifact@v4
-        with:
-          name: shadowborn-act0-iphone-xcode-qa
-          path: |
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-            build/ios/qa-build-manifest.txt
-          if-no-files-found: error
-          retention-days: 7
- /tmp/iphone-build-settings.txt
-          grep -Eq '^[[:space:]]*ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon[[:space:]]*
-      - name: Compile unsigned iPhone QA app
-        run: |
-          set -euo pipefail
-          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          xcodebuild -project "$XCODEPROJ" -list
-          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
-          test -n "$SCHEME_FILE"
-          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
-          test -n "$SCHEME"
-          rm -rf build/ios/DerivedData
-          set -o pipefail
-          xcodebuild \
-            -project "$XCODEPROJ" \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee /tmp/iphone-xcodebuild.log
-          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
-          APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
-          test -n "$APP"
-          test -f "$APP/Info.plist"
-          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
-          test -n "$EXECUTABLE"
-          test -f "$APP/$EXECUTABLE"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "org.shadowborn.chapter0.qa"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")" = "16.0"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$APP/Info.plist")" = "1"
-          if /usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:1' "$APP/Info.plist" >/dev/null 2>&1; then
-            echo "Unexpected second device family: build is not iPhone-only" >&2
-            exit 1
-          fi
-
-      - name: Package iPhone QA Xcode artifact
-        run: |
-          set -euo pipefail
-          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          (
-            cd build/ios
-            zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
-              Shadowborn-Act0-iPhone-QA.xcodeproj \
-              Shadowborn-Act0-iPhone-QA
-          )
-          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-          cat > build/ios/qa-build-manifest.txt <<EOF
-          repository=reshadowborn-coder/ShadowBorn
-          git_sha=$GITHUB_SHA
-          workflow_run_id=$GITHUB_RUN_ID
-          godot_version=4.4.1
-          platform=iOS
-          target_device=iPhone
-          min_ios=16.0
-          renderer=Metal
-          bundle_id=org.shadowborn.chapter0.qa
-          xcode_compile=unsigned-iphoneos
-          signing=not-included
-          EOF
-
-      - name: Upload iPhone QA Xcode project
-        uses: actions/upload-artifact@v4
-        with:
-          name: shadowborn-act0-iphone-xcode-qa
-          path: |
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
-            build/ios/qa-build-manifest.txt
-          if-no-files-found: error
-          retention-days: 7
- /tmp/iphone-build-settings.txt
+          grep -E 'TARGETED_DEVICE_FAMILY|IPHONEOS_DEPLOYMENT_TARGET|PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|ASSETCATALOG_COMPILER_APPICON_NAME' /tmp/iphone-build-settings.txt
+          grep -Fq 'TARGETED_DEVICE_FAMILY = 1' /tmp/iphone-build-settings.txt
+          grep -Fq 'IPHONEOS_DEPLOYMENT_TARGET = 16.0' /tmp/iphone-build-settings.txt
+          grep -Fq 'PRODUCT_BUNDLE_IDENTIFIER = org.shadowborn.chapter0.qa' /tmp/iphone-build-settings.txt
+          grep -Fq 'DEVELOPMENT_TEAM = ABCDE12345' /tmp/iphone-build-settings.txt
+          grep -Fq 'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon' /tmp/iphone-build-settings.txt
           APPICON="$(find build/ios/Shadowborn-Act0-iPhone-QA/Images.xcassets -type d -name '*.appiconset' -print -quit)"
           test -n "$APPICON"
           test -f "$APPICON/Contents.json"
@@ -680,11 +316,9 @@ jobs:
         run: |
           set -euo pipefail
           XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
-          xcodebuild -project "$XCODEPROJ" -list
           SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
           test -n "$SCHEME_FILE"
           SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
-          test -n "$SCHEME"
           rm -rf build/ios/DerivedData
           set -o pipefail
           xcodebuild \
