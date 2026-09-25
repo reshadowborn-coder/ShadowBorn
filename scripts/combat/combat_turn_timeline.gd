@@ -124,17 +124,23 @@ func apply_effect(
 				existing["magnitude_bp"]=magnitude_bp
 			existing["tags"]=normalized_tags.duplicate()
 			existing["metadata"]=metadata.duplicate(true)
+			if not _active_ticket.is_empty() and StringName(_active_ticket.get("actor_id",&""))==actor_id:
+				existing["protected_through_serial"]=int(_active_ticket.get("serial",0))
 			effects[i]=existing
 			actor["effects"]=effects
 			return true
 
+	var protected_serial:=0
+	if not _active_ticket.is_empty() and StringName(_active_ticket.get("actor_id",&""))==actor_id:
+		protected_serial=int(_active_ticket.get("serial",0))
 	effects.append({
 		"id":effect_id,
 		"source_id":source_id,
 		"tags":normalized_tags,
 		"turns":turns,
 		"magnitude_bp":magnitude_bp,
-		"metadata":metadata.duplicate(true)
+		"metadata":metadata.duplicate(true),
+		"protected_through_serial":protected_serial
 	})
 	actor["effects"]=effects
 	return true
@@ -330,7 +336,7 @@ func end_turn(actor_id:StringName)->bool:
 
 	var actor:Dictionary=_actors[actor_id]
 	var skipped:=bool(_active_ticket.get("skipped",false))
-	_tick_owner_turn_effects(actor)
+	_tick_owner_turn_effects(actor,int(_active_ticket.get("serial",0)))
 	if skipped:
 		var resolve:=mini(MAX_RESOLVE_STACKS,int(actor.get("resolve_stacks",0))+1)
 		actor["resolve_stacks"]=resolve
@@ -396,10 +402,17 @@ func _hard_control_reason(actor_id:StringName)->StringName:
 			return tag
 	return &""
 
-func _tick_owner_turn_effects(actor:Dictionary)->void:
+func _tick_owner_turn_effects(actor:Dictionary,turn_serial:int)->void:
 	var kept:Array=[]
 	for effect_value in actor.get("effects",[]):
 		var effect:Dictionary=effect_value
+		# Effects applied/refreshed during this actor's already-open turn begin
+		# counting down on a later owner turn. This prevents self-buffs from
+		# losing a duration immediately and prevents mid-turn CC retroactivity.
+		if int(effect.get("protected_through_serial",0))==turn_serial and turn_serial>0:
+			effect["protected_through_serial"]=0
+			kept.append(effect)
+			continue
 		var remaining:=maxi(0,int(effect.get("turns",0))-1)
 		if remaining>0:
 			effect["turns"]=remaining

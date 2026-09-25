@@ -18,6 +18,7 @@ func _run()->void:
 	_test_hard_control_and_resolve()
 	_test_sleep_break_and_freeze_rules()
 	_test_extra_turn_and_owner_duration()
+	_test_mid_turn_application_duration()
 	_test_provoke_and_silence_contracts()
 	print("Combat turn timeline tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
@@ -111,6 +112,29 @@ func _test_extra_turn_and_owner_duration()->void:
 	bounded.add_actor(&"shadow",&"ally",100)
 	_check(bounded.grant_extra_turn(&"shadow",99),"extra-turn request is accepted")
 	_check((bounded.snapshot().extra_turn_queue as Array).size()==CombatTurnTimeline.MAX_EXTRA_TURNS_PER_ACTOR,"extra-turn queue is hard-bounded against loops")
+
+func _test_mid_turn_application_duration()->void:
+	var timeline:=CombatTurnTimeline.new()
+	timeline.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	var ticket:=timeline.next_turn()
+	_check(StringName(ticket.actor_id)==&"shadow","mid-turn duration fixture opens Shadow's turn")
+	_check(timeline.apply_speed_modifier(&"shadow",&"self_haste",3000,2),"self speed buff can be applied during an open turn")
+	timeline.end_turn(&"shadow")
+	var after_self_buff:=timeline.actor_snapshot(&"shadow")
+	var effects:Array=after_self_buff.get("effects",[])
+	_check(effects.size()==1 and int((effects[0] as Dictionary).get("turns",0))==2,"self-buff applied mid-turn does not immediately lose one duration")
+
+	var control:=CombatTurnTimeline.new()
+	control.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	var active:=control.next_turn()
+	_check(StringName(active.actor_id)==&"shadow","mid-turn control fixture opens Shadow's current action")
+	_check(control.apply_control(&"shadow",CombatTurnTimeline.TAG_STUN,1,&"reaction_source"),"Stun can be queued during an already-open turn")
+	_check(not bool(control.active_ticket().get("skipped",false)),"mid-turn Stun does not retroactively cancel the action already granted")
+	control.end_turn(&"shadow")
+	control.set_turn_meter(&"shadow",10000)
+	var next_ticket:=control.next_turn()
+	_check(bool(next_ticket.get("skipped",false)) and StringName(next_ticket.get("control_reason",&""))==CombatTurnTimeline.TAG_STUN,"mid-turn Stun survives to cancel the next owner turn")
+	control.end_turn(&"shadow")
 
 func _test_provoke_and_silence_contracts()->void:
 	var timeline:=CombatTurnTimeline.new()
