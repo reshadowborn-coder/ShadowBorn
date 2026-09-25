@@ -173,19 +173,32 @@ func is_encounter_cleared(id: String) -> bool:
 	return id in cleared_encounters
 
 func begin_encounter(id: String, profile: Dictionary) -> bool:
-	if is_encounter_cleared(id):
+	if encounter.active or room5_active or is_encounter_cleared(id):
 		return false
 	if Act0Contract.is_exterior_encounter(id) and not Act0Contract.can_start_exterior_encounter(id,cleared_encounters,act0.temple_reveal_seen):
 		story_toast.show_message("The path refuses to advance. An earlier threat still remains.")
 		return false
+
+	var visual:=_find_enemy_visual(id)
+	if visual==null:
+		push_error("Encounter has no world visual: "+id)
+		return false
+
 	shadow.set_physics_process(false)
-	active_enemy_visual = _find_enemy_visual(id)
-	if active_enemy_visual:
-		_position_combatants(active_enemy_visual)
-		camera_rig.enter_combat(shadow.global_position, active_enemy_visual.global_position)
-		presenter.bind_combatants(shadow, active_enemy_visual)
-	encounter.start_encounter(id, profile)
-	return encounter.active
+	active_enemy_visual=visual
+	_position_combatants(active_enemy_visual)
+	camera_rig.enter_combat(shadow.global_position,active_enemy_visual.global_position)
+	presenter.bind_combatants(shadow,active_enemy_visual)
+
+	if not encounter.start_encounter(id,profile):
+		_restore_enemy_visual_home()
+		active_enemy_visual=null
+		presenter.clear()
+		camera_rig.exit_combat()
+		shadow.set_physics_process(true)
+		_refresh_navigation()
+		return false
+	return true
 
 func _find_enemy_visual(id: String) -> Node3D:
 	for node in get_tree().get_nodes_in_group("encounter_visual"):
