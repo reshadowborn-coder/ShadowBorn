@@ -141,6 +141,18 @@ func _test_chapter_scene()->void:
 				var touch_button:=mobile.root.get_node_or_null(name) as Button
 				_check(touch_button!=null and touch_button.size.x>=80.0 and touch_button.size.y>=80.0,"iPhone movement touch target keeps the desktop-test fallback size: %s"%name)
 
+			mobile._set_held("left",true)
+			var shadow_controller:=chapter.get_node_or_null("Shadow") as ShadowController
+			_check(bool(mobile.held.get("left",false)),"focus-loss fixture starts with a held mobile direction")
+			game._notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+			_check(not bool(mobile.held.get("left",false)),"iPhone focus loss clears held touch state")
+			if shadow_controller:
+				_check(shadow_controller.virtual_direction==Vector2.ZERO,"iPhone focus loss neutralizes Shadow virtual movement")
+			game._notification(NOTIFICATION_APPLICATION_FOCUS_IN)
+			game._notification(NOTIFICATION_APPLICATION_RESUMED)
+			await process_frame
+			_check(not game.mobile_reflow_pending,"duplicate iPhone focus/resume callbacks coalesce into one completed reflow")
+
 		for path in [
 			"CombatHUD/Panel/A1",
 			"CombatHUD/Panel/A2",
