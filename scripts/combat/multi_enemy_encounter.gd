@@ -25,13 +25,39 @@ var loadout:Dictionary=ShadowLoadout.profile("")
 func set_loadout(family:String)->void:
 	loadout=ShadowLoadout.profile(family)
 
-func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void:
+static func _valid_profile(profile)->bool:
+	if typeof(profile)!=TYPE_DICTIONARY:
+		return false
+	if str(profile.get("id","")).is_empty():
+		return false
+	for key in ["hp","def","damage"]:
+		var value=profile.get(key)
+		if typeof(value) not in [TYPE_INT,TYPE_FLOAT]:
+			return false
+		var number:=float(value)
+		if number!=number:
+			return false
+	if float(profile.get("hp",0.0))<=0.0 or float(profile.get("def",0.0))<0.0 or float(profile.get("damage",0.0))<0.0:
+		return false
+	return true
+
+func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool:
+	if active or profiles.size()!=2:
+		push_warning("Room 5 multi-enemy encounter requires exactly two inactive-start profiles")
+		return false
+
+	var ids:Dictionary={}
+	for profile in profiles:
+		if not _valid_profile(profile):
+			push_warning("Room 5 rejected an invalid enemy profile")
+			return false
+		var id:=str(profile.get("id",""))
+		if ids.has(id):
+			push_warning("Room 5 rejected duplicate enemy IDs")
+			return false
+		ids[id]=true
+
 	enemies=profiles.duplicate(true)
-	if enemies.is_empty():
-		active=false
-		push_warning("Multi-enemy encounter cannot start without enemies")
-		_emit()
-		return
 	for e in enemies:
 		e["current_hp"]=float(e.hp)
 	selected=0
@@ -45,6 +71,7 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->void
 	veil=0.0
 	active=true
 	_emit()
+	return true
 
 func select_target(index:int)->void:
 	if not active or index<0 or index>=enemies.size() or float(enemies[index].current_hp)<=0:
