@@ -11,9 +11,12 @@ var catacombs:CatacombProgression
 func setup(t:Act0Progression,c:CatacombProgression,_save_manager:Node=null)->void:
 	temple=t
 	catacombs=c
-	catacombs.return_to_temple_requested.connect(_on_solo_limit)
-	catacombs.story_summon_unlocked.connect(_on_companion_unlock)
-	catacombs.act0_completed.connect(_on_act0_complete)
+	if not catacombs.return_to_temple_requested.is_connected(_on_solo_limit):
+		catacombs.return_to_temple_requested.connect(_on_solo_limit)
+	if not catacombs.story_summon_unlocked.is_connected(_on_companion_unlock):
+		catacombs.story_summon_unlocked.connect(_on_companion_unlock)
+	if not catacombs.act0_completed.is_connected(_on_act0_complete):
+		catacombs.act0_completed.connect(_on_act0_complete)
 
 func restore(state:Dictionary)->void:
 	temple.restore(state)
@@ -22,7 +25,7 @@ func restore(state:Dictionary)->void:
 func enter_catacombs()->bool:
 	if not temple.first_forge_done:
 		return false
-	if temple.stage not in ["catacombs","room5_rematch"]:
+	if temple.stage not in [Act0Contract.STAGE_CATACOMBS,Act0Contract.STAGE_ROOM5_REMATCH]:
 		return false
 	return catacombs.start()
 
@@ -33,18 +36,24 @@ func room5_first_contact()->bool:
 	return catacombs.trigger_room5_solo_limit()
 
 func temple_story_handoff()->bool:
-	if temple.stage!="room5_return":
+	if temple.stage!=Act0Contract.STAGE_ROOM5_RETURN:
 		return false
 	return catacombs.unlock_story_summon()
 
 func _on_solo_limit()->void:
-	temple.stage="room5_return"
+	if not temple.transition_to(Act0Contract.STAGE_ROOM5_RETURN):
+		push_error("Act 0 contract rejected Catacombs -> Room 5 return transition")
+		return
 	temple_return.emit("solo_limit")
 
 func _on_companion_unlock()->void:
-	temple.stage="room5_rematch"
+	if not temple.transition_to(Act0Contract.STAGE_ROOM5_REMATCH):
+		push_error("Act 0 contract rejected Room 5 return -> rematch transition")
+		return
 	companion_ready.emit(StoryCompanion.profile())
 
 func _on_act0_complete()->void:
-	temple.stage="act0_complete"
+	if not temple.transition_to(Act0Contract.STAGE_COMPLETE):
+		push_error("Act 0 contract rejected Room 5 rematch -> completion transition")
+		return
 	act0_finished.emit()
