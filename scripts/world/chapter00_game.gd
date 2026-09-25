@@ -13,6 +13,7 @@ extends Node
 @onready var mobile_controls:MobileControls=$MobileControls
 @onready var shadow_proxy:ShadowProxy=get_parent().get_node("Shadow/ShadowProxy")
 @onready var story_toast:StoryToast=$StoryToast
+@onready var iphone_ui_layout:IPhoneUILayout=$IPhoneUILayout
 var checkpoint_position := Vector3(0,0.9,8)
 var active_enemy_visual: Node3D
 var cleared_encounters: Array[String] = []
@@ -28,12 +29,14 @@ var room5_active := false
 var room5_solo_attempt := false
 var room5_visual_cache:Array[Node3D]=[]
 var combat_trace:CombatFrameTrace
+var last_committed_state:Dictionary={}
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
 	add_child(act0); add_child(catacombs); add_child(team); add_child(act0_flow)
 	_restore_save()
 	var persisted := SaveManager.load_state()
+	last_committed_state=persisted.duplicate(true)
 	act0_flow.setup(act0, catacombs, get_parent().get_node("SaveManager"))
 	act0_flow.restore(persisted); team.restore(persisted)
 	_apply_identity_state(persisted)
@@ -129,10 +132,29 @@ func _build_save_state()->Dictionary:
 	return state
 
 func _save_progress()->bool:
-	var ok:=SaveManager.save_state(_build_save_state())
-	if not ok:
+	var candidate:=_build_save_state()
+	var ok:=SaveManager.save_state(candidate)
+	if ok:
+		last_committed_state=SaveManager._migrate(candidate.duplicate(true))
+	else:
 		push_error("Act 0 save transaction failed")
 	return ok
+
+func _notification(what:int)->void:
+	if what==NOTIFICATION_APPLICATION_PAUSED:
+		if not is_node_ready():
+			return
+		mobile_controls.reset_input()
+		if not last_committed_state.is_empty() and not SaveManager.save_state(last_committed_state.duplicate(true)):
+			push_error("iOS suspend save failed; last committed Act 0 state remains in memory")
+	elif what==NOTIFICATION_APPLICATION_RESUMED:
+		if not is_node_ready():
+			return
+		call_deferred("_resume_mobile_session")
+
+func _resume_mobile_session()->void:
+	iphone_ui_layout.apply_safe_area()
+	_refresh_navigation()
 
 func _restore_runtime_snapshot(state:Dictionary,restore_position:bool=true)->void:
 	act0.restore(state)
@@ -160,6 +182,7 @@ func _commit_first_forge_transaction()->bool:
 	state["act0_stage"]=Act0Contract.STAGE_CATACOMBS
 	if not SaveManager.save_state(state):
 		return false
+	last_committed_state=SaveManager._migrate(state.duplicate(true))
 	if act0.apply_first_forge(candidate):
 		_apply_equipment_state()
 		return true
