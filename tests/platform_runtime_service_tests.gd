@@ -75,13 +75,15 @@ func _run()->void:
 
 	var chapter0_source:=_read("res://scripts/world/chapter00_game.gd")
 	var chapter1_source:=_read("res://scripts/world/chapter01_game.gd")
+	_check(chapter0_source.contains('get_node("/root/PlatformRuntime")'),"Chapter00Game resolves an explicit PlatformRuntime dependency")
 	_check(not chapter0_source.contains("Engine.max_fps"),"Chapter00Game no longer owns engine FPS directly")
 	_check(not chapter0_source.contains("NOTIFICATION_OS_MEMORY_WARNING"),"Chapter00Game no longer owns OS memory-warning routing")
-	_check(chapter0_source.contains("PlatformRuntime.report_state"),"Chapter00Game emits semantic performance context instead of native API calls")
+	_check(chapter0_source.contains("platform_runtime.report_state"),"Chapter00Game emits semantic performance context instead of native API calls")
+	_check(chapter1_source.contains('get_node("/root/PlatformRuntime")'),"Chapter01Game resolves an explicit PlatformRuntime dependency")
 	_check(not chapter1_source.contains("Engine.max_fps"),"Chapter01Game no longer owns engine FPS directly")
 	_check(not chapter1_source.contains("NOTIFICATION_OS_MEMORY_WARNING"),"Chapter01Game no longer owns OS memory-warning routing")
-	_check(chapter1_source.contains("PlatformRuntime.memory_pressure.connect(_on_platform_memory_pressure)"),"Chapter01Game consumes semantic memory pressure through PlatformRuntime")
-	_check(chapter1_source.contains("PlatformRuntime.report_state"),"Chapter01Game emits semantic gameplay/encounter context instead of native API calls")
+	_check(chapter1_source.contains("platform_runtime.memory_pressure.connect(_on_platform_memory_pressure)"),"Chapter01Game consumes semantic memory pressure through PlatformRuntime")
+	_check(chapter1_source.contains("platform_runtime.report_state"),"Chapter01Game emits semantic gameplay/encounter context instead of native API calls")
 
 	service.apply_system_snapshot(PlatformRuntimeService.THERMAL_NOMINAL,false)
 	service.set_requested_mode(PlatformRuntimeService.MODE_SMOOTH_60)
