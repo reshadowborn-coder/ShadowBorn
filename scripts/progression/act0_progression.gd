@@ -105,15 +105,18 @@ static func canonical_first_forge_item(family:String)->Dictionary:
 
 static func is_valid_first_forge_item(candidate:Dictionary,family:String)->bool:
 	var expected:=canonical_first_forge_item(family)
-	if expected.is_empty():
+	if expected.is_empty() or candidate.size()!=expected.size():
 		return false
-	return (
-		str(candidate.get("id",""))==str(expected.id)
-		and str(candidate.get("family",""))==family
-		and int(candidate.get("level",-1))==0
-		and not bool(candidate.get("bonus_unlocked",true))
-		and bool(candidate.get("equipped",false))
-	)
+	if typeof(candidate.get("id"))!=TYPE_STRING or typeof(candidate.get("family"))!=TYPE_STRING:
+		return false
+	var level_value=candidate.get("level")
+	if typeof(level_value) not in [TYPE_INT,TYPE_FLOAT] or float(level_value)!=0.0:
+		return false
+	if typeof(candidate.get("bonus_unlocked"))!=TYPE_BOOL or bool(candidate.get("bonus_unlocked")):
+		return false
+	if typeof(candidate.get("equipped"))!=TYPE_BOOL or not bool(candidate.get("equipped")):
+		return false
+	return str(candidate.id)==str(expected.id) and str(candidate.family)==family
 
 func first_forge_candidate()->Dictionary:
 	if not can_first_forge():
@@ -126,7 +129,7 @@ func apply_first_forge(candidate:Dictionary)->bool:
 	if not Act0Contract.can_transition(stage,Act0Contract.STAGE_CATACOMBS):
 		return false
 	silver-=1
-	forged_item=candidate.duplicate(true)
+	forged_item=canonical_first_forge_item(weapon_family)
 	first_forge_done=true
 	stage=Act0Contract.STAGE_CATACOMBS
 	forge_committed.emit(forged_item)
