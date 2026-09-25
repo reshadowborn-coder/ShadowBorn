@@ -27,5 +27,6 @@ func _run()->void:
 		_check(bool(cfg.get_value("preset.0.options","package/signed",false)),"debug QA APK is configured for signing")
 		_check(bool(cfg.get_value("preset.0.options","screen/immersive_mode",false)),"QA build uses immersive mobile presentation")
 		_check(str(cfg.get_value("preset.0.options","custom_template/release","")).is_empty(),"QA preset does not pin a release signing/template path")
+		_check(bool(ProjectSettings.get_setting("rendering/textures/vram_compression/import_etc2_astc",false)),"Android QA keeps ETC2/ASTC texture import enabled")
 	print("Android QA export preset tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
