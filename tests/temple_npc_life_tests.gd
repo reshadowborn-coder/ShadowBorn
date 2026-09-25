@@ -35,6 +35,7 @@ func _run()->void:
 		_check(roles.has(role),"Temple ambient roster contains %s"%role)
 		if roles.has(role):
 			var npc:=roles[role] as Node3D
+			npc.set("activation_distance",999.0)
 			_check(npc.get_script()!=null,"%s ambient NPC has an animation controller"%role)
 			_check(npc.get_node_or_null("Body")!=null,"%s has a body proxy"%role)
 			_check(npc.get_node_or_null("Head")!=null,"%s has a head proxy"%role)
