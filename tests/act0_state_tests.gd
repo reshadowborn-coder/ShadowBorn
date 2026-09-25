@@ -212,9 +212,29 @@ func _test_save_recovery()->void:
 	_check(temple_recovery.checkpoint_position==SaveManager._vector3_array(sigil_recovery),"pre-Sigil Temple state cannot resume outside the threshold zone")
 
 	var valid_cat:=bad_cat.duplicate(true)
+	valid_cat.checkpoint="cat_r2_hound_cleared"
 	valid_cat.checkpoint_position=[0.0,0.9,-150.0]
 	var valid_recovery:=SaveManager._migrate(valid_cat)
-	_check(valid_recovery.checkpoint_position==[0.0,0.9,-150.0],"valid in-stage checkpoint coordinates are preserved")
+	_check(valid_recovery.checkpoint_position==[0.0,0.9,-150.0] and str(valid_recovery.checkpoint)=="cat_r2_hound_cleared","valid in-stage checkpoint coordinates and IDs are preserved")
+
+	var wall_temple:=bad_temple.duplicate(true)
+	wall_temple.faded_sigil_activated=true
+	wall_temple.checkpoint="temple_entry"
+	wall_temple.checkpoint_position=[14.0,0.9,-78.0]
+	var wall_temple_recovery:=SaveManager._migrate(wall_temple)
+	_check(wall_temple_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.TEMPLE_ENTRY_CHECKPOINT),"Temple checkpoint outside walkable nave width is relocated to the safe entry anchor")
+
+	var wall_cat:=bad_cat.duplicate(true)
+	wall_cat.checkpoint="cat_r2_hound_cleared"
+	wall_cat.checkpoint_position=[5.8,0.9,-150.0]
+	var wall_cat_recovery:=SaveManager._migrate(wall_cat)
+	_check(wall_cat_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT),"Catacomb checkpoint inside side-wall geometry is relocated to the safe entry anchor")
+
+	var bad_checkpoint_id:=bad_cat.duplicate(true)
+	bad_checkpoint_id.checkpoint="room5_return"
+	bad_checkpoint_id.checkpoint_position=[0.0,0.9,-150.0]
+	var id_recovery:=SaveManager._migrate(bad_checkpoint_id)
+	_check(str(id_recovery.checkpoint)=="catacombs_entry" and id_recovery.checkpoint_position==SaveManager._vector3_array(Act0Layout.CATACOMB_ENTRY_CHECKPOINT),"checkpoint ID from another Act 0 stage cannot survive migration")
 
 func _test_resume_transition_matrix()->void:
 	var exterior:=SaveManager._migrate(SaveManager.default_state())
