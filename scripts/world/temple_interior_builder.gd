@@ -13,6 +13,7 @@ const RUNE:=Color(0.24,0.18,0.31)
 const ASH_CLOTH:=Color(0.10,0.105,0.12)
 const NPC_IDLE_SCRIPT:=preload("res://scripts/world/temple_npc_idle.gd")
 var mats:={}
+var glow_mats:={}
 var meshes:={}
 var capsule_meshes:={}
 
@@ -27,6 +28,19 @@ func _mat(c:Color)->StandardMaterial3D:
 	m.albedo_color=c
 	m.roughness=.92
 	mats[k]=m
+	return m
+
+func _glow_mat(c:Color,energy:float=1.35)->StandardMaterial3D:
+	var k:=str(c)+"|"+str(energy)
+	if glow_mats.has(k):
+		return glow_mats[k]
+	var m:=StandardMaterial3D.new()
+	m.albedo_color=c
+	m.roughness=.82
+	m.emission_enabled=true
+	m.emission=c
+	m.emission_energy_multiplier=energy
+	glow_mats[k]=m
 	return m
 
 func _mesh(s:Vector3,c:Color)->BoxMesh:
@@ -66,6 +80,11 @@ func box(n:String,p:Vector3,s:Vector3,c:Color=STONE,parent:Node3D=self)->MeshIns
 	x.mesh=_mesh(s,c)
 	x.position=p
 	parent.add_child(x)
+	return x
+
+func glow_box(n:String,p:Vector3,s:Vector3,c:Color,parent:Node3D=self,energy:float=1.35)->MeshInstance3D:
+	var x:=box(n,p,s,c,parent)
+	x.material_override=_glow_mat(c,energy)
 	return x
 
 func solid_box(n:String,p:Vector3,s:Vector3,visual:Node3D,collision:StaticBody3D,c:Color=STONE)->void:
@@ -145,8 +164,8 @@ func _build_covenant_focus(parent:Node3D)->void:
 	box("CovenantSpineL",Vector3(-2.6,2.2,-106.45),Vector3(.42,4.4,.42),STONE,parent)
 	box("CovenantSpineR",Vector3(2.6,2.2,-106.45),Vector3(.42,4.4,.42),STONE,parent)
 	box("CovenantCrown",Vector3(0,4.15,-106.45),Vector3(5.6,.42,.42),STONE,parent)
-	box("CovenantRuneCore",Vector3(0,2.0,-105.62),Vector3(.28,1.15,.12),RUNE,parent)
-	var cross:=box("CovenantRuneCross",Vector3(0,2.0,-105.58),Vector3(1.15,.20,.10),RUNE,parent)
+	glow_box("CovenantRuneCore",Vector3(0,2.0,-105.62),Vector3(.28,1.15,.12),RUNE,parent,1.45)
+	var cross:=glow_box("CovenantRuneCross",Vector3(0,2.0,-105.58),Vector3(1.15,.20,.10),RUNE,parent,1.45)
 	cross.rotation_degrees.z=8.0
 
 func _build_npc_root(n:String,profile:String,position:Vector3,yaw:float,body_color:Color,accent:Color,parent:Node3D,phase:float)->Node3D:
@@ -175,10 +194,10 @@ func _build_smith(p:Vector3,parent:Node3D)->void:
 	r.position=p
 	parent.add_child(r)
 	box("ServiceBackdrop",Vector3(-1.78,1.9,.2),Vector3(.24,3.8,3.8),STONE,r)
-	box("ForgeSigil",Vector3(-1.62,2.55,.2),Vector3(.08,1.15,.55),EMBER,r)
+	glow_box("ForgeSigil",Vector3(-1.62,2.55,.2),Vector3(.08,1.15,.55),EMBER,r,1.30)
 	box("Anvil",Vector3(0,.7,0),Vector3(1.4,.45,.65),IRON,r)
 	box("Forge",Vector3(-1.2,.8,.9),Vector3(1.3,1.6,1.2),STONE,r)
-	box("Ember",Vector3(-1.2,1.15,.25),Vector3(.75,.25,.08),EMBER,r)
+	glow_box("Ember",Vector3(-1.2,1.15,.25),Vector3(.75,.25,.08),EMBER,r,1.55)
 	var npc:=_build_npc_root("SmithNPC","smith",Vector3(-.92,0,.35),-90.0,LEATHER,IRON,r,.2)
 	var tool:=Node3D.new()
 	tool.name="Tool"
@@ -209,7 +228,7 @@ func _build_engraver(p:Vector3,parent:Node3D)->void:
 	r.position=p
 	parent.add_child(r)
 	box("ServiceBackdrop",Vector3(-1.78,1.9,.2),Vector3(.24,3.8,3.8),STONE,r)
-	box("RuneSigil",Vector3(-1.62,2.55,.2),Vector3(.08,1.05,.62),RUNE,r)
+	glow_box("RuneSigil",Vector3(-1.62,2.55,.2),Vector3(.08,1.05,.62),RUNE,r,1.35)
 	box("RuneTable",Vector3(0,.7,0),Vector3(2.4,1.1,1.4),STONE,r)
 	for i in range(3):
 		box("RuneStone",Vector3(-.65+i*.65,1.4,0),Vector3(.32,.32,.32),RUNE,r)
@@ -220,7 +239,7 @@ func _build_engraver(p:Vector3,parent:Node3D)->void:
 
 func _build_keeper(p:Vector3,parent:Node3D)->void:
 	box("KeeperBackdrop",p+Vector3(0,2.25,-.72),Vector3(4.4,4.5,.35),STONE,parent)
-	box("KeeperSigil",p+Vector3(0,2.65,-.48),Vector3(.16,1.55,.10),RUNE,parent)
+	glow_box("KeeperSigil",p+Vector3(0,2.65,-.48),Vector3(.16,1.55,.10),RUNE,parent,1.25)
 	var r:=_build_npc_root("Keeper","keeper",p,180.0,CLOTH,RUNE,parent,.8)
 	box("Hood",Vector3(0,2.17,.04),Vector3(.62,.48,.50),CLOTH,r)
 	box("PrayerCord",Vector3(0,1.25,-.27),Vector3(.08,.75,.08),RUNE,r)
