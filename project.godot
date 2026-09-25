@@ -3,6 +3,10 @@
 config/name="Shadowborn Chapter 0"
 run/main_scene="res://scenes/app/launch_shell.tscn"
 
+[debug]
+
+shadowborn/combat_trace_console=true
+
 [display]
 
 window/size/viewport_width=1920
