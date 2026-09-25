@@ -15,6 +15,16 @@ var _attached := false
 var _multi_attached := false
 var console_output := true
 
+static func physical_present_evidence_for(platform_name: String) -> String:
+	match platform_name.to_lower():
+		"ios":
+			return "external_xcode_instruments_or_metal_system_trace"
+		"android":
+			return "external_surfaceflinger_or_perfetto"
+		_:
+			return "external_platform_profiler"
+
+
 func set_console_output(value: bool) -> void:
 	console_output = value
 
@@ -50,7 +60,8 @@ func attach(controller: EncounterController, presenter: CombatPresenter, hud: Co
 			"hud":true,
 			"vfx":true,
 			"sfx":false,
-			"actual_present":"external_surfaceflinger_or_perfetto"
+			"platform":OS.get_name(),
+			"actual_present":physical_present_evidence_for(OS.get_name())
 		}))
 
 func attach_multi(controller: MultiEnemyEncounter) -> void:
@@ -69,7 +80,9 @@ func attach_multi(controller: MultiEnemyEncounter) -> void:
 			"ts_us":Time.get_ticks_usec(),
 			"multi_enemy":true,
 			"target_index":true,
-			"action_lock":true
+			"action_lock":true,
+			"platform":OS.get_name(),
+			"actual_present":physical_present_evidence_for(OS.get_name())
 		}))
 
 func set_context(performance_mode: String, is_reduced_motion: bool) -> void:
