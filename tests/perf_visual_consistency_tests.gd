@@ -88,6 +88,11 @@ func _test_impact_pool_reuse() -> void:
 
 	presenter.bind_combatants(shadow, enemy)
 	_check(presenter._impact_pool.size() == presenter.IMPACT_POOL_SIZE, "Combat impact VFX pool is preallocated")
+	_check(presenter._impact_mesh_normal != null and presenter._impact_mesh_guarded != null, "Combat impact material variants are prewarmed before first contact")
+	_check(presenter._impact_pool[0].mesh == presenter._impact_mesh_normal, "Normal impact pipeline has a hidden loaded-scene instance")
+	_check(presenter._impact_pool[1].mesh == presenter._impact_mesh_guarded, "Guarded impact pipeline has a hidden loaded-scene instance")
+	_check(not presenter._impact_pool[0].visible and not presenter._impact_pool[1].visible, "Impact prewarm stays invisible to gameplay")
+	_check(presenter._impact_pool[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and presenter._impact_pool[1].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "Impact prewarm does not consume shadow budget")
 
 	var child_count_before := presenter.get_child_count()
 	for i in range(12):

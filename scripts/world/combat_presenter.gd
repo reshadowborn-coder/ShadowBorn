@@ -20,6 +20,7 @@ var _impact_cursor := 0
 
 func _ready() -> void:
 	_ensure_impact_pool()
+	_prewarm_impact_resources()
 
 func bind_combatants(shadow: Node3D, enemy: Node3D) -> void:
 	shadow_visual = shadow
@@ -103,6 +104,19 @@ func _ensure_impact_pool() -> void:
 		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(flash)
 		_impact_pool.append(flash)
+
+func _prewarm_impact_resources() -> void:
+	# Godot 4.4 can prepare rendering pipelines more effectively when the mesh
+	# and material variants already exist in the loaded scene. Keep one hidden
+	# pooled instance of each impact variant so the first real hit does not have
+	# to introduce its shader/material combination during combat.
+	_ensure_impact_pool()
+	if _impact_pool.size()<2:
+		return
+	_impact_pool[0].mesh=_impact_mesh(false)
+	_impact_pool[1].mesh=_impact_mesh(true)
+	_impact_pool[0].visible=false
+	_impact_pool[1].visible=false
 
 func _acquire_impact_flash() -> MeshInstance3D:
 	_ensure_impact_pool()
