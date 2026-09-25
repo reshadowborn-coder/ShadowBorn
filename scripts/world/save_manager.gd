@@ -53,31 +53,42 @@ static func _checkpoint_values(value)->Variant:
 static func _near_checkpoint(p:Vector3,target:Vector3,horizontal:float=1.75,vertical:float=1.5)->bool:
 	return absf(p.x-target.x)<=horizontal and absf(p.z-target.z)<=horizontal and absf(p.y-target.y)<=vertical
 
-static func _checkpoint_id_matches_stage(state:Dictionary)->bool:
+static func _expected_checkpoint_id(state:Dictionary)->String:
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
-	var checkpoint:=str(state.get("checkpoint",""))
 	match stage:
 		Act0Contract.STAGE_EXTERIOR:
-			return checkpoint in ["awakening","hound_cleared","armless_cleared","temple_reveal_seen"]
+			if bool(state.get("temple_reveal_seen",false)):
+				return "temple_reveal_seen"
+			var cleared:Array=state.get("cleared_encounters",[])
+			if "armless" in cleared:
+				return "armless_cleared"
+			if "hound" in cleared:
+				return "hound_cleared"
+			return "awakening"
 		Act0Contract.STAGE_TEMPLE_ENTRY:
-			return checkpoint in ["faded_sigil","temple_entry"]
+			return "temple_entry" if bool(state.get("faded_sigil_activated",false)) and str(state.get("checkpoint",""))=="temple_entry" else "faded_sigil"
 		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
-			return checkpoint=="temple_entry"
+			return "temple_entry"
 		Act0Contract.STAGE_CATACOMBS:
-			return checkpoint in [
-				"catacombs_entry",
-				"cat_r1_skeleton_cleared",
-				"cat_r2_hound_cleared",
-				"cat_r3_guard_cleared",
-				"cat_r4_revenant_cleared"
-			]
+			match clampi(int(state.get("catacomb_room",1)),1,5):
+				1: return "catacombs_entry"
+				2: return "cat_r1_skeleton_cleared"
+				3: return "cat_r2_hound_cleared"
+				4: return "cat_r3_guard_cleared"
+				5: return "cat_r4_revenant_cleared"
 		Act0Contract.STAGE_ROOM5_RETURN:
-			return checkpoint=="room5_return"
+			return "room5_return"
 		Act0Contract.STAGE_ROOM5_REMATCH:
-			return checkpoint=="room5_rematch"
+			return "room5_rematch"
 		Act0Contract.STAGE_COMPLETE:
-			return checkpoint=="act0_complete"
-	return false
+			return "act0_complete"
+	return ""
+
+static func _checkpoint_id_matches_stage(state:Dictionary)->bool:
+	var expected:=_expected_checkpoint_id(state)
+	if expected.is_empty():
+		return false
+	return str(state.get("checkpoint",""))==expected
 
 static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
@@ -123,8 +134,9 @@ static func _repair_checkpoint(state:Dictionary)->Dictionary:
 			recovery=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
 			checkpoint="temple_entry"
 		Act0Contract.STAGE_CATACOMBS:
-			recovery=Act0Layout.CATACOMB_ENTRY_CHECKPOINT
-			checkpoint="catacombs_entry"
+			var room:=clampi(int(state.get("catacomb_room",1)),1,5)
+			recovery=Act0Layout.catacomb_room_resume_position(room)
+			checkpoint=_expected_checkpoint_id(state)
 		Act0Contract.STAGE_ROOM5_RETURN:
 			recovery=Act0Layout.ROOM5_RETURN_CHECKPOINT
 			checkpoint="room5_return"
