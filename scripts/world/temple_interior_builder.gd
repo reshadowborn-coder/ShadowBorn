@@ -137,6 +137,7 @@ func _build()->void:
 	_build_story_companion(visual)
 	_build_weapon_altar(Act0Layout.floor_anchor(Act0Layout.COVENANT_TRIGGER),visual)
 	_build_ruined_nave_story(visual)
+	_build_room5_memory_props(visual)
 
 func _build_ruined_nave_story(parent:Node3D)->void:
 	# Cheap silhouette/storytelling pass: keep the central route clear while
@@ -161,6 +162,30 @@ func _build_ruined_nave_story(parent:Node3D)->void:
 			parent
 		)
 		rubble.rotation_degrees.y=float(17+i*29)
+
+func _memory_root(name:String,parent:Node3D)->Node3D:
+	var root:=Node3D.new()
+	root.name=name
+	root.visible=false
+	root.add_to_group("temple_memory_room5_failure")
+	parent.add_child(root)
+	return root
+
+func _build_room5_memory_props(parent:Node3D)->void:
+	# Story memory, not a service or collectible. These cheap props appear after
+	# the first Room 5 solo failure and remain as physical evidence that the
+	# Temple noticed the failed descent.
+	var smith_memory:=_memory_root("Room5ReturnedGear",parent)
+	box("RepairTray",Vector3(-4.45,.12,-91.55),Vector3(1.25,.16,.72),WOOD,smith_memory)
+	var bent_plate:=box("BentPlate",Vector3(-4.62,.28,-91.52),Vector3(.62,.10,.42),IRON,smith_memory)
+	bent_plate.rotation_degrees.y=17.0
+	var split_grip:=box("SplitGrip",Vector3(-4.18,.30,-91.35),Vector3(.12,.12,.76),LEATHER,smith_memory)
+	split_grip.rotation_degrees=Vector3(0,31.0,7.0)
+
+	var keeper_memory:=_memory_root("Room5Vigil",parent)
+	box("ReturnedCloth",Vector3(.82,.08,-102.65),Vector3(.72,.08,.52),ASH_CLOTH,keeper_memory).rotation_degrees.y=-11.0
+	var token:=box("ReturnedToken",Vector3(.62,.18,-102.72),Vector3(.22,.12,.28),IRON,keeper_memory)
+	token.rotation_degrees.y=24.0
 
 func _build_covenant_focus(parent:Node3D)->void:
 	box("CovenantSpineL",Vector3(-2.6,2.2,-106.45),Vector3(.42,4.4,.42),STONE,parent)
