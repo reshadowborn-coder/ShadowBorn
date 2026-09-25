@@ -7,9 +7,9 @@ signal skill_pressed(skill:String)
 @onready var target_a:Button=$Panel/TargetA
 @onready var target_b:Button=$Panel/TargetB
 @onready var state:Label=$Panel/State
-@onready var shadow_turn_meter:ProgressBar=$Panel/ShadowTurnMeter
-@onready var target_a_turn_meter:ProgressBar=$Panel/TargetATurnMeter
-@onready var target_b_turn_meter:ProgressBar=$Panel/TargetBTurnMeter
+@onready var shadow_turn_meter:ProgressBar=$Panel.get_node_or_null("ShadowTurnMeter") as ProgressBar
+@onready var target_a_turn_meter:ProgressBar=$Panel.get_node_or_null("TargetATurnMeter") as ProgressBar
+@onready var target_b_turn_meter:ProgressBar=$Panel.get_node_or_null("TargetBTurnMeter") as ProgressBar
 @onready var a1:Button=$Panel/A1
 @onready var a2:Button=$Panel/A2
 
@@ -76,17 +76,23 @@ func render(data:Dictionary)->void:
 		var shadow_tm:Dictionary=actors.get("shadow",{})
 		var a_tm:Dictionary=actors.get(id_a,{})
 		var b_tm:Dictionary=actors.get(id_b,{})
-		shadow_turn_meter.value=_meter_value(shadow_tm,"shadow",current)
-		target_a_turn_meter.value=_meter_value(a_tm,id_a,current)
-		target_b_turn_meter.value=_meter_value(b_tm,id_b,current)
-		shadow_turn_meter.tooltip_text="SHADOW TURN METER — SPD %d"%int(shadow_tm.get("effective_speed",0))
-		target_a_turn_meter.tooltip_text="TURN METER — SPD %d"%int(a_tm.get("effective_speed",0))
-		target_b_turn_meter.tooltip_text="TURN METER — SPD %d"%int(b_tm.get("effective_speed",0))
+		if shadow_turn_meter:
+			shadow_turn_meter.value=_meter_value(shadow_tm,"shadow",current)
+			shadow_turn_meter.tooltip_text="SHADOW TURN METER — SPD %d"%int(shadow_tm.get("effective_speed",0))
+		if target_a_turn_meter:
+			target_a_turn_meter.value=_meter_value(a_tm,id_a,current)
+			target_a_turn_meter.tooltip_text="TURN METER — SPD %d"%int(a_tm.get("effective_speed",0))
+		if target_b_turn_meter:
+			target_b_turn_meter.value=_meter_value(b_tm,id_b,current)
+			target_b_turn_meter.tooltip_text="TURN METER — SPD %d"%int(b_tm.get("effective_speed",0))
 		if not current.is_empty():
 			tags.append("TURN "+str(current.get("actor_id","")).replace("_"," ").to_upper())
 	else:
-		shadow_turn_meter.value=0.0
-		target_a_turn_meter.value=0.0
-		target_b_turn_meter.value=0.0
+		if shadow_turn_meter:
+			shadow_turn_meter.value=0.0
+		if target_a_turn_meter:
+			target_a_turn_meter.value=0.0
+		if target_b_turn_meter:
+			target_b_turn_meter.value=0.0
 	var suffix:="  |  "+"  •  ".join(tags) if not tags.is_empty() else ""
 	state.text="SHADOW %.0f HP%s"%[float(data.get("shadow_hp",0.0)),suffix]

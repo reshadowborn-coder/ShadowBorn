@@ -9,15 +9,15 @@ const FALLBACK_TOUCH:=80.0
 @onready var combat_panel:Control=get_parent().get_node("CombatHUD/Panel")
 @onready var combat_a1:Button=get_parent().get_node("CombatHUD/Panel/A1")
 @onready var combat_a2:Button=get_parent().get_node("CombatHUD/Panel/A2")
-@onready var combat_player_meter:ProgressBar=get_parent().get_node("CombatHUD/Panel/PlayerTurnMeter")
-@onready var combat_enemy_meter:ProgressBar=get_parent().get_node("CombatHUD/Panel/EnemyTurnMeter")
+@onready var combat_player_meter:ProgressBar=get_parent().get_node_or_null("CombatHUD/Panel/PlayerTurnMeter") as ProgressBar
+@onready var combat_enemy_meter:ProgressBar=get_parent().get_node_or_null("CombatHUD/Panel/EnemyTurnMeter") as ProgressBar
 @onready var settings_button:Button=get_parent().get_node("CombatHUD/SettingsButton")
 @onready var room5_panel:Control=get_parent().get_node("MultiTargetHUD/Panel")
 @onready var room5_target_a:Button=get_parent().get_node("MultiTargetHUD/Panel/TargetA")
 @onready var room5_target_b:Button=get_parent().get_node("MultiTargetHUD/Panel/TargetB")
-@onready var room5_shadow_meter:ProgressBar=get_parent().get_node("MultiTargetHUD/Panel/ShadowTurnMeter")
-@onready var room5_target_a_meter:ProgressBar=get_parent().get_node("MultiTargetHUD/Panel/TargetATurnMeter")
-@onready var room5_target_b_meter:ProgressBar=get_parent().get_node("MultiTargetHUD/Panel/TargetBTurnMeter")
+@onready var room5_shadow_meter:ProgressBar=get_parent().get_node_or_null("MultiTargetHUD/Panel/ShadowTurnMeter") as ProgressBar
+@onready var room5_target_a_meter:ProgressBar=get_parent().get_node_or_null("MultiTargetHUD/Panel/TargetATurnMeter") as ProgressBar
+@onready var room5_target_b_meter:ProgressBar=get_parent().get_node_or_null("MultiTargetHUD/Panel/TargetBTurnMeter") as ProgressBar
 @onready var room5_a1:Button=get_parent().get_node("MultiTargetHUD/Panel/A1")
 @onready var room5_a2:Button=get_parent().get_node("MultiTargetHUD/Panel/A2")
 @onready var toast_panel:Control=get_parent().get_node("StoryToast/Panel")
@@ -43,8 +43,10 @@ func apply_safe_area()->void:
 	var combat_action_y:=125.0
 	combat_a1.position.y=combat_action_y
 	combat_a2.position.y=combat_action_y
-	combat_player_meter.position.y=68.0
-	combat_enemy_meter.position.y=68.0
+	if combat_player_meter:
+		combat_player_meter.position.y=68.0
+	if combat_enemy_meter:
+		combat_enemy_meter.position.y=68.0
 	var combat_height:=combat_action_y+touch+26.0
 	combat_panel.offset_right=-m.z
 	combat_panel.offset_left=combat_panel.offset_right-COMBAT_WIDTH
@@ -62,9 +64,12 @@ func apply_safe_area()->void:
 	room5_target_a.custom_minimum_size.y=touch
 	room5_target_b.custom_minimum_size.y=touch
 	var meter_y:=48.0+touch+5.0
-	room5_shadow_meter.position.y=meter_y
-	room5_target_a_meter.position.y=meter_y+14.0
-	room5_target_b_meter.position.y=meter_y+14.0
+	if room5_shadow_meter:
+		room5_shadow_meter.position.y=meter_y
+	if room5_target_a_meter:
+		room5_target_a_meter.position.y=meter_y+14.0
+	if room5_target_b_meter:
+		room5_target_b_meter.position.y=meter_y+14.0
 	var action_y:=meter_y+32.0
 	room5_a1.position.y=action_y
 	room5_a2.position.y=action_y

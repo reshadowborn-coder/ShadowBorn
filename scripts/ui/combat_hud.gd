@@ -8,8 +8,8 @@ signal visual_state_updated(player_hp_text: String, enemy_hp_text: String, state
 @onready var player_hp: Label = $Panel/PlayerHP
 @onready var enemy_hp: Label = $Panel/EnemyHP
 @onready var state_label: Label = $Panel/State
-@onready var player_turn_meter: ProgressBar = $Panel/PlayerTurnMeter
-@onready var enemy_turn_meter: ProgressBar = $Panel/EnemyTurnMeter
+@onready var player_turn_meter: ProgressBar = $Panel.get_node_or_null("PlayerTurnMeter") as ProgressBar
+@onready var enemy_turn_meter: ProgressBar = $Panel.get_node_or_null("EnemyTurnMeter") as ProgressBar
 @onready var a1_button: Button = $Panel/A1
 @onready var a2_button: Button = $Panel/A2
 
@@ -59,16 +59,20 @@ func render_state(state: Dictionary) -> void:
 		var enemy_id:=str(state.get("encounter_id",""))
 		var shadow_tm:Dictionary=actors.get("shadow",{})
 		var enemy_tm:Dictionary=actors.get(enemy_id,{})
-		player_turn_meter.value=_meter_value(shadow_tm,"shadow",current)
-		enemy_turn_meter.value=_meter_value(enemy_tm,enemy_id,current)
-		player_turn_meter.tooltip_text="TURN METER — SPD %d"%int(shadow_tm.get("effective_speed",0))
-		enemy_turn_meter.tooltip_text="TURN METER — SPD %d"%int(enemy_tm.get("effective_speed",0))
+		if player_turn_meter:
+			player_turn_meter.value=_meter_value(shadow_tm,"shadow",current)
+			player_turn_meter.tooltip_text="TURN METER — SPD %d"%int(shadow_tm.get("effective_speed",0))
+		if enemy_turn_meter:
+			enemy_turn_meter.value=_meter_value(enemy_tm,enemy_id,current)
+			enemy_turn_meter.tooltip_text="TURN METER — SPD %d"%int(enemy_tm.get("effective_speed",0))
 		if not current.is_empty():
 			var actor_text:=str(current.get("actor_id","")).replace("_"," ").to_upper()
 			var control_text:=str(current.get("control_reason","")).replace("Control.","").to_upper()
 			states.append("TURN "+actor_text if control_text.is_empty() else "TURN %s — %s"%[actor_text,control_text])
 	else:
-		player_turn_meter.value=0.0
-		enemy_turn_meter.value=0.0
+		if player_turn_meter:
+			player_turn_meter.value=0.0
+		if enemy_turn_meter:
+			enemy_turn_meter.value=0.0
 	state_label.text = "  •  ".join(states)
 	emit_signal("visual_state_updated",player_hp.text,enemy_hp.text,state_label.text,locked,cd)
