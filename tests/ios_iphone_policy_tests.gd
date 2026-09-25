@@ -48,6 +48,9 @@ func _run()->void:
 	_check(presets.contains("application/bundle_identifier=\"org.shadowborn.chapter0.qa\""),"iPhone QA bundle identifier is stable")
 	_check(presets.contains("application/export_project_only=true"),"iPhone QA preset produces an Xcode project before signing")
 	_check(presets.contains("application/app_store_team_id=\"\""),"Apple Team ID is intentionally not committed to source control")
+	var iphone_preset_pos:=presets.find("[preset.1]")
+	var iphone_preset:=presets.substr(iphone_preset_pos) if iphone_preset_pos>=0 else ""
+	_check(iphone_preset.contains("exclude_filter=\"tests/*\""),"iPhone export excludes headless tests and fixtures from the shipped PCK")
 	_check(presets.contains("storyboard/custom_image@2x=\"res://assets/branding/shadowborn_ios_launch_pixel.png\""),"iPhone native launch storyboard uses Shadowborn launch asset")
 	_check(presets.contains("storyboard/custom_image@3x=\"res://assets/branding/shadowborn_ios_launch_pixel.png\""),"iPhone native launch asset covers @3x devices")
 	_check(presets.contains("storyboard/use_custom_bg_color=true"),"iPhone native launch storyboard uses custom background color")
