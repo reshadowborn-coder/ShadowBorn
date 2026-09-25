@@ -1,0 +1,27 @@
+name: Shadowborn Core CI
+
+on:
+  push:
+    branches: [main, "reboot/**"]
+  pull_request:
+
+jobs:
+  godot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot 4.4.1
+        run: |
+          curl -L --fail --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+      - name: Parse and import
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/parse.log
+          ! grep -q "SCRIPT ERROR:" /tmp/parse.log
+      - name: Combat rules
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/combat_rules_test.gd

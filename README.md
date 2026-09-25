@@ -1,16 +1,40 @@
-# ShadowBorn
+# Shadowborn
 
-Mobile-first dark-fantasy RPG prototype in Godot.
+Fresh gameplay reboot of Shadowborn as an iPhone-first, fixed-camera, turn-meter dark-fantasy RPG.
 
-## Current target
+## Core loop
 
-Act 0 is implemented end-to-end as a gameplay prototype: ruined cemetery/Temple exterior, Temple safe hub, Forgotten Covenant weapon choice, atomic first forge/equip, Catacombs Rooms 1-5, scripted solo-limit 1v2, first story team slot, Room 5 rematch, save/retry/resume and recovery checks.
+Title → Campaign node → authored battle room → turn-meter combat → result.
 
-The current hardening pass separates fixed progression rules from mutable layout/balance values and tests physical route containment as well as state integrity.
+There is no free-roam joystick layer in the primary loop. The world is navigated through authored nodes and encounters; combat is presented in staged 3D rooms.
 
-See:
-- `docs/ACT0_SCOPE.md` for the completion contract;
-- `docs/ACT0_ARCHITECTURE_CONTRACT.md` for fixed vs tunable structure;
-- `docs/ACT0_CLOSEOUT.md` for the verified gameplay boundary.
+## Current playable slice
 
-Production art/audio, physical Android/iOS QA and store packaging remain outside gameplay-complete status.
+- Act I / 1.1 Sewers
+- Three waves
+- Shadow basic attack + Shadow Lunge
+- Enemy basic + poison attack
+- Speed-driven turn meter
+- Poison, stun, freeze and sleep rules in the combat core
+- Manual / AUTO
+- x1 / x2
+- Fixed cinematic three-quarter camera
+- Attack windup, impact, hit reaction, death and damage callouts
+- Mobile-first 1920×1080 reference canvas and iOS Metal/mobile renderer
+
+## Art pipeline
+
+The runtime checks for:
+
+- `assets/characters/shadow/shadow.glb`
+- `assets/characters/rat/rat.glb`
+
+When those files exist, they replace development fallback visuals automatically. Fallback meshes exist only so mechanics, framing and animation timing can be tested before final skinned assets land.
+
+## Performance baseline
+
+Primary target: iPhone 13 Pro, 60 FPS. A 30 FPS battery mode will be added only after the visual slice is stable.
+
+## Important
+
+The old Act 0/Act 1 graybox architecture is intentionally absent from the reboot branch. It remains preserved in Git history and on `main`.

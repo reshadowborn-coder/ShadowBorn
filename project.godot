@@ -1,14 +1,11 @@
 [application]
 
-config/name="Shadowborn Chapter 0"
+config/name="Shadowborn"
+config/features=PackedStringArray("4.4")
 config/icon="res://assets/branding/shadowborn_ios_icon.svg"
-boot_splash/bg_color=Color(0.035294, 0.043137, 0.062745, 1)
+run/main_scene="res://scenes/game.tscn"
+boot_splash/bg_color=Color(0.0196,0.0235,0.0314,1)
 boot_splash/show_image=false
-run/main_scene="res://scenes/app/launch_shell.tscn"
-
-[debug]
-
-shadowborn/combat_trace_console=true
 
 [display]
 
@@ -30,6 +27,7 @@ renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
 renderer/rendering_device/driver.ios="metal"
 textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/size=2048
 
 [physics]
 
