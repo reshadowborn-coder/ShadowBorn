@@ -56,6 +56,12 @@ static func validate_steps(steps:Array)->Array[String]:
 
 static func validate_step(step:Dictionary)->Array[String]:
 	var errors:Array[String]=[]
+	if step.has("conditions"):
+		var conditions=step.get("conditions")
+		if typeof(conditions)!=TYPE_ARRAY:
+			errors.append("conditions must be an array")
+		else:
+			errors.append_array(CombatConditionEvaluator.validate(conditions as Array))
 	var op:=str(step.get("op",""))
 	if op not in all_ops():
 		errors.append("unsupported op: "+op)

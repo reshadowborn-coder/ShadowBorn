@@ -14,6 +14,7 @@ func _check(condition:bool,message:String)->void:
 
 func _run()->void:
 	_test_valid_step_vocabulary()
+	_test_condition_vocabulary()
 	_test_invalid_steps_fail_closed()
 	_test_definitions_use_step_validator()
 	print("Combat ability operation tests complete. failures=%d"%failures)
@@ -30,6 +31,42 @@ func _test_valid_step_vocabulary()->void:
 		{"op":"grant_tag","target":"self","tag":"State.Empowered"}
 	]
 	_check(CombatAbilityOps.validate_steps(steps).is_empty(),"supported data-driven combat operations validate as a sequence")
+
+func _test_condition_vocabulary()->void:
+	var context:Dictionary={
+		"self_id":"shadow",
+		"primary_target_id":"rat",
+		"event_source_id":"rat",
+		"event_target_id":"shadow",
+		"event_tags":["Result.Critical"],
+		"actors":{
+			"shadow":{"team":"ally","alive":true,"hp":8.0,"max_hp":20.0,"turn_meter_bp":8500,"tags":["State.Veil"],"resources":{"shadow_essence":60}},
+			"ally":{"team":"ally","alive":true,"hp":10.0,"max_hp":10.0,"turn_meter_bp":2000,"tags":[],"resources":{}},
+			"rat":{"team":"enemy","alive":true,"hp":4.0,"max_hp":12.0,"turn_meter_bp":3000,"tags":["Status.Poison"],"resources":{}}
+		}
+	}
+	var conditions:Array=[
+		{"op":"has_tag","subject":"primary_target","tag":"Status.Poison"},
+		{"op":"hp_pct_lte","subject":"self","value_bp":5000},
+		{"op":"turn_meter_gte","subject":"self","value_bp":8000},
+		{"op":"resource_gte","subject":"self","resource_id":"shadow_essence","value":50},
+		{"op":"alive_enemies_lte","value":1},
+		{"op":"event_has_tag","tag":"Result.Critical"}
+	]
+	_check(CombatConditionEvaluator.validate(conditions).is_empty(),"reusable conditional skill rules validate")
+	_check(CombatConditionEvaluator.evaluate_all(conditions,context),"conditional evaluator combines status, HP, TM, resource, enemy-count and event state")
+	var nested:Dictionary={"op":"all","conditions":[
+		{"op":"has_tag","subject":"primary_target","tag":"Status.Poison"},
+		{"op":"not","condition":{"op":"has_tag","subject":"primary_target","tag":"Status.Stun"}}
+	]}
+	_check(CombatConditionEvaluator.evaluate(nested,context),"nested ALL/NOT conditions evaluate deterministically")
+	_check(not CombatConditionEvaluator.validate([{"op":"mystery_rule","subject":"self"}]).is_empty(),"unknown condition op fails closed")
+	var deep:Dictionary={"op":"has_tag","subject":"self","tag":"State.Veil"}
+	for _i in range(CombatConditionEvaluator.MAX_DEPTH+2):
+		deep={"op":"not","condition":deep}
+	_check(not CombatConditionEvaluator.validate([deep]).is_empty(),"condition nesting is hard-bounded")
+	var conditional_step:Dictionary={"op":"damage","target":"primary_target","coeff":1.4,"conditions":[nested]}
+	_check(CombatAbilityOps.validate_step(conditional_step).is_empty(),"ability effect step accepts validated reusable conditions")
 
 func _test_invalid_steps_fail_closed()->void:
 	_check(not CombatAbilityOps.validate_step({"op":"turnmeter","target":"self","value_bp":1000}).is_empty(),"unknown operation typo is rejected")
