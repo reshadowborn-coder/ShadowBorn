@@ -133,6 +133,7 @@ func _build()->void:
 	_build_merchant(Act0Layout.floor_anchor(Act0Layout.MERCHANT_TRIGGER),visual)
 	_build_engraver(Act0Layout.floor_anchor(Act0Layout.ENGRAVER_TRIGGER),visual)
 	_build_keeper(Act0Layout.floor_anchor(Act0Layout.KEEPER_TRIGGER),visual)
+	_build_story_companion(visual)
 	_build_weapon_altar(Act0Layout.floor_anchor(Act0Layout.COVENANT_TRIGGER),visual)
 	_build_ruined_nave_story(visual)
 
@@ -243,6 +244,15 @@ func _build_keeper(p:Vector3,parent:Node3D)->void:
 	var r:=_build_npc_root("Keeper","keeper",p,180.0,CLOTH,RUNE,parent,.8)
 	box("Hood",Vector3(0,2.17,.04),Vector3(.62,.48,.50),CLOTH,r)
 	box("PrayerCord",Vector3(0,1.25,-.27),Vector3(.08,.75,.08),RUNE,r)
+
+func _build_story_companion(parent:Node3D)->void:
+	var r:=_build_npc_root("GraveboundWarden","warden",Vector3(2.15,0,-99.2),165.0,Color(.12,.12,.13),IRON,parent,1.7)
+	r.add_to_group("story_companion_visual")
+	r.visible=false
+	box("WardenShield",Vector3(-.55,1.08,-.18),Vector3(.72,1.05,.12),IRON,r)
+	box("WardenSword",Vector3(.52,1.05,-.18),Vector3(.10,1.35,.10),IRON,r).rotation_degrees.z=-7.0
+	box("WardenHelm",Vector3(0,2.13,-.03),Vector3(.56,.48,.52),IRON,r)
+	box("WardenVisor",Vector3(0,2.12,-.30),Vector3(.42,.10,.08),Color(.055,.06,.07),r)
 
 func _build_weapon_altar(p:Vector3,parent:Node3D)->void:
 	var r:=Node3D.new()
