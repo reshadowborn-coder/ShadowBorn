@@ -24,6 +24,8 @@ func _ready()->void:
 	panel.visible=false
 	for child in $Panel/Weapons.get_children():
 		if child is Button:
+			child.custom_minimum_size=Vector2(0,64)
+			child.focus_mode=Control.FOCUS_NONE
 			var family:=str(child.get_meta("family"))
 			child.pressed.connect(func():_select(family))
 	confirm.pressed.connect(_confirm)
