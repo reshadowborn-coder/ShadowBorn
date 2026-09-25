@@ -144,11 +144,31 @@ jobs:
           grep -q "export/android/android_sdk_path" "$HOME/.config/godot/editor_settings-4.tres"
           grep -q "export/android/java_sdk_path" "$HOME/.config/godot/editor_settings-4.tres"
 
+      - name: Create CI debug keystore
+        run: |
+          set -euo pipefail
+          test -x "$JAVA_HOME/bin/keytool"
+          "$JAVA_HOME/bin/keytool" \
+            -genkeypair \
+            -keystore /tmp/shadowborn-qa-debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Shadowborn QA,C=IT" \
+            -deststoretype PKCS12
+          test -s /tmp/shadowborn-qa-debug.keystore
+
       - name: Export Android QA debug APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /tmp/shadowborn-qa-debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           set -o pipefail
           mkdir -p build/android
-          /tmp/godot/godot --headless --path . \
+          /tmp/godot/godot --verbose --headless --path . \
             --export-debug "Android QA" build/android/Shadowborn-Act0-QA.apk \
             2>&1 | tee /tmp/android-qa-export.log
           ! grep -q "SCRIPT ERROR:" /tmp/android-qa-export.log
