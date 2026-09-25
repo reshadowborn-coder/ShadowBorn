@@ -45,7 +45,12 @@ func _run()->void:
 		10.0,
 		"Shield HOLD Veil20"
 	)
-	print("Chapter 0 equal-Speed replay tests complete. failures=%d"%failures)
+	_test_unequal_speed_opportunity_order()
+	_test_shield_first_opportunity_gate()
+	_test_tutorial_first_opportunity_seed()
+	_test_speed_and_initial_meter_are_one_cadence_contract()
+	_test_five_decision_alternation_diagnostic_band()
+	print("Chapter 0 Speed replay tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
 func _run_case(
@@ -94,3 +99,91 @@ func _run_case(
 		# Scheduler is diagnostic only here: it has no combat-life authority yet.
 		# Its next ticket is intentionally ignored after the model reaches terminal.
 		_check(not next_ticket.is_empty(),label+" scheduler remains deterministic after diagnostic replay")
+
+func _test_unequal_speed_opportunity_order()->void:
+	var fast_shadow:=CombatTurnTimeline.new()
+	fast_shadow.add_actor(&"shadow",&"ally",200)
+	fast_shadow.add_actor(&"enemy",&"enemy",100)
+	var order:Array[StringName]=[]
+	for _i in range(3):
+		var ticket:=fast_shadow.next_turn()
+		order.append(StringName(ticket.get("actor_id",&"")))
+		fast_shadow.end_turn(StringName(ticket.get("actor_id",&"")))
+	_check(order==[&"shadow",&"shadow",&"enemy"],"200:100 scheduler exposes two Shadow opportunities before the first enemy opportunity")
+
+	var model:=Ch00CombatModel.new()
+	_check(model.setup("ENC_HOUND_A1A2_V01",0.15),"fast-Shadow Hound model setup")
+	var s1:Dictionary=model.begin_shadow_action("A1")
+	var s2:Dictionary=model.begin_shadow_action("A1")
+	_check(not s1.has("error") and not s2.has("error"),"split model accepts consecutive Shadow opportunities")
+	_check(int(model.snapshot().get("decision",-1))==2 and int(model.snapshot().get("enemy_phase",-1))==0,"consecutive Shadow actions do not advance enemy phase")
+	var e1:Dictionary=model.resolve_enemy_opportunity()
+	_check(str(e1.get("enemy_action",""))=="BITE","first delayed enemy opportunity still resolves phase-zero Bite")
+
+func _test_shield_first_opportunity_gate()->void:
+	var enemy_first:=CombatTurnTimeline.new()
+	enemy_first.add_actor(&"shadow",&"ally",100)
+	enemy_first.add_actor(&"enemy",&"enemy",200)
+	var first:=enemy_first.next_turn()
+	_check(StringName(first.get("actor_id",&""))==&"enemy","diagnostic faster enemy can earn the first scheduler opportunity")
+
+	var shield:=Ch00CombatModel.new()
+	_check(shield.setup("ENC_SHIELD_BRACE_V02_HP87_ATK20",0.15),"Shield first-opportunity gate setup")
+	_check(bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Shield starts with visible Guard")
+	var exit:=shield.resolve_enemy_opportunity()
+	_check(str(exit.get("enemy_action",""))=="BRACE_EXIT","an enemy-first opportunity consumes BRACE_EXIT")
+	_check(not bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"enemy-first cadence removes Guard before any Shadow command")
+	_check(int(shield.snapshot().get("decision",-1))==0,"Guard can disappear with zero player decisions when enemy acts first")
+
+func _test_tutorial_first_opportunity_seed()->void:
+	var seeded:=CombatTurnTimeline.new()
+	seeded.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	seeded.add_actor(&"enemy",&"enemy",200,CombatTurnTimeline.GAUGE_MAX-1)
+	var first:=seeded.next_turn()
+	_check(StringName(first.get("actor_id",&""))==&"shadow","10000/9999 meter seed guarantees the tutorial player-first opportunity even against a faster enemy")
+	seeded.end_turn(&"shadow")
+	var second:=seeded.next_turn()
+	_check(StringName(second.get("actor_id",&""))==&"enemy","9999 enemy meter preserves immediate enemy follow-up after the seeded player-first opportunity")
+
+func _test_speed_and_initial_meter_are_one_cadence_contract()->void:
+	var empty_enemy_meter:=CombatTurnTimeline.new()
+	empty_enemy_meter.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	empty_enemy_meter.add_actor(&"shield",&"enemy",88,0)
+	var empty_order:Array[StringName]=[]
+	for _i in range(3):
+		var ticket:=empty_enemy_meter.next_turn()
+		empty_order.append(StringName(ticket.get("actor_id",&"")))
+		empty_enemy_meter.end_turn(StringName(ticket.get("actor_id",&"")))
+	_check(empty_order==[&"shadow",&"shadow",&"shield"],"Shadow100/Shield88 with enemy meter 0 grants two Shadow opportunities before Shield acts")
+
+	var near_ready_enemy:=CombatTurnTimeline.new()
+	near_ready_enemy.add_actor(&"shadow",&"ally",100,CombatTurnTimeline.GAUGE_MAX)
+	near_ready_enemy.add_actor(&"shield",&"enemy",88,CombatTurnTimeline.GAUGE_MAX-1)
+	var seeded_order:Array[StringName]=[]
+	for _i in range(3):
+		var ticket:=near_ready_enemy.next_turn()
+		seeded_order.append(StringName(ticket.get("actor_id",&"")))
+		near_ready_enemy.end_turn(StringName(ticket.get("actor_id",&"")))
+	_check(seeded_order==[&"shadow",&"shield",&"shadow"],"the same Speed values with a 10000/9999 tutorial seed preserve the intended opening alternation")
+
+func _ticket_order(shadow_speed:int,enemy_speed:int,count:int)->Array[StringName]:
+	var timeline:=CombatTurnTimeline.new()
+	timeline.add_actor(&"shadow",&"ally",shadow_speed,CombatTurnTimeline.GAUGE_MAX)
+	timeline.add_actor(&"enemy",&"enemy",enemy_speed,CombatTurnTimeline.GAUGE_MAX-1)
+	var out:Array[StringName]=[]
+	for _i in range(count):
+		var ticket:=timeline.next_turn()
+		var actor:=StringName(ticket.get("actor_id",&""))
+		out.append(actor)
+		timeline.end_turn(actor)
+	return out
+
+func _test_five_decision_alternation_diagnostic_band()->void:
+	var expected:Array[StringName]=[&"shadow",&"enemy",&"shadow",&"enemy",&"shadow",&"enemy",&"shadow",&"enemy",&"shadow"]
+	for enemy_speed in range(76,101):
+		_check(
+			_ticket_order(100,enemy_speed,9)==expected,
+			"diagnostic Shadow100/enemy%d with 10000/9999 seed preserves alternating cadence through five Shadow decisions"%enemy_speed
+		)
+	_check(_ticket_order(100,75,9)!=expected,"enemy SPD75 falls outside the five-decision alternating diagnostic band")
+	_check(_ticket_order(100,101,9)!=expected,"enemy SPD101 falls outside the five-decision alternating diagnostic band because retained overflow creates an extra enemy opportunity")

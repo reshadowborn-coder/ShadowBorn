@@ -13,6 +13,7 @@ const GUARD_MULT := 0.40
 var encounter_script_id := ""
 var veil_strength := 0.15
 var decision := 0
+var enemy_phase := 0
 var terminal := "CONTINUE"
 var shadow := {}
 var enemy := {}
@@ -28,6 +29,7 @@ func setup(script_id: String, veil: float) -> bool:
 	encounter_script_id = script_id
 	veil_strength = veil
 	decision = 0
+	enemy_phase = 0
 	terminal = "CONTINUE"
 	shadow = {
 		"hp": float(profile["shadow_hp"]),
@@ -51,8 +53,8 @@ func snapshot() -> Dictionary:
 	var visible_state := "TERMINAL"
 	var guard := false
 	var intent := ""
-	if terminal == "CONTINUE" and decision < encounter_beats.size():
-		var beat: Dictionary = encounter_beats[decision]
+	if terminal == "CONTINUE" and enemy_phase < encounter_beats.size():
+		var beat: Dictionary = encounter_beats[enemy_phase]
 		visible_state = str(beat.get("visible_state", "OPEN"))
 		guard = bool(beat.get("guard", false))
 		if visible_state == "RUSH_PREP_VISIBLE":
@@ -60,6 +62,7 @@ func snapshot() -> Dictionary:
 	return {
 		"terminal": terminal,
 		"decision": decision,
+		"enemy_phase": enemy_phase,
 		"visible_state": visible_state,
 		"shadow": {
 			"hp": float(shadow.get("hp", 0.0)),
@@ -80,17 +83,32 @@ func snapshot() -> Dictionary:
 		}
 	}
 
-func step(action: String) -> Dictionary:
+func open_shadow_opportunity() -> Dictionary:
 	if terminal != "CONTINUE":
 		return {"error": "encounter_already_terminal"}
-	if decision >= encounter_beats.size():
+	# Veil is valid only until this opportunity opens. Presentation/UI must not
+	# display it as active while the player is choosing a later Shadow command.
+	if bool(shadow.get("veil", false)):
+		shadow["veil"] = false
+	return snapshot()
+
+func begin_shadow_action(action: String) -> Dictionary:
+	if terminal != "CONTINUE":
+		return {"error": "encounter_already_terminal"}
+	if enemy_phase >= encounter_beats.size():
 		return {"error": "script_exhausted"}
 	if action != "A1" and action != "A2":
 		return {"error": "invalid_action"}
 	if action == "A2" and int(shadow["a2_cd"]) > 0:
 		return {"error": "a2_not_ready"}
 
-	var beat: Dictionary = encounter_beats[decision]
+	# Defensive fallback for direct model callers that do not explicitly open the
+	# opportunity first. EncounterController calls open_shadow_opportunity()
+	# before exposing player input.
+	if bool(shadow.get("veil", false)):
+		shadow["veil"] = false
+
+	var beat: Dictionary = encounter_beats[enemy_phase]
 	decision += 1
 
 	var shadow_hp_before := float(shadow["hp"])
@@ -110,7 +128,6 @@ func step(action: String) -> Dictionary:
 	var outgoing := damage(SHADOW_ATK, coeff, effective_def, state_mult)
 	enemy["hp"] = float(enemy["hp"]) - outgoing
 
-	# A hit consumes an existing Fray; A1 then reapplies it for the next Shadow hit.
 	if fray_before:
 		shadow["fray"] = false
 	if action == "A1":
@@ -139,35 +156,10 @@ func step(action: String) -> Dictionary:
 		"intent": "RUSH PREP" if visible_state == "RUSH_PREP_VISIBLE" else ""
 	}
 
-	var enemy_action := "NONE"
-	var incoming := 0.0
-	var veil_prevented := 0.0
-
-	if float(enemy["hp"]) <= 0.0:
-		terminal = "WIN"
-	else:
-		enemy_action = str(beat.get("enemy_action", "NONE"))
-		var enemy_coeff := float(beat.get("enemy_coeff", 0.0))
-		if enemy_coeff > 0.0:
-			var base_incoming := damage(float(enemy["atk"]), enemy_coeff, SHADOW_DEF)
-			if bool(shadow["veil"]):
-				incoming = base_incoming * (1.0 - veil_strength)
-				veil_prevented = base_incoming - incoming
-				shadow["veil"] = false
-			else:
-				incoming = base_incoming
-			shadow["hp"] = float(shadow["hp"]) - incoming
-		else:
-			# Veil is a one-response-window effect. A non-damaging enemy beat
-			# provides no mitigation and the effect is gone before the next decision.
-			shadow["veil"] = false
-
-		if float(shadow["hp"]) <= 0.0:
-			terminal = "LOSE"
-
-	return {
+	var base_result := {
 		"encounter_script_id": encounter_script_id,
 		"decision": decision,
+		"enemy_phase": enemy_phase,
 		"visible_state": visible_state,
 		"shadow_hp_before": shadow_hp_before,
 		"enemy_hp_before": enemy_hp_before,
@@ -176,6 +168,50 @@ func step(action: String) -> Dictionary:
 		"veil_before": veil_before,
 		"action": action,
 		"outgoing_damage": outgoing,
+		"post_action_shadow": post_action_shadow,
+		"post_action_enemy": post_action_enemy
+	}
+
+	if float(enemy["hp"]) <= 0.0:
+		terminal = "WIN"
+		return _complete_result(base_result, "NONE", 0.0, 0.0)
+
+	base_result["phase"] = "SHADOW_RESOLVED"
+	return base_result
+
+func resolve_enemy_opportunity() -> Dictionary:
+	if terminal != "CONTINUE":
+		return {"error": "encounter_already_terminal"}
+	if enemy_phase >= encounter_beats.size():
+		return {"error": "script_exhausted"}
+
+	var beat: Dictionary = encounter_beats[enemy_phase]
+	var resolved_phase := enemy_phase
+	enemy_phase += 1
+	var enemy_action := str(beat.get("enemy_action", "NONE"))
+	var incoming := 0.0
+	var veil_prevented := 0.0
+	var enemy_coeff := float(beat.get("enemy_coeff", 0.0))
+
+	if enemy_coeff > 0.0:
+		var base_incoming := damage(float(enemy["atk"]), enemy_coeff, SHADOW_DEF)
+		if bool(shadow["veil"]):
+			incoming = base_incoming * (1.0 - veil_strength)
+			veil_prevented = base_incoming - incoming
+			shadow["veil"] = false
+		else:
+			incoming = base_incoming
+		shadow["hp"] = float(shadow["hp"]) - incoming
+	else:
+		shadow["veil"] = false
+
+	if float(shadow["hp"]) <= 0.0:
+		terminal = "LOSE"
+
+	return {
+		"phase": "ENEMY_RESOLVED",
+		"encounter_script_id": encounter_script_id,
+		"enemy_phase": resolved_phase,
 		"enemy_action": enemy_action,
 		"incoming_damage": incoming,
 		"veil_prevented": veil_prevented,
@@ -184,10 +220,51 @@ func step(action: String) -> Dictionary:
 		"a2_cd_after": int(shadow["a2_cd"]),
 		"fray_after": bool(shadow["fray"]),
 		"veil_after": bool(shadow["veil"]),
-		"terminal": terminal,
-		"post_action_shadow": post_action_shadow,
-		"post_action_enemy": post_action_enemy
+		"terminal": terminal
 	}
+
+func step(action: String) -> Dictionary:
+	# Backward-compatible alternating adapter. Existing fixture/controller callers
+	# still execute exactly one Shadow action followed by one scripted enemy
+	# opportunity. Speed-driven callers use the two phase methods independently.
+	var shadow_result := begin_shadow_action(action)
+	if shadow_result.has("error"):
+		return shadow_result
+	if terminal == "WIN":
+		return shadow_result
+
+	var enemy_result := resolve_enemy_opportunity()
+	if enemy_result.has("error"):
+		return enemy_result
+	return _merge_atomic_result(shadow_result, enemy_result)
+
+func _complete_result(
+	base_result: Dictionary,
+	enemy_action: String,
+	incoming: float,
+	veil_prevented: float
+) -> Dictionary:
+	var result := base_result.duplicate(true)
+	result.erase("phase")
+	result.erase("enemy_phase")
+	result["enemy_action"] = enemy_action
+	result["incoming_damage"] = incoming
+	result["veil_prevented"] = veil_prevented
+	result["shadow_hp_after"] = float(shadow["hp"])
+	result["enemy_hp_after"] = float(enemy["hp"])
+	result["a2_cd_after"] = int(shadow["a2_cd"])
+	result["fray_after"] = bool(shadow["fray"])
+	result["veil_after"] = bool(shadow["veil"])
+	result["terminal"] = terminal
+	return result
+
+func _merge_atomic_result(shadow_result:Dictionary,enemy_result:Dictionary)->Dictionary:
+	return _complete_result(
+		shadow_result,
+		str(enemy_result.get("enemy_action","NONE")),
+		float(enemy_result.get("incoming_damage",0.0)),
+		float(enemy_result.get("veil_prevented",0.0))
+	)
 
 static func _profile(script_id: String) -> Dictionary:
 	match script_id:

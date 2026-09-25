@@ -29,6 +29,7 @@ var enemy := {}
 var loadout: Dictionary = ShadowLoadout.profile("")
 var pre_temple_mode := false
 var pre_temple_model = null
+var pre_temple_turn_meter_profile:Dictionary = {}
 var reduced_motion := false
 var turn_meter_mode_enabled := false
 var turn_timeline := CombatTurnTimeline.new()
@@ -54,6 +55,29 @@ func set_reduced_motion(value: bool) -> void:
 
 func set_turn_meter_mode_enabled(value: bool) -> void:
 	turn_meter_mode_enabled = value
+
+func set_pre_temple_turn_meter_profile(
+	shadow_speed:int,
+	enemy_speed:int,
+	shadow_initial_gauge:int,
+	enemy_initial_gauge:int
+) -> bool:
+	if shadow_speed<=0 or enemy_speed<=0:
+		return false
+	if shadow_initial_gauge<0 or shadow_initial_gauge>CombatTurnTimeline.MAX_GAUGE:
+		return false
+	if enemy_initial_gauge<0 or enemy_initial_gauge>CombatTurnTimeline.MAX_GAUGE:
+		return false
+	pre_temple_turn_meter_profile={
+		"shadow_speed":shadow_speed,
+		"enemy_speed":enemy_speed,
+		"shadow_initial_gauge":shadow_initial_gauge,
+		"enemy_initial_gauge":enemy_initial_gauge
+	}
+	return true
+
+func clear_pre_temple_turn_meter_profile()->void:
+	pre_temple_turn_meter_profile.clear()
 
 func _next_effect_transaction_id()->int:
 	_effect_transaction_id+=1
@@ -197,21 +221,36 @@ func start_encounter(id: String, profile: Dictionary) -> bool:
 			enemy.guard = true
 			enemy.guard_phase = "brace"
 
+	if turn_meter_mode_enabled:
+		if pre_temple_mode:
+			if not _setup_pre_temple_turn_meter():
+				push_error("Pre-Temple turn meter requires an explicit validated Speed/gauge profile")
+				pre_temple_model=null
+				pre_temple_mode=false
+				encounter_id=""
+				return false
+		else:
+			_setup_turn_meter()
+		action_locked=true
+
 	active = true
-	if turn_meter_mode_enabled and not pre_temple_mode:
-		_setup_turn_meter()
-		action_locked = true
 	emit_signal("encounter_started",id)
 	_emit_state()
-	if turn_meter_mode_enabled and not pre_temple_mode:
-		call_deferred("_advance_turn_meter",encounter_generation)
+	if turn_meter_mode_enabled:
+		if pre_temple_mode:
+			call_deferred("_advance_pre_temple_turn_meter",encounter_generation)
+		else:
+			call_deferred("_advance_turn_meter",encounter_generation)
 	return true
 
 func shadow_action(skill: String) -> void:
 	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if pre_temple_mode:
-		_shadow_action_pre_temple(skill)
+		if turn_meter_mode_enabled:
+			_shadow_action_pre_temple_turn_meter(skill)
+		else:
+			_shadow_action_pre_temple(skill)
 		return
 	if turn_meter_mode_enabled:
 		_shadow_action_turn_meter(skill)
@@ -301,6 +340,172 @@ func _sync_pre_temple_snapshot() -> void:
 	var snapshot: Dictionary = pre_temple_model.snapshot()
 	shadow = Dictionary(snapshot.get("shadow",{})).duplicate(true)
 	enemy = Dictionary(snapshot.get("enemy",{})).duplicate(true)
+
+func _setup_pre_temple_turn_meter()->bool:
+	if pre_temple_turn_meter_profile.is_empty():
+		return false
+	var shadow_speed:=int(pre_temple_turn_meter_profile.get("shadow_speed",0))
+	var enemy_speed:=int(pre_temple_turn_meter_profile.get("enemy_speed",0))
+	var shadow_initial:=int(pre_temple_turn_meter_profile.get("shadow_initial_gauge",-1))
+	var enemy_initial:=int(pre_temple_turn_meter_profile.get("enemy_initial_gauge",-1))
+	if shadow_speed<=0 or enemy_speed<=0:
+		return false
+	if shadow_initial<0 or shadow_initial>CombatTurnTimeline.MAX_GAUGE:
+		return false
+	if enemy_initial<0 or enemy_initial>CombatTurnTimeline.MAX_GAUGE:
+		return false
+	turn_timeline.reset()
+	if not turn_timeline.add_actor(&"shadow",&"ally",shadow_speed,shadow_initial):
+		return false
+	if not turn_timeline.add_actor(StringName(encounter_id),&"enemy",enemy_speed,enemy_initial):
+		turn_timeline.reset()
+		return false
+	return true
+
+func _advance_pre_temple_turn_meter(generation:int)->void:
+	while _turn_meter_valid(generation):
+		var ticket:=turn_timeline.next_turn()
+		if ticket.is_empty():
+			return
+		current_turn=ticket.duplicate(true)
+		action_locked=true
+		_emit_state()
+		var actor_id:=StringName(ticket.get("actor_id",&""))
+
+		if bool(ticket.get("skipped",false)):
+			# Exact pre-Temple cooldown/status behavior on skipped Speed opportunities
+			# remains a separate D_CH00_041 decision. The current slice applies no
+			# hard-control tags, but if one is injected by a test/tool the scheduler
+			# still consumes the opportunity deterministically.
+			if actor_id==&"shadow" and pre_temple_model!=null:
+				pre_temple_model.open_shadow_opportunity()
+				_sync_pre_temple_snapshot()
+			await _wait(.04 if reduced_motion else .16)
+			if not _turn_meter_valid(generation):
+				return
+			turn_timeline.end_turn(actor_id)
+			current_turn.clear()
+			continue
+
+		if actor_id==&"shadow":
+			var opened:Dictionary=pre_temple_model.open_shadow_opportunity()
+			if opened.has("error"):
+				push_error("Failed to open pre-Temple Shadow opportunity: "+str(opened["error"]))
+				active=false
+				action_locked=false
+				current_turn.clear()
+				_emit_state()
+				emit_signal("encounter_failed",encounter_id)
+				return
+			_sync_pre_temple_snapshot()
+			action_locked=false
+			_emit_state()
+			return
+
+		if actor_id!=StringName(encounter_id):
+			push_error("Unexpected pre-Temple turn-meter actor: "+str(actor_id))
+			active=false
+			action_locked=false
+			current_turn.clear()
+			_emit_state()
+			emit_signal("encounter_failed",encounter_id)
+			return
+
+		var enemy_ok:=await _enemy_pre_temple_turn_meter(generation)
+		if not _turn_meter_valid(generation) and not active:
+			return
+		turn_timeline.end_turn(actor_id)
+		current_turn.clear()
+		if not enemy_ok:
+			return
+		var terminal:=str(pre_temple_model.snapshot().get("terminal","CONTINUE"))
+		if terminal=="LOSE" or float(shadow.get("hp",0.0))<=0.0:
+			turn_timeline.set_alive(&"shadow",false)
+			active=false
+			action_locked=false
+			_emit_state()
+			emit_signal("encounter_failed",encounter_id)
+			return
+
+func _shadow_action_pre_temple_turn_meter(skill:String)->void:
+	if StringName(current_turn.get("actor_id",&""))!=&"shadow":
+		return
+	if skill!="A1" and turn_timeline.active_skills_blocked(&"shadow"):
+		return
+	if skill=="A2" and int(shadow.get("a2_cd",0))>0:
+		return
+	var generation:=encounter_generation
+	action_locked=true
+	emit_signal("command_committed",skill)
+	_emit_state()
+
+	var guarded:=bool(enemy.get("guard",false))
+	var result:Dictionary=pre_temple_model.begin_shadow_action(skill)
+	if result.has("error"):
+		push_error("Pre-Temple Speed Shadow action failed: "+str(result["error"]))
+		action_locked=false
+		_emit_state()
+		return
+
+	var dealt:=float(result.get("outgoing_damage",0.0))
+	var timing:Dictionary=CombatPresentationContract.shadow_timing(skill,reduced_motion)
+	emit_signal("shadow_attack_presented",skill,dealt,guarded)
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_meter_valid(generation):
+		return
+
+	emit_signal("semantic_contact","shadow",skill)
+	_apply_pre_temple_post_action(result)
+	_emit_state()
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
+	if not _turn_meter_valid(generation):
+		return
+
+	turn_timeline.end_turn(&"shadow")
+	current_turn.clear()
+	shadow_completed_turns+=1
+	if str(result.get("terminal","CONTINUE"))=="WIN":
+		turn_timeline.set_alive(StringName(encounter_id),false)
+		active=false
+		action_locked=false
+		emit_signal("encounter_finished",encounter_id)
+		_emit_state()
+		return
+	await _advance_pre_temple_turn_meter(generation)
+
+func _enemy_pre_temple_turn_meter(generation:int)->bool:
+	var result:Dictionary=pre_temple_model.resolve_enemy_opportunity()
+	if result.has("error"):
+		push_error("Pre-Temple Speed enemy opportunity failed: "+str(result["error"]))
+		active=false
+		action_locked=false
+		_emit_state()
+		emit_signal("encounter_failed",encounter_id)
+		return false
+
+	await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
+	if not _turn_meter_valid(generation):
+		return false
+	var enemy_action:=str(result.get("enemy_action","NONE"))
+	var incoming:=float(result.get("incoming_damage",0.0))
+	var timing:Dictionary=CombatPresentationContract.enemy_timing(enemy_action,reduced_motion)
+	emit_signal("enemy_beat_presented",enemy_action,incoming)
+
+	if incoming>0.0:
+		await _wait(float(timing.get("contact",0.0)))
+		if not _turn_meter_valid(generation):
+			return false
+		emit_signal("semantic_contact","enemy",enemy_action)
+		_sync_pre_temple_snapshot()
+		_emit_state()
+		await _wait(CombatPresentationContract.remainder_after_contact(timing))
+	else:
+		await _wait(float(timing.get("recovery_end",0.0)))
+		if not _turn_meter_valid(generation):
+			return false
+		_sync_pre_temple_snapshot()
+		_emit_state()
+	return true
 
 func _turn_meter_valid(generation:int)->bool:
 	return generation==encounter_generation and active and is_inside_tree()
@@ -591,7 +796,7 @@ func _emit_state() -> void:
 		"shadow":shadow.duplicate(true),
 		"enemy":enemy.duplicate(true),
 		"turn_meter_mode_enabled":turn_meter_mode_enabled,
-		"turn_meter":turn_timeline.snapshot() if turn_meter_mode_enabled and not pre_temple_mode else {},
+		"turn_meter":turn_timeline.snapshot() if turn_meter_mode_enabled else {},
 		"current_turn":current_turn.duplicate(true),
 		"shadow_completed_turns":shadow_completed_turns,
 		"loadout":loadout.duplicate(true)
