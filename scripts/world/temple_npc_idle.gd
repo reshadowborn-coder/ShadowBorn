@@ -48,7 +48,16 @@ func _ready()->void:
 	if tool:
 		tool_basis=tool.basis
 		tool_position=tool.position
+	call_deferred("_refresh_optional_rig")
 	call_deferred("_bind_player")
+
+func _refresh_optional_rig()->void:
+	# Smith/Engraver role props are appended immediately after the common
+	# humanoid root enters the tree, so Tool may not exist during _ready().
+	tool=get_node_or_null("Tool")
+	if tool:
+		tool_basis=tool.basis
+		tool_position=tool.position
 
 func _bind_player()->void:
 	player=get_tree().get_first_node_in_group("player") as Node3D
