@@ -68,7 +68,7 @@ static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
 static func _repair_checkpoint(state:Dictionary)->Dictionary:
 	var parsed=_checkpoint_values(state.get("checkpoint_position"))
 	if parsed!=null and _checkpoint_matches_stage(state,parsed):
-		return _repair_checkpoint(state)
+		return state
 
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
 	var recovery:=Vector3(0,0.9,8)
