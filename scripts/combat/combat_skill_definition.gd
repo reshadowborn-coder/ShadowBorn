@@ -26,6 +26,13 @@ enum TargetRule {
 @export var effect_steps:Array[Dictionary]=[]
 @export var rank_patches:Array[Dictionary]=[]
 @export var presentation_id:StringName=&""
+
+# Auto-battle defaults. Player AI presets can override these priorities without
+# mutating the skill definition.
+@export_range(-999,999,1) var ai_base_priority:int=0
+@export var ai_conditions:Array[Dictionary]=[]
+@export var ai_target_selector:String="primary_target"
+
 @export var aura_stat_modifiers:Dictionary={}
 @export var aura_required_battle_tags:Array[StringName]=[]
 @export var aura_blocked_battle_tags:Array[StringName]=[]
@@ -45,6 +52,9 @@ func validate()->Array[String]:
 		errors.append("aura cannot have a cooldown")
 	if kind==SkillKind.AURA and target_rule!=TargetRule.ALL_ALLIES:
 		errors.append("team aura must target all allies")
+	if ai_target_selector not in CombatAbilityOps.TARGETS:
+		errors.append("skill AI target selector is invalid")
+	errors.append_array(CombatAiCondition.validate_all(ai_conditions))
 	errors.append_array(CombatAbilityOps.validate_steps(effect_steps))
 	for patch_value in rank_patches:
 		if typeof(patch_value)!=TYPE_DICTIONARY:
