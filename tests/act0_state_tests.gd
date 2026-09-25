@@ -213,6 +213,20 @@ func _test_combat_math()->void:
 	var base:=CombatResolver.damage(8.0,1.30,4.0)
 	var expected:=8.0*1.30*(100.0/104.0)
 	_check(absf(base-expected)<0.0001,"damage formula remains deterministic")
+	_check(absf(Ch00CombatModel.damage(8.0,1.30,4.0)-base)<0.0001,"scripted and legacy Act 0 combat share one resolver")
+	_check(CombatResolver.damage(NAN,1.0,4.0)==0.0,"NaN attack cannot propagate into combat state")
+	_check(CombatResolver.damage(8.0,NAN,4.0)==0.0,"NaN coefficient cannot propagate into combat state")
+	_check(CombatResolver.damage(8.0,1.0,NAN)==0.0,"NaN defense cannot propagate into combat state")
+	_check(CombatResolver.damage(INF,1.0,4.0)==0.0,"infinite attack is rejected")
+	_check(CombatResolver.damage(8.0,INF,4.0)==0.0,"infinite coefficient is rejected")
+	_check(CombatResolver.damage(8.0,1.0,INF)==0.0,"infinite defense is rejected")
+	_check(CombatResolver.damage(-8.0,1.0,4.0)==0.0,"negative attack is rejected")
+	_check(CombatResolver.damage(8.0,-1.0,4.0)==0.0,"negative coefficient is rejected")
+	_check(CombatResolver.damage(8.0,1.0,4.0,-1.0)==0.0,"negative state multiplier is rejected")
+	_check(CombatResolver.damage(1.0e308,1.0e308,0.0)==CombatResolver.MAX_SAFE_DAMAGE,"finite overflow is capped instead of producing infinity")
+
+	var invalid_profile:={"id":"bad","hp":10.0,"def":4.0,"damage":INF}
+	_check(not MultiEnemyEncounter._valid_profile(invalid_profile),"Room 5 rejects infinite encounter damage")
 
 
 func _test_save_recovery()->void:
