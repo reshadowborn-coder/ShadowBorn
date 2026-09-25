@@ -33,6 +33,14 @@ const WEAPON_FAMILIES := [
 
 const EXTERIOR_ENCOUNTERS := ["hound","armless","shield_boss"]
 
+const CATACOMB_ENCOUNTER_IDS := {
+	1:["cat_r1_skeleton"],
+	2:["cat_r2_hound"],
+	3:["cat_r3_guard"],
+	4:["cat_r4_revenant"],
+	5:["cat_r5_skeleton_a","cat_r5_skeleton_b"]
+}
+
 const TRANSITIONS := {
 	STAGE_EXTERIOR:[STAGE_TEMPLE_ENTRY],
 	STAGE_TEMPLE_ENTRY:[STAGE_WEAPON_CHOICE],
@@ -66,3 +74,6 @@ static func can_start_exterior_encounter(id:String,cleared:Array,temple_reveal_s
 		"shield_boss":
 			return "hound" in cleared and "armless" in cleared and temple_reveal_seen
 	return true
+
+static func catacomb_encounter_ids(room:int)->Array:
+	return CATACOMB_ENCOUNTER_IDS.get(room,[]).duplicate()
