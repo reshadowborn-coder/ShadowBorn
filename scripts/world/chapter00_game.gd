@@ -80,6 +80,7 @@ func _ready() -> void:
 		combat_trace.attach(encounter,presenter,hud)
 		combat_trace.set_context(performance_mode,reduced_motion)
 	call_deferred("_apply_cleared_visuals")
+	call_deferred("_apply_presentation_settings")
 
 func _restore_save(state:Dictionary) -> void:
 	director.checkpoint = str(state.checkpoint)
@@ -119,6 +120,9 @@ func _apply_presentation_settings()->void:
 	camera_rig.set_reduced_motion(reduced_motion)
 	presenter.set_reduced_motion(reduced_motion)
 	encounter.set_reduced_motion(reduced_motion)
+	for npc in get_tree().get_nodes_in_group("temple_npc_idle"):
+		if npc.has_method("set_reduced_motion"):
+			npc.set_reduced_motion(reduced_motion)
 
 func _build_save_state()->Dictionary:
 	var state := SaveManager.load_state()
