@@ -139,7 +139,22 @@ func _test_chapter_scene()->void:
 		if mobile and mobile.root:
 			for name in ["Left","Right","Up","Down"]:
 				var touch_button:=mobile.root.get_node_or_null(name) as Button
-				_check(touch_button!=null and touch_button.size.x>=80.0 and touch_button.size.y>=80.0,"iPhone movement touch target is at least 80x80: %s"%name)
+				_check(touch_button!=null and touch_button.size.x>=80.0 and touch_button.size.y>=80.0,"iPhone movement touch target keeps the desktop-test fallback size: %s"%name)
+
+		for path in [
+			"CombatHUD/Panel/A1",
+			"CombatHUD/Panel/A2",
+			"MultiTargetHUD/Panel/TargetA",
+			"MultiTargetHUD/Panel/TargetB",
+			"MultiTargetHUD/Panel/A1",
+			"MultiTargetHUD/Panel/A2",
+			"SettingsMenu/Panel/Battery30",
+			"SettingsMenu/Panel/Smooth60",
+			"SettingsMenu/Panel/ReducedMotion",
+			"SettingsMenu/Panel/Close"
+		]:
+			var iphone_button:=game.get_node_or_null(path) as Button
+			_check(iphone_button!=null and iphone_button.size.y>=80.0,"iPhone interactive control keeps the fallback hit target: %s"%path)
 
 		_check(game.act0.stage==Act0Contract.STAGE_EXTERIOR,"fresh scene restores exterior Act 0 stage")
 		_check(not game.act0.temple_reveal_seen and not game.act0.faded_sigil_activated,"fresh scene keeps reveal and Temple threshold locked")
