@@ -305,7 +305,9 @@ jobs:
           set -euo pipefail
           XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
           xcodebuild -project "$XCODEPROJ" -list
-          SCHEME="$(find "$XCODEPROJ/xcshareddata/xcschemes" -name '*.xcscheme' -maxdepth 1 -print -quit | xargs basename | sed 's/\.xcscheme$//')"
+          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
+          test -n "$SCHEME_FILE"
+          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
           test -n "$SCHEME"
           rm -rf build/ios/DerivedData
           set -o pipefail
@@ -320,26 +322,24 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             build 2>&1 | tee /tmp/iphone-xcodebuild.log
-          grep -q "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
+          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
           APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
           test -n "$APP"
-          test -f "$APP/Shadowborn-Act0-iPhone-QA" || test -f "$APP/Shadowborn_Act0_iPhone_QA"
+          test -f "$APP/Info.plist"
+          EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")"
+          test -n "$EXECUTABLE"
+          test -f "$APP/$EXECUTABLE"
 
       - name: Package iPhone QA Xcode artifact
         run: |
           set -euo pipefail
           rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj \
-            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/Shadowborn-Act0-iPhone-QA \
-            /tmp/iphone-project-data.zip
-          mkdir -p /tmp/iphone-package
-          unzip -q build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip -d /tmp/iphone-package
-          unzip -q /tmp/iphone-project-data.zip -d /tmp/iphone-package
-          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
-          (cd /tmp/iphone-package && zip -qry "$GITHUB_WORKSPACE/build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip" .)
+          (
+            cd build/ios
+            zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
+              Shadowborn-Act0-iPhone-QA.xcodeproj \
+              Shadowborn-Act0-iPhone-QA
+          )
           shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
           cat > build/ios/qa-build-manifest.txt <<EOF
           repository=reshadowborn-coder/ShadowBorn
