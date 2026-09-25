@@ -20,6 +20,7 @@ var silver:=0
 var forged_item:={}
 var first_forge_done:=false
 var hound_residual_absorbed:=false
+var temple_reveal_seen:=false
 var faded_sigil_activated:=false
 
 func restore(state:Dictionary)->void:
@@ -30,6 +31,7 @@ func restore(state:Dictionary)->void:
 	forged_item=Dictionary(state.get("forged_item",{})).duplicate(true)
 	first_forge_done=bool(state.get("first_forge_done",false))
 	hound_residual_absorbed=bool(state.get("hound_residual_absorbed",false))
+	temple_reveal_seen=bool(state.get("temple_reveal_seen",false))
 	faded_sigil_activated=bool(state.get("faded_sigil_activated",false))
 
 func snapshot()->Dictionary:
@@ -41,6 +43,7 @@ func snapshot()->Dictionary:
 		"forged_item":forged_item.duplicate(true),
 		"first_forge_done":first_forge_done,
 		"hound_residual_absorbed":hound_residual_absorbed,
+		"temple_reveal_seen":temple_reveal_seen,
 		"faded_sigil_activated":faded_sigil_activated
 	}
 
@@ -57,6 +60,12 @@ func mark_hound_residual_absorbed()->bool:
 	if hound_residual_absorbed or stage!=Act0Contract.STAGE_EXTERIOR:
 		return false
 	hound_residual_absorbed=true
+	return true
+
+func mark_temple_reveal_seen()->bool:
+	if temple_reveal_seen or stage!=Act0Contract.STAGE_EXTERIOR:
+		return false
+	temple_reveal_seen=true
 	return true
 
 func activate_faded_sigil()->bool:
