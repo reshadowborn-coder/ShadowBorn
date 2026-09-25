@@ -2,9 +2,15 @@
 
 Mobile-first dark-fantasy RPG prototype in Godot.
 
-Current target: finish Act 0 end-to-end. Act 0 includes the ruined cemetery/temple exterior, the Temple safe hub, Forgotten Covenant weapon choice, first forge/equip, and the first catacomb tutorial sequence through the first story summon/rematch.
+## Current target
 
-## Current build
-v0.10 exterior playable prototype imported. Temple interior implementation has started on main.
+Act 0 is implemented end-to-end as a gameplay prototype: ruined cemetery/Temple exterior, Temple safe hub, Forgotten Covenant weapon choice, atomic first forge/equip, Catacombs Rooms 1-5, scripted solo-limit 1v2, first story team slot, Room 5 rematch, save/retry/resume and recovery checks.
 
-See docs/ACT0_SCOPE.md for the completion contract.
+The current hardening pass separates fixed progression rules from mutable layout/balance values and tests physical route containment as well as state integrity.
+
+See:
+- `docs/ACT0_SCOPE.md` for the completion contract;
+- `docs/ACT0_ARCHITECTURE_CONTRACT.md` for fixed vs tunable structure;
+- `docs/ACT0_CLOSEOUT.md` for the verified gameplay boundary.
+
+Production art/audio, physical Android/iOS QA and store packaging remain outside gameplay-complete status.
