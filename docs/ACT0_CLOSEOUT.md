@@ -18,8 +18,9 @@ Verified on main:
 Verification available in this repository:
 - GitHub Actions imports/parses the Godot project headlessly;
 - deterministic Act 0 state/combat tests run headlessly;
-- latest verified head before this closeout: f88f83a2b8fb6c7356f0b8496e74162e62f78ecf;
-- workflow run 36069333590 completed successfully.
+- the state suite covers all five weapon families through first forge/equip and the canonical resume matrix from exterior through `act0_complete`;
+- latest verified gameplay/test head before this closeout documentation update: 1a809d4f53e2f3d31c8c21d5238606e7822a9475;
+- workflow run 36105721141 completed successfully on Godot 4.4.1, including project parse/import, deterministic state tests, combat fixture parity, pre-Temple adapter tests and Act 0 scene smoke.
 
 Not claimed by this closeout:
 - final production art, audio or content polish;
