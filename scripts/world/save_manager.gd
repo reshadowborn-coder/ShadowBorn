@@ -36,7 +36,7 @@ static func _vector3_array(v:Vector3)->Array:
 	return [v.x,v.y,v.z]
 
 static func _strict_bool(value,default_value:bool=false)->bool:
-	return bool(value) if typeof(value)==TYPE_BOOL else default_value
+	return value if typeof(value)==TYPE_BOOL else default_value
 
 static func _checkpoint_values(value)->Variant:
 	if typeof(value)!=TYPE_ARRAY or value.size()!=3:
