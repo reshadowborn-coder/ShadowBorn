@@ -72,8 +72,14 @@ func _run()->void:
 	var pack:=MultiEnemyEncounter.new()
 	root.add_child(pack)
 	pack.set_loadout("sword_shield")
+	var pack_shadow_presentations:Array=[]
+	var pack_enemy_presentations:Array=[]
+	pack.shadow_attack_presented.connect(func(target_index:int,skill:String,damage:float): pack_shadow_presentations.append([target_index,skill,damage]))
+	pack.enemy_attack_presented.connect(func(enemy_index:int,damage:float): pack_enemy_presentations.append([enemy_index,damage]))
 	_check(pack.start(SewerEncounterPlan.enemies(3),false,true),"Act 1 pack encounter starts as an authored solo limit")
 	pack.shadow_action("A1")
+	_check(pack_shadow_presentations.size()==1 and int(pack_shadow_presentations[0][0])==0 and str(pack_shadow_presentations[0][1])=="A1","pack combat emits a target-specific Shadow presentation event")
+	_check(pack_enemy_presentations.size()==2 and int(pack_enemy_presentations[0][0])==0 and int(pack_enemy_presentations[1][0])==1,"both living pack enemies emit presentation events each enemy phase")
 	_check(pack.active,"Act 1 pack survives first solo round regardless of future damage balance")
 	pack.shadow_action("A1")
 	_check(not pack.active and pack.limit_reached,"Act 1 pack forces the authored defeat at the fixed round limit")

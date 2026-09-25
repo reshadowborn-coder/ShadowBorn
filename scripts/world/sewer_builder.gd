@@ -58,6 +58,19 @@ func box(name_:String,pos:Vector3,size:Vector3,c:Color,parent:Node3D)->MeshInsta
 	parent.add_child(n)
 	return n
 
+func mobile_detail(n:MeshInstance3D,visibility_end:float=24.0)->MeshInstance3D:
+	n.add_to_group("act1_mobile_micro_detail")
+	n.visibility_range_end=visibility_end
+	n.visibility_range_end_margin=2.0
+	n.visibility_range_fade_mode=GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
+	n.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return n
+
+func liquid_surface(n:MeshInstance3D)->MeshInstance3D:
+	n.add_to_group("act1_liquid_surface")
+	n.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return n
+
 func solid_box(name_:String,pos:Vector3,size:Vector3,c:Color,visual:Node3D,collision:StaticBody3D)->void:
 	box(name_,pos,size,c,visual)
 	var shape_node:=CollisionShape3D.new()
@@ -83,7 +96,7 @@ func _build()->void:
 	# Raised side walks frame a wet central gutter without adding water physics.
 	box("WalkL",Vector3(27.2,.02,-100),Vector3(3.8,.18,52),STONE,visual)
 	box("WalkR",Vector3(32.8,.02,-100),Vector3(3.8,.18,52),STONE,visual)
-	var water:=box("SewerWater",Vector3(30,.01,-100),Vector3(1.8,.08,52),WATER,visual)
+	var water:=liquid_surface(box("SewerWater",Vector3(30,.01,-100),Vector3(1.8,.08,52),WATER,visual))
 	water.material_override=_glow(Color(.055,.20,.10))
 
 	for z in [-78.0,-86.0,-94.0,-102.0,-110.0,-118.0,-124.0]:
@@ -98,24 +111,24 @@ func _build()->void:
 	# Give each chamber one strong silhouette/readability cue instead of filling
 	# the whole corridor with detail. These are static meshes: no extra lights,
 	# particles or water physics are introduced.
-	box("Room1DryThreshold",Vector3(30,.10,-88.6),Vector3(1.9,.05,2.4),WET_STONE,visual)
+	mobile_detail(box("Room1DryThreshold",Vector3(30,.10,-88.6),Vector3(1.9,.05,2.4),WET_STONE,visual),26.0)
 	box("Room1CollapsedPipe",Vector3(34.7,1.15,-88.2),Vector3(.28,2.3,.28),IRON,visual).rotation_degrees.z=14.0
 	for i in range(3):
-		var scratch:=box("Room1Scratch%02d"%i,Vector3(24.86,1.35+float(i)*.22,-87.4-float(i)*.30),Vector3(.05,.07,.90),TRACK,visual)
+		var scratch:=mobile_detail(box("Room1Scratch%02d"%i,Vector3(24.86,1.35+float(i)*.22,-87.4-float(i)*.30),Vector3(.05,.07,.90),TRACK,visual),18.0)
 		scratch.rotation_degrees.x=8.0+float(i)*4.0
 
-	var toxic_gutter:=box("Room2ToxicRunoff",Vector3(30,.075,-102.5),Vector3(2.10,.07,8.0),TOXIC_WET,visual)
+	var toxic_gutter:=liquid_surface(box("Room2ToxicRunoff",Vector3(30,.075,-102.5),Vector3(2.10,.07,8.0),TOXIC_WET,visual))
 	toxic_gutter.material_override=_glow(Color(.10,.32,.11))
-	box("Room2Overflow",Vector3(27.55,.085,-102.6),Vector3(2.5,.05,2.7),TOXIC_WET,visual)
+	mobile_detail(liquid_surface(box("Room2Overflow",Vector3(27.55,.085,-102.6),Vector3(2.5,.05,2.7),TOXIC_WET,visual)),24.0)
 	box("Room2LeakPipe",Vector3(25.05,2.7,-101.0),Vector3(.30,2.4,.30),IRON,visual)
-	box("Room2LeakStain",Vector3(25.38,1.25,-101.0),Vector3(.08,2.35,.70),TOXIC_WET,visual)
+	mobile_detail(box("Room2LeakStain",Vector3(25.38,1.25,-101.0),Vector3(.08,2.35,.70),TOXIC_WET,visual),20.0)
 	for i in range(4):
 		box("Room2DrainBar%02d"%i,Vector3(24.90,1.15+float(i)*.42,-104.2),Vector3(.12,.12,1.65),IRON,visual)
 
 	# Room 3 is visually more dangerous: the gutter has overflowed onto both
 	# walks and an old barred outflow closes the far end behind the pack.
-	box("Room3FloodL",Vector3(27.65,.085,-118.4),Vector3(2.55,.05,7.2),WATER,visual)
-	box("Room3FloodR",Vector3(32.35,.085,-118.4),Vector3(2.55,.05,7.2),WATER,visual)
+	liquid_surface(box("Room3FloodL",Vector3(27.65,.085,-118.4),Vector3(2.55,.05,7.2),WATER,visual))
+	liquid_surface(box("Room3FloodR",Vector3(32.35,.085,-118.4),Vector3(2.55,.05,7.2),WATER,visual))
 	box("Room3UpperPipe",Vector3(30,3.05,-119.4),Vector3(9.4,.30,.30),IRON,visual)
 	for i in range(5):
 		box("Room3OutflowBar%02d"%i,Vector3(28.0+float(i),1.45,-123.0),Vector3(.16,2.7,.16),IRON,visual)
@@ -125,13 +138,14 @@ func _build()->void:
 	for i in range(6):
 		var track_z:=-80.5-float(i)*6.1
 		var track_x:=28.15 if i%2==0 else 31.85
-		var track:=box("RatTrack%02d"%i,Vector3(track_x,.125,track_z),Vector3(.18,.025,.42),TRACK,visual)
+		var track:=mobile_detail(box("RatTrack%02d"%i,Vector3(track_x,.125,track_z),Vector3(.18,.025,.42),TRACK,visual),16.0)
 		track.rotation_degrees.y=18.0 if i%2==0 else -16.0
 
 	# Sparse props: readable at phone scale, no clutter in the centre lane.
 	for i in range(5):
 		var side:=-1.0 if i%2==0 else 1.0
-		box("Debris%02d"%i,Vector3(30+side*4.15,.18,-82.0-float(i)*8.2),Vector3(.70,.34,.55),STONE,visual).rotation_degrees.y=float(17+i*31)
+		var debris:=mobile_detail(box("Debris%02d"%i,Vector3(30+side*4.15,.18,-82.0-float(i)*8.2),Vector3(.70,.34,.55),STONE,visual),28.0)
+		debris.rotation_degrees.y=float(17+i*31)
 	box("DrainGrate",Vector3(30,.18,-121.5),Vector3(3.0,.18,.35),IRON,visual)
 
 	_build_rat("a1_r1_rat",Act1Layout.ROOM1_TRIGGER+Vector3(0,0,-1.8),"normal",visual,0.2)

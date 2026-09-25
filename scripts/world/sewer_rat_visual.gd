@@ -18,10 +18,14 @@ var head_scale:=Vector3.ONE
 var player:Node3D
 var reduced_motion:=false
 var attack_timer:=0.0
+var hit_timer:=0.0
+var threat_timer:=0.0
 const ACTIVE_RADIUS_SQUARED:=1600.0
 const THREAT_RADIUS_SQUARED:=100.0
 const CLOSE_RADIUS_SQUARED:=49.0
 const ATTACK_CUE_SECONDS:=0.32
+const HIT_CUE_SECONDS:=0.22
+const THREAT_CUE_SECONDS:=0.46
 
 func _ready()->void:
 	add_to_group("act1_rat_visual")
@@ -51,6 +55,14 @@ func play_attack_cue()->void:
 	if not reduced_motion:
 		attack_timer=ATTACK_CUE_SECONDS
 
+func play_hit_cue()->void:
+	if not reduced_motion:
+		hit_timer=HIT_CUE_SECONDS
+
+func play_threat_cue()->void:
+	if not reduced_motion:
+		threat_timer=THREAT_CUE_SECONDS
+
 func _process(delta:float)->void:
 	if not visible:
 		return
@@ -62,6 +74,8 @@ func _process(delta:float)->void:
 
 	elapsed=fmod(elapsed+delta,120.0)
 	attack_timer=maxf(0.0,attack_timer-delta)
+	hit_timer=maxf(0.0,hit_timer-delta)
+	threat_timer=maxf(0.0,threat_timer-delta)
 	var t:=elapsed+phase
 	var motion_scale:=.34 if reduced_motion else 1.0
 	var threat:=1.0 if distance_squared<THREAT_RADIUS_SQUARED else 0.0
@@ -77,22 +91,30 @@ func _process(delta:float)->void:
 	if attack_timer>0.0 and not reduced_motion:
 		var attack_phase:=1.0-attack_timer/ATTACK_CUE_SECONDS
 		attack_wave=sin(clampf(attack_phase,0.0,1.0)*PI)
+	var hit_wave:=0.0
+	if hit_timer>0.0 and not reduced_motion:
+		var hit_phase:=1.0-hit_timer/HIT_CUE_SECONDS
+		hit_wave=sin(clampf(hit_phase,0.0,1.0)*PI)
+	var threat_wave:=0.0
+	if threat_timer>0.0 and not reduced_motion:
+		var threat_phase:=1.0-threat_timer/THREAT_CUE_SECONDS
+		threat_wave=sin(clampf(threat_phase,0.0,1.0)*PI)
 	var lunge:=maxf(idle_threat*.55,attack_wave)
 	var breath:=sin(t*3.2)*.018*motion_scale
-	var forward:=-.12*lunge*motion_scale
+	var forward:=(-.12*lunge+.08*hit_wave)*motion_scale
 
 	if body:
-		body.position=body_position+Vector3(0,breath-.018*threat*motion_scale,forward)
+		body.position=body_position+Vector3(0,breath-.018*threat*motion_scale+.035*threat_wave,forward)
 		body.basis=body_basis*Basis.from_euler(Vector3(
-			deg_to_rad(-3.5)*threat*lunge*motion_scale,
+			(deg_to_rad(-3.5)*threat*lunge+deg_to_rad(5.0)*hit_wave-deg_to_rad(3.0)*threat_wave)*motion_scale,
 			0,
-			sin(t*2.4)*deg_to_rad(2.0)*motion_scale
+			(sin(t*2.4)*deg_to_rad(2.0)+deg_to_rad(4.0)*hit_wave)*motion_scale
 		))
 	if head:
-		head.position=head_position+Vector3(0,.045*sniff_wave*motion_scale,forward*1.35)
+		head.position=head_position+Vector3(0,(.045*sniff_wave+.045*threat_wave)*motion_scale,forward*1.35)
 		head.basis=head_basis*Basis.from_euler(Vector3(
-			(sin(t*3.1)*deg_to_rad(2.0)+sniff_wave*deg_to_rad(5.0))*motion_scale,
-			sin(t*1.7)*deg_to_rad(7.0)*motion_scale*(1.0-.45*threat),
+			(sin(t*3.1)*deg_to_rad(2.0)+sniff_wave*deg_to_rad(5.0)-threat_wave*deg_to_rad(5.0))*motion_scale,
+			(sin(t*1.7)*deg_to_rad(7.0)*(1.0-.45*threat)+hit_wave*deg_to_rad(5.0))*motion_scale,
 			0
 		))
 	if tail:

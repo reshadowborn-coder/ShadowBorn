@@ -85,7 +85,18 @@ func _run()->void:
 		poison_visual.scale=Vector3.ONE*1.08
 		await process_frame
 		_check(poison_visual.scale.is_equal_approx(Vector3.ONE*1.08),"rat idle animation preserves root scale owned by combat/target selection")
-		_check(poison_visual.has_method("play_attack_cue") and poison_visual.has_method("set_reduced_motion"),"rat visual exposes lightweight combat/accessibility animation hooks")
+		_check(poison_visual.has_method("play_attack_cue") and poison_visual.has_method("play_hit_cue") and poison_visual.has_method("play_threat_cue") and poison_visual.has_method("set_reduced_motion"),"rat visual exposes lightweight combat/accessibility animation hooks")
+
+	var mobile_details:=get_nodes_in_group("act1_mobile_micro_detail")
+	_check(mobile_details.size()>=16,"Act 1 marks small sewer decoration for distance culling")
+	for detail in mobile_details:
+		_check(detail is MeshInstance3D and float((detail as MeshInstance3D).visibility_range_end)>0.0,"micro-detail has a finite visibility range")
+		_check((detail as MeshInstance3D).visibility_range_fade_mode==GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED,"micro-detail avoids transparent HLOD fading on Mobile")
+		_check((detail as MeshInstance3D).cast_shadow==GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,"micro-detail does not spend shadow budget")
+	var liquid_surfaces:=get_nodes_in_group("act1_liquid_surface")
+	_check(liquid_surfaces.size()>=5,"Act 1 liquid overlays share the mobile shadow policy")
+	for surface in liquid_surfaces:
+		_check(surface is MeshInstance3D and (surface as MeshInstance3D).cast_shadow==GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,"liquid overlay does not cast an artificial directional shadow")
 
 	var watch:=chapter.get_node_or_null("Game/TempleWatchMenu") as TempleWatchMenu
 	if watch:

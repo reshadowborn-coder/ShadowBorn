@@ -2,6 +2,9 @@ class_name MultiEnemyEncounter
 extends Node
 
 signal state_changed(state:Dictionary)
+signal shadow_attack_presented(target_index:int,skill:String,damage:float)
+signal enemy_attack_presented(enemy_index:int,damage:float)
+signal companion_attack_presented(target_index:int,damage:float)
 signal finished
 signal failed
 signal solo_limit_reached
@@ -43,17 +46,17 @@ static func _valid_profile(profile)->bool:
 
 func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool:
 	if active or profiles.size()!=2:
-		push_warning("Room 5 multi-enemy encounter requires exactly two inactive-start profiles")
+		push_warning("Multi-enemy encounter requires exactly two inactive-start profiles")
 		return false
 
 	var ids:Dictionary={}
 	for profile in profiles:
 		if not _valid_profile(profile):
-			push_warning("Room 5 rejected an invalid enemy profile")
+			push_warning("Multi-enemy encounter rejected an invalid enemy profile")
 			return false
 		var id:=str(profile.get("id",""))
 		if ids.has(id):
-			push_warning("Room 5 rejected duplicate enemy IDs")
+			push_warning("Multi-enemy encounter rejected duplicate enemy IDs")
 			return false
 		ids[id]=true
 
@@ -105,6 +108,7 @@ func shadow_action(skill:String)->void:
 		state_mult*=guard_mult
 
 	var damage:=CombatResolver.damage(8.0,coeff,float(e.def),state_mult)
+	shadow_attack_presented.emit(selected,skill,damage)
 	var next_hp:=maxf(0.0,float(e.current_hp)-damage)
 	# The first Room 5 encounter is an authored tutorial limit, not a hidden
 	# DPS check. Keep enemies non-lethal until the story beat resolves.
@@ -148,12 +152,14 @@ func _companion_assist()->void:
 	var e:Dictionary=enemies[selected]
 	var p:=StoryCompanion.profile()
 	var damage:=CombatResolver.damage(float(p.atk),float(p.a1.coeff),float(e.def))
+	companion_attack_presented.emit(selected,damage)
 	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
 	enemies[selected]=e
 
 func _enemy_phase()->void:
 	var veil_pending:=veil
-	for e in enemies:
+	for i in range(enemies.size()):
+		var e:Dictionary=enemies[i]
 		if float(e.current_hp)<=0.0:
 			continue
 		var incoming:=float(e.damage)
@@ -161,11 +167,12 @@ func _enemy_phase()->void:
 			incoming*=(1.0-veil_pending)
 			veil_pending=0.0
 			veil=0.0
+		enemy_attack_presented.emit(i,incoming)
 		shadow_hp=maxf(0.0,shadow_hp-incoming)
 		if solo_limit_mode:
-			# Room 5 first contact is a fixed story limit, not a balance check.
+			# Authored solo-limit encounters are story gates, not balance checks.
 			# Enemy tuning may change presentation pressure, but cannot kill
-			# Shadow before the authored round limit is reached.
+			# Shadow before the fixed round limit is reached.
 			shadow_hp=maxf(1.0,shadow_hp)
 
 func _all_dead()->bool:

@@ -57,6 +57,8 @@ func _connect_runtime()->void:
 	pack_combat.failed.connect(_resolve_pack_defeat)
 	pack_combat.solo_limit_reached.connect(_resolve_pack_defeat)
 	pack_combat.state_changed.connect(pack_hud.render)
+	pack_combat.shadow_attack_presented.connect(_on_pack_shadow_attack_visual)
+	pack_combat.enemy_attack_presented.connect(_on_pack_enemy_attack_visual)
 	pack_hud.target_selected.connect(_select_pack_target)
 	pack_hud.skill_pressed.connect(_pack_action)
 	mobile_controls.direction_changed.connect(_on_mobile_direction)
@@ -245,6 +247,8 @@ func _start_pack(enemies:Array)->void:
 		v.visible=true
 		v.scale=Vector3.ONE
 		v.look_at(Vector3(shadow.global_position.x,v.global_position.y,shadow.global_position.z),Vector3.UP)
+		if v.has_method("play_threat_cue"):
+			v.play_threat_cue()
 	camera_rig.enter_combat(shadow.global_position,Act1Layout.ROOM3_FOCUS)
 	pack_hud.open()
 	_refresh_navigation()
@@ -259,6 +263,20 @@ func _select_pack_target(index:int)->void:
 func _pack_action(skill:String)->void:
 	if pack_active and not _ui_modal_open():
 		pack_combat.shadow_action(skill)
+
+func _on_pack_shadow_attack_visual(target_index:int,_skill:String,_damage:float)->void:
+	var visuals:=_pack_visuals()
+	if target_index>=0 and target_index<visuals.size():
+		var target:=visuals[target_index]
+		if is_instance_valid(target) and target.has_method("play_hit_cue"):
+			target.play_hit_cue()
+
+func _on_pack_enemy_attack_visual(enemy_index:int,_damage:float)->void:
+	var visuals:=_pack_visuals()
+	if enemy_index>=0 and enemy_index<visuals.size():
+		var attacker:=visuals[enemy_index]
+		if is_instance_valid(attacker) and attacker.has_method("play_attack_cue"):
+			attacker.play_attack_cue()
 
 func _resolve_pack_defeat()->void:
 	if not pack_active and progression.stage!=Act1Contract.STAGE_SEWER_ROOM3:

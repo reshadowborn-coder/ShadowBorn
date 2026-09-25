@@ -70,3 +70,16 @@ These may change without changing the progression contract:
 - checkpoint positions inside their authored regions.
 
 Act 1.2+ is outside this contract.
+
+## Mobile rendering policy for Act 1.1
+
+The sewer remains authored as a small number of readable rooms. Do not convert its current low-count structural geometry to RenderingServer or a broad MultiMesh only to reduce node count.
+
+For the current iPhone-first slice:
+- keep the Godot Mobile renderer and Metal target;
+- keep structural room silhouettes normally visible;
+- use finite GeometryInstance3D visibility ranges for nonessential micro-detail such as tracks, scratches and small debris;
+- use VISIBILITY_RANGE_FADE_DISABLED on Mobile instead of transparency-based fading;
+- disable shadow casting on floor marks and liquid overlays that do not need to contribute to the directional shadow map;
+- continue measuring node, mesh, collision, light and render-surface budgets in CI;
+- revisit MultiMesh only when repeated same-mesh populations become large enough that reduced draw/setup cost outweighs its coarser per-node culling.
