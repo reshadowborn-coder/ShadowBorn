@@ -28,6 +28,7 @@ func _context(source:StringName)->CombatEffectContext:
 
 func _run()->void:
 	_test_refresh()
+	_test_refresh_provenance()
 	_test_stacks()
 	_test_independent()
 	_test_tags()
@@ -44,14 +45,30 @@ func _test_refresh()->void:
 	_check(bool(a.applied) and str(b.reason)=="refreshed" and c.count(d.id)==1,"refresh keeps one runtime effect")
 	_check(spec!=null and is_equal_approx(float(spec.runtime_magnitudes.power),3.5) and spec.context.source_actor_id==&"rat_b","refresh preserves stronger magnitude and latest provenance")
 
+func _test_refresh_provenance()->void:
+	var c:=CombatEffectContainer.new()
+	var d:=_definition(&"Status.StrongPoison",CombatEffectDefinition.StackingPolicy.REFRESH,1,2)
+	d.magnitude_merge_policy=CombatEffectDefinition.MagnitudeMergePolicy.MAX_NUMERIC
+	c.apply(d,_context(&"rat_strong"),1.0,{"power":5.0})
+	c.apply(d,_context(&"rat_weak"),1.0,{"power":3.0})
+	var spec:=c.first_spec(d.id)
+	_check(spec!=null and is_equal_approx(float(spec.runtime_magnitudes.power),5.0),"weaker refresh cannot overwrite retained stronger magnitude")
+	_check(spec!=null and spec.magnitude_source("power").source_actor_id==&"rat_strong","retained stronger magnitude keeps original source attribution")
+	_check(spec!=null and spec.context.source_actor_id==&"rat_weak","effect context still records the latest duration refresher separately")
+	c.apply(d,_context(&"rat_stronger"),1.0,{"power":7.0})
+	spec=c.first_spec(d.id)
+	_check(spec!=null and spec.magnitude_source("power").source_actor_id==&"rat_stronger","stronger replacement transfers magnitude ownership to the winning source")
+
 func _test_stacks()->void:
 	var c:=CombatEffectContainer.new()
 	var d:=_definition(&"Status.Bleed",CombatEffectDefinition.StackingPolicy.ADD_STACKS,3,2)
-	c.apply(d,_context(&"rat"))
-	c.apply(d,_context(&"rat"))
-	c.apply(d,_context(&"rat"))
-	var capped:=c.apply(d,_context(&"rat"))
+	c.apply(d,_context(&"rat_a"))
+	c.apply(d,_context(&"rat_b"))
+	c.apply(d,_context(&"rat_c"))
+	var capped:=c.apply(d,_context(&"rat_d"))
+	var spec:=c.first_spec(d.id)
 	_check(c.count(d.id)==1 and c.stack_count(d.id)==3 and str(capped.reason)=="stack_cap_refreshed","stacking caps and refreshes deterministically")
+	_check(spec!=null and spec.stack_source_actor_ids()==["rat_a","rat_b","rat_c"],"stacked effect preserves per-stack source attribution and cap refresh adds no phantom stack owner")
 
 func _test_independent()->void:
 	var c:=CombatEffectContainer.new()

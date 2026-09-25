@@ -15,7 +15,7 @@ func apply(definition:CombatEffectDefinition,context:CombatEffectContext,level:f
 		return {"applied":false,"reason":"invalid","instance_id":0}
 	var spec:=definition.create_spec(context,level)
 	for raw_key in runtime_overrides:
-		spec.runtime_magnitudes[raw_key]=runtime_overrides[raw_key]
+		spec.set_runtime_magnitude(str(raw_key),runtime_overrides[raw_key],context)
 	match definition.stacking_policy:
 		CombatEffectDefinition.StackingPolicy.REFRESH:
 			var index:=_first_index(definition.id)
@@ -23,7 +23,9 @@ func apply(definition:CombatEffectDefinition,context:CombatEffectContext,level:f
 				var entry:Dictionary=_entries[index]
 				var existing:CombatEffectSpec=entry.spec
 				existing.remaining_turns=maxi(existing.remaining_turns,spec.remaining_turns)
-				existing.runtime_magnitudes=_merge_magnitudes(existing.runtime_magnitudes,spec.runtime_magnitudes,definition.magnitude_merge_policy)
+				_merge_spec_magnitudes(existing,spec,definition.magnitude_merge_policy)
+				# Overall context records the latest application/refresher, while
+				# retained magnitudes keep their own source attribution.
 				existing.context=spec.context.duplicate_context()
 				return {"applied":true,"reason":"refreshed","instance_id":int(entry.instance_id),"stack_count":existing.stack_count}
 			return _append_spec(spec)
@@ -34,11 +36,12 @@ func apply(definition:CombatEffectDefinition,context:CombatEffectContext,level:f
 				var existing:CombatEffectSpec=entry.spec
 				if existing.stack_count>=definition.max_stacks:
 					existing.remaining_turns=maxi(existing.remaining_turns,spec.remaining_turns)
-					existing.runtime_magnitudes=_merge_magnitudes(existing.runtime_magnitudes,spec.runtime_magnitudes,definition.magnitude_merge_policy)
+					_merge_spec_magnitudes(existing,spec,definition.magnitude_merge_policy)
 					return {"applied":true,"reason":"stack_cap_refreshed","instance_id":int(entry.instance_id),"stack_count":existing.stack_count}
 				existing.stack_count+=1
+				existing.add_stack_source(spec.context)
 				existing.remaining_turns=maxi(existing.remaining_turns,spec.remaining_turns)
-				existing.runtime_magnitudes=_merge_magnitudes(existing.runtime_magnitudes,spec.runtime_magnitudes,definition.magnitude_merge_policy)
+				_merge_spec_magnitudes(existing,spec,definition.magnitude_merge_policy)
 				return {"applied":true,"reason":"stack_added","instance_id":int(entry.instance_id),"stack_count":existing.stack_count}
 			return _append_spec(spec)
 		CombatEffectDefinition.StackingPolicy.INDEPENDENT:
@@ -155,18 +158,28 @@ func _first_index(effect_id:StringName)->int:
 			return i
 	return -1
 
-static func _merge_magnitudes(existing:Dictionary,incoming:Dictionary,policy:CombatEffectDefinition.MagnitudeMergePolicy)->Dictionary:
-	if policy==CombatEffectDefinition.MagnitudeMergePolicy.REPLACE:
-		return incoming.duplicate(true)
-	var out:=existing.duplicate(true)
-	for raw_key in incoming:
-		var next_value=incoming[raw_key]
-		var old_value=out.get(raw_key)
+static func _merge_spec_magnitudes(
+	existing:CombatEffectSpec,
+	incoming:CombatEffectSpec,
+	policy:CombatEffectDefinition.MagnitudeMergePolicy
+)->void:
+	for raw_key in incoming.runtime_magnitudes:
+		var key:=str(raw_key)
+		var next_value=incoming.runtime_magnitudes[raw_key]
+		if policy==CombatEffectDefinition.MagnitudeMergePolicy.REPLACE or not existing.runtime_magnitudes.has(raw_key):
+			existing.set_runtime_magnitude(key,next_value,incoming.magnitude_source(key))
+			continue
+		var old_value=existing.runtime_magnitudes[raw_key]
 		if typeof(next_value) in [TYPE_INT,TYPE_FLOAT] and typeof(old_value) in [TYPE_INT,TYPE_FLOAT]:
-			out[raw_key]=maxf(float(old_value),float(next_value)) if policy==CombatEffectDefinition.MagnitudeMergePolicy.MAX_NUMERIC else minf(float(old_value),float(next_value))
+			var incoming_wins:=(
+				float(next_value)>float(old_value)
+				if policy==CombatEffectDefinition.MagnitudeMergePolicy.MAX_NUMERIC
+				else float(next_value)<float(old_value)
+			)
+			if incoming_wins:
+				existing.set_runtime_magnitude(key,next_value,incoming.magnitude_source(key))
 		else:
-			out[raw_key]=next_value
-	return out
+			existing.set_runtime_magnitude(key,next_value,incoming.magnitude_source(key))
 
 static func _receipt(entry:Dictionary,reason:String)->Dictionary:
 	var spec:CombatEffectSpec=entry.spec
