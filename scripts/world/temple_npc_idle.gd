@@ -1,7 +1,7 @@
 class_name TempleNpcIdle
 extends Node3D
 
-@export_enum("keeper","smith","merchant","engraver","warden") var motion_profile:="keeper"
+@export_enum("keeper","smith","merchant","engraver","warden","guard") var motion_profile:="keeper"
 @export var phase:=0.0
 
 var reduced_motion:=false
@@ -85,6 +85,8 @@ func _process(delta:float)->void:
 			_animate_engraver(t,scale)
 		"warden":
 			_animate_warden(t,scale)
+		"guard":
+			_animate_guard(t,scale)
 		_:
 			_animate_keeper(t,scale)
 	if reaction_remaining>0.0:
@@ -185,3 +187,13 @@ func _animate_warden(t:float,scale:float)->void:
 	_set_rotation(head,head_basis,Vector3(sin(t*0.27)*deg_to_rad(1.5)*scale,deg_to_rad(5.0*sin(t*0.19)+6.0*shift)*scale,0))
 	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-6.0-4.0*shift)*scale,0,deg_to_rad(-10.0-3.0*shift)*scale))
 	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-5.0+2.0*sin(t*0.44)+3.0*shift)*scale,0,deg_to_rad(7.0)*scale))
+
+func _animate_guard(t:float,scale:float)->void:
+	_breathe(t,scale,0.008)
+	var scan:=sin(t*0.17)
+	var shift:=pow(maxf(0.0,sin(t*0.26-1.1)),10.0)
+	_set_rotation(body,body_basis,Vector3(0,deg_to_rad(1.5*shift)*scale,deg_to_rad(.55*sin(t*0.31))*scale))
+	_set_rotation(head,head_basis,Vector3(deg_to_rad(.8*sin(t*0.22))*scale,deg_to_rad(4.5*scan)*scale,0))
+	_set_rotation(arm_l,arm_l_basis,Vector3(deg_to_rad(-12.0-2.0*shift)*scale,0,deg_to_rad(-7.0)*scale))
+	_set_rotation(arm_r,arm_r_basis,Vector3(deg_to_rad(-12.0+2.0*shift)*scale,0,deg_to_rad(7.0)*scale))
+	_set_rotation(tool,tool_basis,Vector3(deg_to_rad(-3.0+1.5*shift)*scale,0,0))
