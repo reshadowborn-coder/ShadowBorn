@@ -47,6 +47,7 @@ func _test_chapter_scene()->void:
 	_check(chapter.get_node_or_null("TempleInterior/TempleCollision") is StaticBody3D,"Temple collision body is generated")
 	_check(chapter.get_node_or_null("Catacombs/CatacombCollision") is StaticBody3D,"Catacomb collision body is generated")
 	_check(chapter.get_node_or_null("Game/MobileControls")!=null,"mobile controls are mounted")
+	_check(chapter.get_node_or_null("Game/IPhoneUILayout") is IPhoneUILayout,"iPhone Safe Area layout coordinator is mounted")
 	_check(chapter.get_node_or_null("Game/StoryToast")!=null,"story feedback layer is mounted")
 	_check(chapter.get_node_or_null("Game/CovenantMenu")!=null,"Covenant menu is mounted")
 	_check(get_nodes_in_group("encounter_visual").size()>=5,"Catacomb encounter visuals are generated")
@@ -129,9 +130,16 @@ func _test_chapter_scene()->void:
 			menu.open()
 			for child in menu.get_node("Panel/Weapons").get_children():
 				if child is Button:
+					_check(child.custom_minimum_size.y>=64.0,"Covenant weapon button keeps an iPhone-sized touch target: %s"%str(child.get_meta("family")))
 					child.emit_signal("pressed")
 					_check(menu.selected==str(child.get_meta("family")),"Covenant button maps to its own weapon family: %s"%str(child.get_meta("family")))
 			menu.close()
+
+		var mobile:=game.get_node_or_null("MobileControls") as MobileControls
+		if mobile and mobile.root:
+			for name in ["Left","Right","Up","Down"]:
+				var touch_button:=mobile.root.get_node_or_null(name) as Button
+				_check(touch_button!=null and touch_button.size.x>=80.0 and touch_button.size.y>=80.0,"iPhone movement touch target is at least 80x80: %s"%name)
 
 		_check(game.act0.stage==Act0Contract.STAGE_EXTERIOR,"fresh scene restores exterior Act 0 stage")
 		_check(not game.act0.temple_reveal_seen and not game.act0.faded_sigil_activated,"fresh scene keeps reveal and Temple threshold locked")
