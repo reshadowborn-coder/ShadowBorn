@@ -25,3 +25,6 @@ jobs:
       - name: Combat rules
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_rules_test.gd
+      - name: Asset pipeline
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
