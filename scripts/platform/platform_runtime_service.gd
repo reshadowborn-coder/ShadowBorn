@@ -14,6 +14,14 @@ const THERMAL_FAIR := "fair"
 const THERMAL_SERIOUS := "serious"
 const THERMAL_CRITICAL := "critical"
 const BRIDGE_NAME := "ShadowbornIOS"
+const MAX_STATE_LABEL_LENGTH := 64
+const MAX_METADATA_STRING_LENGTH := 96
+const REPORTING_SCHEMA := {
+	"com.shadowborn.gameplay": ["chapter"],
+	"com.shadowborn.encounter": ["id"],
+	"com.shadowborn.presentation": ["reduced_motion"],
+	"com.shadowborn.runtime": ["requested","thermal","low_power","pressure","reason"]
+}
 
 var requested_mode := MODE_SMOOTH_60
 var effective_mode := MODE_SMOOTH_60
@@ -63,16 +71,37 @@ func apply_system_snapshot(next_thermal:String,next_low_power:bool)->void:
 	_recompute_policy()
 
 func report_state(domain:String,label:String,metadata:Dictionary={})->void:
-	if domain.is_empty() or label.is_empty():
+	if not REPORTING_SCHEMA.has(domain):
+		push_warning("Unregistered performance-reporting domain: %s"%domain)
 		return
+	if label.is_empty():
+		return
+	var bounded_label:=label.substr(0,MAX_STATE_LABEL_LENGTH)
+	var safe_metadata:=_sanitize_reporting_metadata(domain,metadata)
 	var previous:Dictionary=_reported_states.get(domain,{})
-	if str(previous.get("label",""))==label and previous.get("metadata",{})==metadata:
+	if str(previous.get("label",""))==bounded_label and previous.get("metadata",{})==safe_metadata:
 		return
-	var snapshot:={"label":label,"metadata":metadata.duplicate(true)}
+	var snapshot:={"label":bounded_label,"metadata":safe_metadata}
 	_reported_states[domain]=snapshot
-	reportable_state_changed.emit(domain,label,snapshot.metadata)
+	reportable_state_changed.emit(domain,bounded_label,snapshot.metadata)
 	if _bridge and _bridge.has_method("report_state"):
-		_bridge.call("report_state",domain,label,snapshot.metadata)
+		_bridge.call("report_state",domain,bounded_label,snapshot.metadata)
+
+func _sanitize_reporting_metadata(domain:String,metadata:Dictionary)->Dictionary:
+	var safe:Dictionary={}
+	var allowed:Array=REPORTING_SCHEMA.get(domain,[])
+	for key in allowed:
+		if not metadata.has(key):
+			continue
+		var value=metadata[key]
+		match typeof(value):
+			TYPE_BOOL,TYPE_INT,TYPE_FLOAT:
+				safe[key]=value
+			TYPE_STRING:
+				safe[key]=str(value).substr(0,MAX_METADATA_STRING_LENGTH)
+			_:
+				push_warning("Dropped non-primitive reporting metadata: %s.%s"%[domain,str(key)])
+	return safe
 
 func current_reported_state(domain:String)->Dictionary:
 	var state:Dictionary=_reported_states.get(domain,{})
