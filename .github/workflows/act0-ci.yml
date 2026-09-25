@@ -277,26 +277,70 @@ jobs:
       - name: Export iPhone QA Xcode project
         run: |
           set -o pipefail
+          rm -rf build/ios
           mkdir -p build/ios
           /tmp/godot-macos/Godot.app/Contents/MacOS/Godot --verbose --headless --path . \
             --export-debug "iPhone QA" build/ios/Shadowborn-Act0-iPhone-QA.zip \
             2>&1 | tee /tmp/iphone-xcode-export.log
           ! grep -q "SCRIPT ERROR:" /tmp/iphone-xcode-export.log
-          test -s build/ios/Shadowborn-Act0-iPhone-QA.zip
+          ! grep -q "Project export for preset .* failed" /tmp/iphone-xcode-export.log
+          test -f build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj/project.pbxproj
+          test -f build/ios/Shadowborn-Act0-iPhone-QA/Shadowborn-Act0-iPhone-QA.pck
 
       - name: Verify iPhone Xcode project contract
         run: |
           set -euo pipefail
-          rm -rf build/ios/unpacked
-          mkdir -p build/ios/unpacked
-          unzip -q build/ios/Shadowborn-Act0-iPhone-QA.zip -d build/ios/unpacked
-          PBXPROJ="$(find build/ios/unpacked -path '*.xcodeproj/project.pbxproj' -print -quit)"
-          test -n "$PBXPROJ"
+          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
+          PBXPROJ="$XCODEPROJ/project.pbxproj"
+          test -f "$PBXPROJ"
           grep -q 'TARGETED_DEVICE_FAMILY = 1;' "$PBXPROJ"
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 16.0;' "$PBXPROJ"
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = org.shadowborn.chapter0.qa;' "$PBXPROJ"
           grep -q 'DEVELOPMENT_TEAM = ABCDE12345;' "$PBXPROJ"
-          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-QA.zip.sha256
+          grep -q 'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;' "$PBXPROJ"
+          test -f build/ios/Shadowborn-Act0-iPhone-QA/Images.xcassets/AppIcon.appiconset/Contents.json
+
+      - name: Compile unsigned iPhone QA app
+        run: |
+          set -euo pipefail
+          XCODEPROJ="build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj"
+          xcodebuild -project "$XCODEPROJ" -list
+          SCHEME="$(find "$XCODEPROJ/xcshareddata/xcschemes" -name '*.xcscheme' -maxdepth 1 -print -quit | xargs basename | sed 's/\.xcscheme$//')"
+          test -n "$SCHEME"
+          rm -rf build/ios/DerivedData
+          set -o pipefail
+          xcodebuild \
+            -project "$XCODEPROJ" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee /tmp/iphone-xcodebuild.log
+          grep -q "** BUILD SUCCEEDED **" /tmp/iphone-xcodebuild.log
+          APP="$(find build/ios/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
+          test -n "$APP"
+          test -f "$APP/Shadowborn-Act0-iPhone-QA" || test -f "$APP/Shadowborn_Act0_iPhone_QA"
+
+      - name: Package iPhone QA Xcode artifact
+        run: |
+          set -euo pipefail
+          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/Shadowborn-Act0-iPhone-QA.xcodeproj \
+            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/Shadowborn-Act0-iPhone-QA \
+            /tmp/iphone-project-data.zip
+          mkdir -p /tmp/iphone-package
+          unzip -q build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip -d /tmp/iphone-package
+          unzip -q /tmp/iphone-project-data.zip -d /tmp/iphone-package
+          rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
+          (cd /tmp/iphone-package && zip -qry "$GITHUB_WORKSPACE/build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip" .)
+          shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
           cat > build/ios/qa-build-manifest.txt <<EOF
           repository=reshadowborn-coder/ShadowBorn
           git_sha=$GITHUB_SHA
@@ -307,7 +351,8 @@ jobs:
           min_ios=16.0
           renderer=Metal
           bundle_id=org.shadowborn.chapter0.qa
-          signing=project-only
+          xcode_compile=unsigned-iphoneos
+          signing=not-included
           EOF
 
       - name: Upload iPhone QA Xcode project
@@ -315,8 +360,8 @@ jobs:
         with:
           name: shadowborn-act0-iphone-xcode-qa
           path: |
-            build/ios/Shadowborn-Act0-iPhone-QA.zip
-            build/ios/Shadowborn-Act0-iPhone-QA.zip.sha256
+            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
+            build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
             build/ios/qa-build-manifest.txt
           if-no-files-found: error
           retention-days: 7
