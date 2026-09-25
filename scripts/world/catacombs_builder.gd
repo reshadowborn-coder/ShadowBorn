@@ -107,9 +107,9 @@ func _build()->void:
 
 	for i in range(5):
 		var z:=-122.0-float(i)*13.0
-		solid_box("Room%02dFloor"%(i+1),Vector3(0,-.2,z),Vector3(12,.4,11),FLOOR,visual,collision)
-		solid_box("Room%02dWallL"%(i+1),Vector3(-6,2.2,z),Vector3(.7,4.4,11),STONE,visual,collision)
-		solid_box("Room%02dWallR"%(i+1),Vector3(6,2.2,z),Vector3(.7,4.4,11),STONE,visual,collision)
+		solid_box("Room%02dFloor"%(i+1),Vector3(0,-.2,z),Vector3(12,.4,13),FLOOR,visual,collision)
+		solid_box("Room%02dWallL"%(i+1),Vector3(-6,2.2,z),Vector3(.7,4.4,13),STONE,visual,collision)
+		solid_box("Room%02dWallR"%(i+1),Vector3(6,2.2,z),Vector3(.7,4.4,13),STONE,visual,collision)
 		solid_box("Room%02dArchL"%(i+1),Vector3(-2.8,2.2,z-5.4),Vector3(.8,4.4,.8),STONE,visual,collision)
 		solid_box("Room%02dArchR"%(i+1),Vector3(2.8,2.2,z-5.4),Vector3(.8,4.4,.8),STONE,visual,collision)
 		solid_box("Room%02dArchTop"%(i+1),Vector3(0,4.1,z-5.4),Vector3(6.4,.7,.8),STONE,visual,collision)
