@@ -12,6 +12,11 @@ func _check(condition:bool,message:String)->void:
 		failures+=1
 		push_error("FAIL: "+message)
 
+func _check_silent(condition:bool,message:String)->void:
+	if not condition:
+		failures+=1
+		push_error("FAIL: "+message)
+
 func _run()->void:
 	_test_definition_runtime_isolation()
 	_test_tag_contributors()
@@ -112,7 +117,7 @@ func _test_tag_property_sequence()->void:
 			var source_key:=str(source)
 			var expected_success:=oracle.has(tag_key) and (oracle[tag_key] as Dictionary).has(source_key)
 			var actual_success:=ledger.remove(tag,source,amount)
-			_check(actual_success==expected_success,"Property sequence remove result matches oracle at step %d"%step)
+			_check_silent(actual_success==expected_success,"Property sequence remove result matches oracle at step %d"%step)
 			if expected_success:
 				var src:Dictionary=oracle[tag_key]
 				var next_count:=int(src[source_key])-amount
@@ -123,9 +128,9 @@ func _test_tag_property_sequence()->void:
 				if src.is_empty():
 					oracle.erase(tag_key)
 
-		_check(ledger.snapshot()==oracle,"Tag ledger matches independent oracle at step %d"%step)
+		_check_silent(ledger.snapshot()==oracle,"Tag ledger matches independent oracle at step %d"%step)
 
 		if step%75==0:
 			var roundtrip:=CombatTagLedger.new()
-			_check(roundtrip.restore(ledger.snapshot()),"Property sequence snapshot restores at step %d"%step)
-			_check(roundtrip.snapshot()==oracle,"Property sequence roundtrip matches oracle at step %d"%step)
+			_check_silent(roundtrip.restore(ledger.snapshot()),"Property sequence snapshot restores at step %d"%step)
+			_check_silent(roundtrip.snapshot()==oracle,"Property sequence roundtrip matches oracle at step %d"%step)
