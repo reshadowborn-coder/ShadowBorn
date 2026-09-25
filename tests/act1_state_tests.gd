@@ -131,7 +131,19 @@ func _run()->void:
 	_check(bool(repaired_handoff.act1_sewer_defeat_seen) and bool(repaired_handoff.act1_keeper_briefed),"downstream Smith evidence restores prerequisite handoffs")
 	_check(bool(repaired_handoff.covenant_joined) and not bool(repaired_handoff.temple_watch_covenant_joined),"Act 0 Forgotten Covenant remains separate from Temple Watch")
 
+	var watch_only:=_completed_act0_state()
+	watch_only.temple_watch_covenant_joined=true
+	watch_only.act1_1_complete=false
+	var watch_resume:=SaveManager._migrate(watch_only)
+	_check(str(watch_resume.act1_stage)==Act1Contract.STAGE_GUARD_COVENANT and bool(watch_resume.temple_watch_covenant_joined),"watch-only save restores the explicit Guard covenant recovery stage")
+	var recovery_progression:=Act1Progression.new()
+	root.add_child(recovery_progression)
+	recovery_progression.restore(watch_resume)
+	_check(recovery_progression.complete_act1_1(),"persisted Temple Watch oath can finalize Act 1.1 without asking the player to join twice")
+	_check(recovery_progression.act1_1_complete and recovery_progression.temple_watch_covenant_joined,"Guard covenant recovery preserves the oath while completing the onboarding stage")
+
 	p.queue_free()
+	recovery_progression.queue_free()
 	pack.queue_free()
 	await process_frame
 	print("Act 1.1 state tests complete. failures=%d"%failures)

@@ -119,6 +119,18 @@ func _run()->void:
 		pack_hud.render(lock_fixture)
 		_check(not pack_hud.a1.disabled and not pack_hud.a2.disabled and not pack_hud.target_a.disabled and not pack_hud.target_b.disabled,"pack HUD re-enables valid controls after action lock")
 
+	if game:
+		var watch_only:=_completed_act0_state()
+		watch_only.temple_watch_covenant_joined=true
+		watch_only.act1_1_complete=false
+		var watch_recovery:=SaveManager._migrate(watch_only)
+		game.progression.restore(watch_recovery)
+		_check(game.progression.stage==Act1Contract.STAGE_GUARD_COVENANT,"scene can restore the persisted Guard covenant recovery stage")
+		game.temple_interact("guard")
+		var recovered_watch:=SaveManager.load_state()
+		_check(bool(recovered_watch.temple_watch_covenant_joined) and bool(recovered_watch.act1_1_complete),"Temple Guard finalizes a persisted oath without reopening JOIN confirmation")
+		_check(str(recovered_watch.act1_stage)==Act1Contract.STAGE_ACT1_1_COMPLETE,"Guard covenant recovery commits the canonical Act 1.1 complete stage")
+
 	var watch:=chapter.get_node_or_null("Game/TempleWatchMenu") as TempleWatchMenu
 	if watch:
 		_check(watch.join_button.custom_minimum_size.y>=80.0,"Temple Watch JOIN keeps an iPhone-sized touch target")

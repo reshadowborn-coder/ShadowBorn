@@ -92,3 +92,12 @@ Two-enemy combat accepts at most one player command per presentation window.
 The lock belongs to MultiEnemyEncounter, not to a specific touch HUD. This prevents rapid touch input from consuming multiple authored rounds and keeps the rule identical for touch, future controller input and automated callers.
 
 Target switching is locked during the same committed-action window. Terminal outcomes release the lock immediately; non-terminal rounds release it after the bounded presentation interval. Delayed unlocks are generation-guarded so a timer from an older encounter cannot unlock a newly started encounter.
+
+
+## Guard covenant recovery
+
+The persisted `guard_covenant` stage is a valid recovery state, not a dead end.
+
+If a save already proves `temple_watch_covenant_joined=true` while `act1_1_complete=false`, the player must never be asked to join the Temple Watch a second time. Returning to the Temple Guard finalizes the missing Act 1.1 completion commit while preserving the already committed oath.
+
+A failed finalization save must roll back only to the persisted Guard covenant recovery state, never to an earlier Smith handoff and never to an uncommitted completion.

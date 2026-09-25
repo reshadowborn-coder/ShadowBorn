@@ -343,9 +343,38 @@ func _smith_handoff()->void:
 	story_toast.show_message("Smith: Steel is not the problem. You need a bond that can hold formation. The Guard keeps that oath.",4.6)
 
 func _guard_offer()->void:
+	if progression.stage==Act1Contract.STAGE_GUARD_COVENANT:
+		_recover_temple_watch_completion()
+		return
 	if progression.stage!=Act1Contract.STAGE_SMITH_HANDOFF:
 		return
 	watch_menu.open()
+	_refresh_navigation()
+
+func _commit_temple_watch_completion(before:Dictionary,success_message:String,failure_message:String)->bool:
+	if not progression.complete_act1_1():
+		_restore_runtime(before)
+		return false
+	checkpoint_position=Vector3(Act1Layout.GUARD_POSITION.x,.9,Act1Layout.GUARD_POSITION.z)
+	var candidate:=_build_save_state()
+	candidate.checkpoint="act1_guard_covenant"
+	if not SaveManager.save_state(candidate):
+		_restore_runtime(before)
+		story_toast.show_message(failure_message)
+		return false
+	last_committed_state=SaveManager._migrate(candidate.duplicate(true))
+	story_toast.show_message(success_message,5.0)
+	return true
+
+func _recover_temple_watch_completion()->void:
+	if not progression.temple_watch_covenant_joined or progression.act1_1_complete:
+		return
+	var before:=_build_save_state()
+	_commit_temple_watch_completion(
+		before,
+		"Temple Guard: Your oath already stands. The Watch record is sealed.",
+		"The Watch record could not be sealed. Your committed oath remains safe."
+	)
 	_refresh_navigation()
 
 func _accept_temple_watch()->void:
@@ -353,19 +382,15 @@ func _accept_temple_watch()->void:
 		watch_menu.close()
 		return
 	var before:=_build_save_state()
-	if not progression.join_temple_watch() or not progression.complete_act1_1():
+	if not progression.join_temple_watch():
 		_restore_runtime(before)
 		watch_menu.close()
 		return
-	checkpoint_position=Vector3(Act1Layout.GUARD_POSITION.x,.9,Act1Layout.GUARD_POSITION.z)
-	var candidate:=_build_save_state()
-	candidate.checkpoint="act1_guard_covenant"
-	if not SaveManager.save_state(candidate):
-		_restore_runtime(before)
-		story_toast.show_message("The oath could not be written. The Temple Watch has not accepted you.")
-	else:
-		last_committed_state=SaveManager._migrate(candidate.duplicate(true))
-		story_toast.show_message("Temple Guard: Rise under the Watch. The next descent will not be made as a lone shadow.",5.0)
+	_commit_temple_watch_completion(
+		before,
+		"Temple Guard: Rise under the Watch. The next descent will not be made as a lone shadow.",
+		"The oath could not be written. The Temple Watch has not accepted you."
+	)
 	watch_menu.close()
 	_refresh_navigation()
 
@@ -389,7 +414,7 @@ func _show_resume_objective()->void:
 		Act1Contract.STAGE_SMITH_HANDOFF:
 			message="Steel alone will not hold. Find the Temple Guard."
 		Act1Contract.STAGE_GUARD_COVENANT:
-			message="The Temple Watch oath is waiting at the Guard."
+			message="Your Temple Watch oath stands. Return to the Guard to seal the Watch record."
 		Act1Contract.STAGE_ACT1_1_COMPLETE:
 			message="The Temple Watch oath is sealed. The next descent is not yet open."
 	if not message.is_empty():
