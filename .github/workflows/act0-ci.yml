@@ -51,6 +51,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ch00_pretemple_controller_tests.gd 2>&1 | tee /tmp/ch00-pretemple-controller.log
           ! grep -q "SCRIPT ERROR:" /tmp/ch00-pretemple-controller.log
 
+      - name: Run combat trace schema tests
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/combat_frame_trace_tests.gd 2>&1 | tee /tmp/combat-frame-trace.log
+          ! grep -q "SCRIPT ERROR:" /tmp/combat-frame-trace.log
+
       - name: Probe all Catacomb weapon-family paths
         run: |
           set -o pipefail
