@@ -247,8 +247,29 @@ func _test_resume_transition_matrix()->void:
 func _test_room5_limit_contract()->void:
 	var profiles:=CatacombEncounterPlan.enemies(5)
 	_check(profiles.size()==2,"Room 5 remains a two-enemy encounter")
+
+	var clean_a2:=MultiEnemyEncounter.new()
+	clean_a2.set_loadout("sword_shield")
+	clean_a2.start(profiles,false,false)
+	var hp_before:=clean_a2.shadow_hp
+	clean_a2.shadow_action("INVALID")
+	_check(clean_a2.rounds==0 and clean_a2.shadow_hp==hp_before and not clean_a2.fray,"Room 5 rejects invalid combat commands without mutating state")
+	clean_a2.shadow_action("A2")
+	var expected_hp:=20.0-(2.6*(1.0-0.30))-2.6
+	_check(absf(clean_a2.shadow_hp-expected_hp)<0.0001,"Room 5 clean A2 applies Veil to the first enemy response")
+	_check(clean_a2.a2_cd==3,"Room 5 clean A2 enters configured cooldown without requiring prior Fray")
+	var rounds_after_a2:=clean_a2.rounds
+	clean_a2.shadow_action("A2")
+	_check(clean_a2.rounds==rounds_after_a2,"Room 5 blocks A2 while cooldown is active")
+
+	var empty:=MultiEnemyEncounter.new()
+	empty.start([],false,false)
+	_check(not empty.active,"Room 5 combat refuses an empty encounter plan")
+
 	var multi:=MultiEnemyEncounter.new()
 	multi.set_loadout("two_hand_axe")
 	multi.start(profiles,false,true)
 	multi.shadow_action("A2")
 	_check(multi.active and not multi._all_dead(),"solo-limit attempt cannot be won on the first action")
+	multi.shadow_action("A1")
+	_check(multi.limit_reached and not multi.active,"solo-limit resolves deterministically after the authored round limit")
