@@ -2,29 +2,30 @@ class_name Act0TriggerBuilder
 extends Node3D
 
 func _ready()->void:
-	_gate(Vector3(0,1,-73),"TempleGate","res://scripts/world/temple_gate.gd")
-	_interact(Vector3(0,1,-101),"Keeper","keeper")
-	_interact(Vector3(0,1,-105),"Covenant","covenant")
-	_interact(Vector3(-4.5,1,-82),"Smith","smith")
-	_interact(Vector3(4.6,1,-82),"Merchant","merchant")
-	_interact(Vector3(-4.6,1,-91),"Engraver","engraver")
-	_interact(Vector3(0,1,-112),"CatacombsEntry","catacombs")
-	for i in range(5):
-		_room(Vector3(0,1,-122.0-float(i)*13.0),"CatacombRoom%d"%(i+1),i+1)
+	_gate(Act0Layout.TEMPLE_GATE_TRIGGER,"TempleGate","res://scripts/world/temple_gate.gd",Act0Layout.TEMPLE_GATE_TRIGGER_SIZE)
+	_gate(Act0Layout.FADED_SIGIL_TRIGGER,"FadedSigil","res://scripts/world/faded_sigil_threshold.gd",Vector3(18,2.5,3))
+	_interact(Act0Layout.KEEPER_TRIGGER,"Keeper","keeper")
+	_interact(Act0Layout.COVENANT_TRIGGER,"Covenant","covenant")
+	_interact(Act0Layout.SMITH_TRIGGER,"Smith","smith")
+	_interact(Act0Layout.MERCHANT_TRIGGER,"Merchant","merchant")
+	_interact(Act0Layout.ENGRAVER_TRIGGER,"Engraver","engraver")
+	_interact(Act0Layout.CATACOMBS_TRIGGER,"CatacombsEntry","catacombs")
+	for room in range(1,6):
+		_room(Act0Layout.catacomb_room_trigger_position(room),"CatacombRoom%d"%room,room)
 
-func _area(name:String,pos:Vector3)->Area3D:
+func _area(name:String,pos:Vector3,size:Vector3=Act0Layout.TEMPLE_INTERACTION_TRIGGER_SIZE)->Area3D:
 	var a:=Area3D.new()
 	a.name=name
 	a.position=pos
 	var c:=CollisionShape3D.new()
 	var shape:=BoxShape3D.new()
-	shape.size=Vector3(5,2.5,3)
+	shape.size=size
 	c.shape=shape
 	a.add_child(c)
 	return a
 
-func _gate(pos:Vector3,name:String,script_path:String)->void:
-	var a:=_area(name,pos)
+func _gate(pos:Vector3,name:String,script_path:String,size:Vector3)->void:
+	var a:=_area(name,pos,size)
 	a.set_script(load(script_path))
 	add_child(a)
 
@@ -35,7 +36,7 @@ func _interact(pos:Vector3,name:String,kind:String)->void:
 	add_child(a)
 
 func _room(pos:Vector3,name:String,index:int)->void:
-	var a:=_area(name,pos)
+	var a:=_area(name,pos,Act0Layout.CATACOMB_ROOM_TRIGGER_SIZE)
 	a.set_script(load("res://scripts/world/catacomb_room_trigger.gd"))
 	a.set("room",index)
 	add_child(a)
