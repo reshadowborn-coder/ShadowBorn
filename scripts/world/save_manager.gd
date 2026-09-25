@@ -92,26 +92,40 @@ static func _checkpoint_id_matches_stage(state:Dictionary)->bool:
 
 static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
 	var stage:=str(state.get("act0_stage",Act0Contract.STAGE_EXTERIOR))
+	var checkpoint:=str(state.get("checkpoint",""))
 	if p.y<0.35 or p.y>2.2:
 		return false
 	match stage:
 		Act0Contract.STAGE_EXTERIOR:
-			# Exterior floors are wider than the Temple/Catacombs but still
-			# bounded. Reject positions outside authored walkable geometry.
-			return p.x>=-8.5 and p.x<=10.0 and p.z>=-63.0 and p.z<=10.5
+			match checkpoint:
+				"awakening":
+					return _near_checkpoint(p,Vector3(0,0.9,8),3.0)
+				"hound_cleared":
+					return _near_checkpoint(p,Vector3(Act0Layout.HOUND_TRIGGER.x,0.9,Act0Layout.HOUND_TRIGGER.z),5.0)
+				"armless_cleared":
+					return _near_checkpoint(p,Vector3(Act0Layout.ARMLESS_TRIGGER.x,0.9,Act0Layout.ARMLESS_TRIGGER.z),5.0)
+				"temple_reveal_seen":
+					return _near_checkpoint(p,Vector3(Act0Layout.TEMPLE_REVEAL_TRIGGER.x,0.9,Act0Layout.TEMPLE_REVEAL_TRIGGER.z),5.0)
+			return false
 		Act0Contract.STAGE_TEMPLE_ENTRY:
-			return (
-				_near_checkpoint(p,Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z),2.0)
-				or _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
-			)
+			if checkpoint=="temple_entry":
+				return _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
+			if checkpoint=="faded_sigil":
+				return _near_checkpoint(p,Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z),2.0)
+			return false
 		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
-			return _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
+			return checkpoint=="temple_entry" and _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
 		Act0Contract.STAGE_CATACOMBS:
-			return absf(p.x)<=5.15 and p.z<=-116.0 and p.z>=-178.5
+			var room:=clampi(int(state.get("catacomb_room",1)),1,5)
+			var room_z:=Act0Layout.catacomb_room_z(room)
+			# A legitimate checkpoint for the current room can originate from
+			# the previous room clear or from the approach to this room, but
+			# never from a later room.
+			return absf(p.x)<=5.15 and p.z<=room_z+13.5 and p.z>=room_z-3.5
 		Act0Contract.STAGE_ROOM5_RETURN,Act0Contract.STAGE_ROOM5_REMATCH:
 			return _near_checkpoint(p,Act0Layout.ROOM5_RETURN_CHECKPOINT,2.0)
 		Act0Contract.STAGE_COMPLETE:
-			return absf(p.x)<=5.15 and p.z<=-169.0 and p.z>=-178.5
+			return _near_checkpoint(p,Act0Layout.ROOM5_SHADOW_POSITION,5.0)
 	return false
 
 static func _repair_checkpoint(state:Dictionary)->Dictionary:
