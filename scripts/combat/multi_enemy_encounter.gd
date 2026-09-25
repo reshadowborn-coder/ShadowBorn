@@ -135,6 +135,11 @@ func _enemy_phase()->void:
 			veil_pending=0.0
 			veil=0.0
 		shadow_hp=maxf(0.0,shadow_hp-incoming)
+		if solo_limit_mode:
+			# Room 5 first contact is a fixed story limit, not a balance check.
+			# Enemy tuning may change presentation pressure, but cannot kill
+			# Shadow before the authored round limit is reached.
+			shadow_hp=maxf(1.0,shadow_hp)
 
 func _all_dead()->bool:
 	for e in enemies:
