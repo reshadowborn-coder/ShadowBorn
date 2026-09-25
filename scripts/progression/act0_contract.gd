@@ -82,7 +82,7 @@ static func can_start_exterior_encounter(id:String,cleared:Array,temple_reveal_s
 			return "hound" in cleared
 		"shield_boss":
 			return "hound" in cleared and "armless" in cleared and temple_reveal_seen
-	return true
+	return false
 
 static func catacomb_encounter_ids(room:int)->Array:
 	return CATACOMB_ENCOUNTER_IDS.get(room,[]).duplicate()
