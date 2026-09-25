@@ -87,6 +87,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ios_runtime_budget_tests.gd 2>&1 | tee /tmp/ios-runtime-budget.log
           ! grep -q "SCRIPT ERROR:" /tmp/ios-runtime-budget.log
 
+      - name: Enforce iPhone source asset budgets
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/ios_asset_budget_tests.gd 2>&1 | tee /tmp/ios-asset-budget.log
+          ! grep -q "SCRIPT ERROR:" /tmp/ios-asset-budget.log
+
   android-qa-apk:
     needs: headless-act0
     runs-on: ubuntu-latest
