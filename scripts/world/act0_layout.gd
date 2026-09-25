@@ -44,3 +44,9 @@ static func catacomb_room_z(room:int)->float:
 
 static func catacomb_room_trigger_position(room:int)->Vector3:
 	return Vector3(0,1,catacomb_room_z(room))
+
+static func catacomb_room_resume_position(room:int)->Vector3:
+	var safe_room:=clampi(room,1,5)
+	# The player travels toward negative Z. Resume four metres before the
+	# current room trigger so loading can never spawn inside an encounter Area.
+	return Vector3(0,0.9,catacomb_room_z(safe_room)+4.0)
