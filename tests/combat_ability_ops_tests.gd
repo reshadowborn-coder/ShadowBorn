@@ -34,6 +34,7 @@ func _test_valid_step_vocabulary()->void:
 func _test_invalid_steps_fail_closed()->void:
 	_check(not CombatAbilityOps.validate_step({"op":"turnmeter","target":"self","value_bp":1000}).is_empty(),"unknown operation typo is rejected")
 	_check(not CombatAbilityOps.validate_step({"op":"apply_status","target":"primary_target","status_id":"Status.Stun","chance_bp":12000,"turns":1}).is_empty(),"status chance cannot exceed 100%")
+	_check(not CombatAbilityOps.validate_step({"op":"apply_status","target":"primary_target","status_id":"Status.Poison","chance_bp":5000,"turns":2,"roll_scope":"per_sneeze"}).is_empty(),"status roll scope must explicitly be per-action or per-hit")
 	_check(not CombatAbilityOps.validate_step({"op":"extra_turn","target":"self","count":99}).is_empty(),"ability data cannot bypass the global extra-turn chain cap")
 	_check(not CombatAbilityOps.validate_step({"op":"speed_modifier","target":"mystery_target","value_bp":3000,"turns":2}).is_empty(),"unknown target selector is rejected")
 	_check(not CombatAbilityOps.validate_step({"op":"damage","target":"primary_target"}).is_empty(),"damage operation requires explicit scaling")

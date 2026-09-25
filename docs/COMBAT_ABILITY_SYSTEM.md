@@ -149,3 +149,15 @@ Skills and passives may not invent arbitrary operation names. CombatAbilityOps v
 Each operation has structural safety checks. For example, an Extra Turn step cannot request more turns than the global timeline cap, status chance cannot exceed 100%, and Turn Meter/speed modifiers have hard data bounds.
 
 New mechanics should extend this shared vocabulary only when they represent a reusable game rule. One hero should not receive a bespoke hidden executor branch merely because its description is unusual.
+
+
+## Action transactions and reaction origin
+Every semantic hit/effect event may carry a transaction_id representing the originating skill use. Multi-hit attacks keep the same transaction ID across all hits.
+
+Passives can therefore use once_per_action independently from once_per_turn. This prevents a three-hit skill from activating a passive three times when the design says "after this skill hits".
+
+Events also carry semantic origin tags for Natural Turn, Extra Turn and Reaction. Reaction-origin events are blocked from triggering ordinary passives by default. A passive must explicitly opt into allow_reaction_trigger to react to a counter, assist or follow-up.
+
+This default is intentionally conservative: turns may create reactions, but reactions do not recursively create new reaction trees unless content explicitly asks for it and still passes the global chain and event budgets.
+
+Status application steps default to one proc roll per action and target. Per-hit rolling must be explicitly authored with roll_scope=per_hit.

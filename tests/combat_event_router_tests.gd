@@ -34,6 +34,7 @@ func _event(serial:int,depth:int=0)->CombatTriggerEvent:
 func _run()->void:
 	_test_failed_proc_does_not_consume_guard()
 	_test_success_commits_once_per_turn()
+	_test_once_per_action_and_reaction_origin()
 	_test_chain_and_event_budgets()
 	print("Combat event router tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
@@ -70,6 +71,65 @@ func _test_success_commits_once_per_turn()->void:
 	router.begin_turn_window(21)
 	var third:=router.dispatch(_event(21))
 	_check(int(third.pending_reactions)==1,"owner-turn cooldown expiry allows passive in a later turn window")
+
+func _test_once_per_action_and_reaction_origin()->void:
+	var runtime:=CombatPassiveRuntime.new()
+	runtime.register_actor(&"shadow",&"ally")
+	var passive:=_passive(&"shadow.action_once",10000)
+	passive.once_per_turn=false
+	passive.once_per_action=true
+	passive.internal_cooldown_owner_turns=0
+	runtime.register_passive(&"shadow",passive)
+	var router:=CombatEventRouter.new(runtime,CombatReactionQueue.new(),CombatDeterministicRng.new(17))
+	router.begin_turn_window(50)
+
+	var hit_a:=_event(50)
+	hit_a.transaction_id=9001
+	hit_a.add_tag(CombatEventTags.ORIGIN_NATURAL_TURN)
+	var first:=router.dispatch(hit_a)
+	_check(int(first.pending_reactions)==1,"once-per-action passive can trigger on first hit of an action")
+
+	var hit_b:=_event(50)
+	hit_b.transaction_id=9001
+	hit_b.add_tag(CombatEventTags.ORIGIN_NATURAL_TURN)
+	var second:=router.dispatch(hit_b)
+	_check((second.receipts as Array).is_empty(),"second hit with same transaction cannot retrigger once-per-action passive")
+
+	router.pop_reaction()
+	var hit_c:=_event(50)
+	hit_c.transaction_id=9002
+	hit_c.add_tag(CombatEventTags.ORIGIN_NATURAL_TURN)
+	var third:=router.dispatch(hit_c)
+	_check(int(third.pending_reactions)==1,"different action transaction may trigger again in the same turn when once-per-turn is disabled")
+
+	var reaction_runtime:=CombatPassiveRuntime.new()
+	reaction_runtime.register_actor(&"shadow",&"ally")
+	var no_chain:=_passive(&"shadow.no_reaction_chain",10000)
+	no_chain.once_per_turn=false
+	no_chain.internal_cooldown_owner_turns=0
+	reaction_runtime.register_passive(&"shadow",no_chain)
+	var reaction_router:=CombatEventRouter.new(reaction_runtime,CombatReactionQueue.new(),CombatDeterministicRng.new(21))
+	reaction_router.begin_turn_window(51)
+	var reaction_event:=_event(51)
+	reaction_event.transaction_id=9100
+	reaction_event.add_tag(CombatEventTags.ORIGIN_REACTION)
+	var blocked:=reaction_router.dispatch(reaction_event)
+	_check((blocked.receipts as Array).is_empty(),"passives do not trigger from Reaction-origin events by default")
+
+	var allowed_runtime:=CombatPassiveRuntime.new()
+	allowed_runtime.register_actor(&"shadow",&"ally")
+	var allowed:=_passive(&"shadow.explicit_reaction_chain",10000)
+	allowed.once_per_turn=false
+	allowed.internal_cooldown_owner_turns=0
+	allowed.allow_reaction_trigger=true
+	allowed_runtime.register_passive(&"shadow",allowed)
+	var allowed_router:=CombatEventRouter.new(allowed_runtime,CombatReactionQueue.new(),CombatDeterministicRng.new(23))
+	allowed_router.begin_turn_window(52)
+	var allowed_event:=_event(52)
+	allowed_event.transaction_id=9200
+	allowed_event.add_tag(CombatEventTags.ORIGIN_REACTION)
+	var allowed_result:=allowed_router.dispatch(allowed_event)
+	_check(int(allowed_result.pending_reactions)==1,"reaction-triggered passive chains require explicit author opt-in")
 
 func _test_chain_and_event_budgets()->void:
 	var runtime:=CombatPassiveRuntime.new()
