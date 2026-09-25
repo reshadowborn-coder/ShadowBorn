@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up OpenJDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -116,12 +116,14 @@ jobs:
 
       - name: Install Godot 4.4 Android SDK requirements
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --sdk_root="$ANDROID_HOME" \
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "build-tools;34.0.0" \
             "platforms;android-34" \
-            "cmdline-tools;latest" \
             "cmake;3.10.2.4988404" \
             "ndk;23.2.8568313"
 
