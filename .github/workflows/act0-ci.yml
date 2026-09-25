@@ -57,6 +57,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/combat_frame_trace_tests.gd 2>&1 | tee /tmp/combat-frame-trace.log
           ! grep -q "SCRIPT ERROR:" /tmp/combat-frame-trace.log
 
+      - name: Validate Android QA export preset
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/android_qa_export_preset_tests.gd 2>&1 | tee /tmp/android-qa-export-preset.log
+          ! grep -q "SCRIPT ERROR:" /tmp/android-qa-export-preset.log
+
       - name: Probe all Catacomb weapon-family paths
         run: |
           set -o pipefail
