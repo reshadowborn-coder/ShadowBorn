@@ -8,7 +8,8 @@ Authoritative resume expectations:
 | temple_entry | Temple | Shield Silver cannot duplicate |
 | weapon_choice | Temple Covenant | membership persists |
 | first_forge | Temple | selected weapon persists; Silver still present |
-| catacombs | saved catacomb checkpoint | cleared room index persists |
+| catacombs / room 0 | Temple entry | forge is committed but Room 1 has not started |
+| catacombs / rooms 1–5 | safe checkpoint before current room | cleared room index persists |
 | room5_return | Temple Keeper route | no companion yet |
 | room5_rematch | Catacomb entrance/rematch route | companion + slot 2 persist |
 | act0_complete | saved completion checkpoint | irreversible onboarding never replays |
