@@ -5,6 +5,7 @@ on:
     paths:
       - "scripts/platform/**"
       - "scripts/world/chapter00_game.gd"
+      - "scripts/world/chapter01_game.gd"
       - "tests/platform_runtime_service_tests.gd"
       - "tests/ios_iphone_policy_tests.gd"
       - "project.godot"
@@ -14,6 +15,7 @@ on:
     paths:
       - "scripts/platform/**"
       - "scripts/world/chapter00_game.gd"
+      - "scripts/world/chapter01_game.gd"
       - "tests/platform_runtime_service_tests.gd"
       - "tests/ios_iphone_policy_tests.gd"
       - "project.godot"
