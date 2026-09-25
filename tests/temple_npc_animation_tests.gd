@@ -52,6 +52,13 @@ func _run()->void:
 	if smith:
 		_check(smith.get_node_or_null("Tool") is Node3D,"Smith owns an articulated hammer root")
 		_check(smith.get_node_or_null("Tool/HammerHead") is MeshInstance3D,"Smith hammer head follows the animated tool root")
+		var smith_head:=smith.get_node("Head") as Node3D
+		var smith_head_before:=smith_head.basis
+		smith.elapsed=0.0
+		smith.play_interaction_reaction()
+		smith._process(0.35)
+		_check(smith.reaction_remaining>0.0,"Smith interaction starts a bounded reaction window")
+		_check(not smith_head.basis.is_equal_approx(smith_head_before),"Smith interaction reaction changes the idle pose")
 
 	var engraver:=chapter.get_node_or_null(paths["engraver"]) as TempleNpcIdle
 	if engraver:
@@ -64,6 +71,11 @@ func _run()->void:
 
 	var game:=chapter.get_node_or_null("Game")
 	if game:
+		var merchant:=chapter.get_node_or_null(paths["merchant"]) as TempleNpcIdle
+		if merchant:
+			merchant.reaction_remaining=0.0
+			game._react_temple_npc("merchant")
+			_check(merchant.reaction_remaining>0.0,"Temple interaction routes a reaction to the matching NPC only")
 		game.reduced_motion=true
 		game._apply_presentation_settings()
 		for npc_node in get_nodes_in_group("temple_npc_idle"):
