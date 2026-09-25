@@ -16,11 +16,16 @@ window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
+window/ios/allow_high_refresh_rate=false
+window/ios/hide_home_indicator=true
+window/ios/hide_status_bar=true
+window/ios/suppress_ui_gesture=true
 
 [rendering]
 
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
+renderer/rendering_device/driver.ios="metal"
 textures/vram_compression/import_etc2_astc=true
 
 [physics]
