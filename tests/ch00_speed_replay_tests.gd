@@ -65,21 +65,40 @@ func _run_case(
 	for raw_action in actions:
 		if str(model.snapshot().get("terminal","CONTINUE"))!="CONTINUE":
 			break
+
 		var shadow_ticket:=timeline.next_turn()
 		_check(
 			StringName(shadow_ticket.get("actor_id",&""))==&"shadow",
 			label+" pair %d opens Shadow opportunity under equal Speed"%pair_index
 		)
-		var result:Dictionary=model.step(str(raw_action))
-		_check(not result.has("error"),label+" pair %d action resolves"%pair_index)
+		var before_shadow_hp:=float((model.snapshot().get("shadow",{}) as Dictionary).get("hp",0.0))
+		var shadow_result:Dictionary=model.resolve_shadow_opportunity(str(raw_action))
+		_check(not shadow_result.has("error"),label+" pair %d Shadow opportunity resolves"%pair_index)
 		_check(timeline.end_turn(&"shadow"),label+" pair %d closes Shadow opportunity"%pair_index)
-		if str(result.get("terminal","CONTINUE"))=="CONTINUE":
+
+		var after_shadow_snapshot:Dictionary=model.snapshot()
+		_check(
+			is_equal_approx(float((after_shadow_snapshot.get("shadow",{}) as Dictionary).get("hp",0.0)),before_shadow_hp),
+			label+" pair %d enemy damage does not resolve inside Shadow opportunity"%pair_index
+		)
+
+		if str(shadow_result.get("terminal","CONTINUE"))=="CONTINUE":
+			_check(
+				bool(after_shadow_snapshot.get("awaiting_enemy_opportunity",false)),
+				label+" pair %d exposes pending enemy opportunity"%pair_index
+			)
 			var enemy_ticket:=timeline.next_turn()
 			_check(
 				StringName(enemy_ticket.get("actor_id",&""))==&"enemy",
 				label+" pair %d exposes exactly one enemy opportunity before next Shadow decision"%pair_index
 			)
+			var enemy_result:Dictionary=model.resolve_enemy_opportunity()
+			_check(not enemy_result.has("error"),label+" pair %d enemy opportunity resolves"%pair_index)
 			_check(timeline.end_turn(&"enemy"),label+" pair %d closes enemy opportunity"%pair_index)
+			_check(
+				not bool(model.snapshot().get("awaiting_enemy_opportunity",true)),
+				label+" pair %d consumes pending enemy opportunity exactly once"%pair_index
+			)
 		pair_index+=1
 
 	var final_state:Dictionary=model.snapshot()
@@ -91,6 +110,7 @@ func _run_case(
 	)
 	var next_ticket:=timeline.next_turn()
 	if expected_terminal=="WIN":
-		# Scheduler is diagnostic only here: it has no combat-life authority yet.
+		# Scheduler has no combat-life authority in this compatibility replay.
 		# Its next ticket is intentionally ignored after the model reaches terminal.
 		_check(not next_ticket.is_empty(),label+" scheduler remains deterministic after diagnostic replay")
+
