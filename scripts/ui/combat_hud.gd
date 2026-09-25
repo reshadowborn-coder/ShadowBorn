@@ -45,5 +45,16 @@ func render_state(state: Dictionary) -> void:
 	if s.get("fray",false): states.append("FRAY")
 	if int(s.get("poison_turns",0))>0:
 		states.append("POISON %d"%int(s.get("poison_turns",0)))
+	var timeline:Dictionary=state.get("turn_meter",{})
+	if not timeline.is_empty():
+		var actors:Dictionary=timeline.get("actors",{})
+		var shadow_tm:Dictionary=actors.get("shadow",{})
+		var enemy_tm:Dictionary=actors.get(str(state.get("encounter_id","")),{})
+		var shadow_pct:=int(round(float(shadow_tm.get("gauge_bp",0))/100.0))
+		var enemy_pct:=int(round(float(enemy_tm.get("gauge_bp",0))/100.0))
+		states.append("TM %d%% / %d%%"%[shadow_pct,enemy_pct])
+		var current:Dictionary=state.get("current_turn",{})
+		if not current.is_empty():
+			states.append("TURN "+str(current.get("actor_id","")).replace("_"," ").to_upper())
 	state_label.text = "  •  ".join(states)
 	emit_signal("visual_state_updated",player_hp.text,enemy_hp.text,state_label.text,locked,cd)

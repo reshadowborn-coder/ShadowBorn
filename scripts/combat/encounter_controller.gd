@@ -12,6 +12,7 @@ signal command_committed(skill: String)
 signal semantic_contact(actor: String, action: String)
 
 const FRAY_BONUS := 1.15
+const SHADOW_BASE_SPEED := 100
 const PRE_TEMPLE_SCRIPTS := {
 	"hound": "ENC_HOUND_A1A2_V01",
 	"armless": "ENC_ARMLESS_A1A2_V01",
@@ -29,6 +30,11 @@ var loadout: Dictionary = ShadowLoadout.profile("")
 var pre_temple_mode := false
 var pre_temple_model = null
 var reduced_motion := false
+var turn_meter_mode_enabled := false
+var turn_timeline := CombatTurnTimeline.new()
+var current_turn:Dictionary = {}
+var encounter_generation := 0
+var shadow_completed_turns := 0
 
 # New turn-first effect contracts are authoritative for migrated effects.
 # Legacy poison_* dictionary fields remain a compatibility projection for
@@ -45,6 +51,9 @@ func set_pre_temple_veil(value: float) -> void:
 
 func set_reduced_motion(value: bool) -> void:
 	reduced_motion = value
+
+func set_turn_meter_mode_enabled(value: bool) -> void:
+	turn_meter_mode_enabled = value
 
 func _next_effect_transaction_id()->int:
 	_effect_transaction_id+=1
@@ -158,6 +167,9 @@ static func _valid_legacy_profile(profile:Dictionary)->bool:
 func start_encounter(id: String, profile: Dictionary) -> bool:
 	if active or id.is_empty():
 		return false
+	encounter_generation += 1
+	shadow_completed_turns = 0
+	current_turn.clear()
 	encounter_id = id
 	pre_temple_mode = PRE_TEMPLE_SCRIPTS.has(id)
 	action_locked = false
@@ -186,8 +198,13 @@ func start_encounter(id: String, profile: Dictionary) -> bool:
 			enemy.guard_phase = "brace"
 
 	active = true
+	if turn_meter_mode_enabled and not pre_temple_mode:
+		_setup_turn_meter()
+		action_locked = true
 	emit_signal("encounter_started",id)
 	_emit_state()
+	if turn_meter_mode_enabled and not pre_temple_mode:
+		call_deferred("_advance_turn_meter",encounter_generation)
 	return true
 
 func shadow_action(skill: String) -> void:
@@ -195,6 +212,9 @@ func shadow_action(skill: String) -> void:
 		return
 	if pre_temple_mode:
 		_shadow_action_pre_temple(skill)
+		return
+	if turn_meter_mode_enabled:
+		_shadow_action_turn_meter(skill)
 		return
 	_shadow_action_legacy(skill)
 
@@ -281,6 +301,174 @@ func _sync_pre_temple_snapshot() -> void:
 	var snapshot: Dictionary = pre_temple_model.snapshot()
 	shadow = Dictionary(snapshot.get("shadow",{})).duplicate(true)
 	enemy = Dictionary(snapshot.get("enemy",{})).duplicate(true)
+
+func _turn_meter_valid(generation:int)->bool:
+	return generation==encounter_generation and active and is_inside_tree()
+
+func _setup_turn_meter()->void:
+	turn_timeline.reset()
+	turn_timeline.add_actor(&"shadow",&"ally",SHADOW_BASE_SPEED)
+	turn_timeline.add_actor(
+		StringName(encounter_id),
+		&"enemy",
+		maxi(1,int(enemy.get("speed",90)))
+	)
+
+func apply_turn_control(
+	actor_id:StringName,
+	control_tag:StringName,
+	turns:int,
+	source_id:StringName=&""
+)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_control(actor_id,control_tag,turns,source_id)
+
+func apply_turn_speed_modifier(
+	actor_id:StringName,
+	source_id:StringName,
+	percent_bp:int,
+	turns:int
+)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.apply_speed_modifier(actor_id,source_id,percent_bp,turns)
+
+func adjust_turn_meter(actor_id:StringName,delta_bp:int)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.adjust_turn_meter(actor_id,delta_bp)
+
+func grant_extra_turn(actor_id:StringName,count:int=1)->bool:
+	if not turn_meter_mode_enabled:
+		return false
+	return turn_timeline.grant_extra_turn(actor_id,count)
+
+func _advance_turn_meter(generation:int)->void:
+	while _turn_meter_valid(generation):
+		var ticket:=turn_timeline.next_turn()
+		if ticket.is_empty():
+			return
+		current_turn=ticket.duplicate(true)
+		action_locked=true
+		_emit_state()
+		var actor_id:=StringName(ticket.get("actor_id",&""))
+
+		if actor_id==&"shadow":
+			var poison_tick:=_tick_shadow_poison()
+			if poison_tick>0.0:
+				_emit_state()
+			if float(shadow.get("hp",0.0))<=0.0:
+				active=false
+				action_locked=false
+				current_turn.clear()
+				_emit_state()
+				emit_signal("encounter_failed",encounter_id)
+				return
+
+		if bool(ticket.get("skipped",false)):
+			await _wait(.04 if reduced_motion else .16)
+			if not _turn_meter_valid(generation):
+				return
+			turn_timeline.end_turn(actor_id)
+			current_turn.clear()
+			continue
+
+		if actor_id==&"shadow":
+			if shadow_completed_turns>0 and int(shadow.get("a2_cd",0))>0 and bool(ticket.get("cooldowns_advance",true)):
+				shadow.a2_cd=maxi(0,int(shadow.a2_cd)-1)
+			action_locked=false
+			_emit_state()
+			return
+
+		await _enemy_turn_meter(generation)
+		if not _turn_meter_valid(generation):
+			return
+		turn_timeline.end_turn(actor_id)
+		current_turn.clear()
+		if float(shadow.get("hp",0.0))<=0.0:
+			active=false
+			action_locked=false
+			_emit_state()
+			emit_signal("encounter_failed",encounter_id)
+			return
+
+func _shadow_action_turn_meter(skill:String)->void:
+	if StringName(current_turn.get("actor_id",&""))!=&"shadow":
+		return
+	if skill=="A2" and int(shadow.get("a2_cd",0))>0:
+		return
+	var generation:=encounter_generation
+	action_locked=true
+	emit_signal("command_committed",skill)
+	_emit_state()
+
+	var guarded:=bool(enemy.get("guard",false))
+	var coeff:=float(loadout.get("a1_coeff",1.0))
+	var guard_mult:=float(loadout.get("a1_guard_mult",0.65))
+	var state_mult:=1.0
+	if skill=="A2":
+		coeff=float(loadout.get("a2_coeff",1.30))
+		guard_mult=float(loadout.get("a2_guard_mult",0.55))
+		if bool(shadow.get("fray",false)):
+			state_mult*=FRAY_BONUS
+			shadow.fray=false
+		shadow.a2_cd=int(loadout.get("a2_cd",3))
+		shadow.veil=float(loadout.get("a2_veil",0.15))
+	else:
+		shadow.fray=true
+	if guarded:
+		state_mult*=guard_mult
+
+	var dealt:=CombatResolver.damage(float(shadow.atk),coeff,float(enemy.def),state_mult)
+	dealt*=turn_timeline.incoming_damage_multiplier(StringName(encounter_id))
+	var timing:=CombatPresentationContract.shadow_timing(skill,reduced_motion)
+	emit_signal("shadow_attack_presented",skill,dealt,guarded)
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_meter_valid(generation):
+		return
+
+	emit_signal("semantic_contact","shadow",skill)
+	turn_timeline.notify_active_damage(StringName(encounter_id))
+	enemy.hp=maxf(0.0,float(enemy.hp)-dealt)
+	_emit_state()
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
+	if not _turn_meter_valid(generation):
+		return
+
+	turn_timeline.end_turn(&"shadow")
+	current_turn.clear()
+	shadow_completed_turns+=1
+	if float(enemy.hp)<=0.0:
+		turn_timeline.set_alive(StringName(encounter_id),false)
+		active=false
+		action_locked=false
+		emit_signal("encounter_finished",encounter_id)
+		_emit_state()
+		return
+	await _advance_turn_meter(generation)
+
+func _enemy_turn_meter(generation:int)->void:
+	await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
+	if not _turn_meter_valid(generation):
+		return
+	var incoming:=_prepare_enemy_turn_legacy()
+	incoming*=turn_timeline.incoming_damage_multiplier(&"shadow")
+	var timing:=CombatPresentationContract.enemy_timing("ATTACK",reduced_motion)
+	emit_signal("enemy_attack_presented",incoming)
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_meter_valid(generation):
+		return
+
+	emit_signal("semantic_contact","enemy","ATTACK")
+	turn_timeline.notify_active_damage(&"shadow")
+	shadow.hp=maxf(0.0,float(shadow.hp)-incoming)
+	var poison_damage:=float(enemy.get("poison_damage",0.0))
+	var poison_turns:=int(enemy.get("poison_turns",0))
+	if poison_damage>0.0 and poison_turns>0 and float(shadow.hp)>0.0:
+		_apply_shadow_poison(poison_damage,poison_turns,StringName(encounter_id))
+	_emit_state()
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
 
 func _shadow_action_legacy(skill: String) -> void:
 	if skill == "A2" and int(shadow.get("a2_cd",0)) > 0:
@@ -390,5 +578,9 @@ func _emit_state() -> void:
 		"pre_temple_mode":pre_temple_mode,
 		"shadow":shadow.duplicate(true),
 		"enemy":enemy.duplicate(true),
+		"turn_meter_mode_enabled":turn_meter_mode_enabled,
+		"turn_meter":turn_timeline.snapshot() if turn_meter_mode_enabled and not pre_temple_mode else {},
+		"current_turn":current_turn.duplicate(true),
+		"shadow_completed_turns":shadow_completed_turns,
 		"loadout":loadout.duplicate(true)
 	})

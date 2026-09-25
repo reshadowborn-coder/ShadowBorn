@@ -46,6 +46,7 @@ func _ready()->void:
 func _connect_runtime()->void:
 	encounter.reset_shadow()
 	encounter.set_reduced_motion(reduced_motion)
+	encounter.set_turn_meter_mode_enabled(true)
 	pack_combat.set_reduced_motion(reduced_motion)
 	pack_combat.set_presentation_timeline_enabled(true)
 	pack_combat.set_turn_meter_mode_enabled(true)

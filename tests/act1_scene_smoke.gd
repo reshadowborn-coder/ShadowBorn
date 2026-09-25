@@ -66,6 +66,7 @@ func _run()->void:
 			_check(game.combat_trace is CombatFrameTrace,"Act 1 debug scene mounts the shared combat frame trace")
 			_check(game.combat_trace._multi_attached,"Act 1 combat trace observes multi-enemy encounters")
 		_check(game.pack_combat.turn_meter_mode_enabled,"Act 1 pack combat opts into the speed/turn-meter scheduler")
+		_check(game.encounter.turn_meter_mode_enabled,"Act 1 single-enemy combat opts into the speed/turn-meter scheduler")
 		_check(game.progression.stage==Act1Contract.STAGE_SEWER_ROOM1,"Act 1 scene restores first sewer stage")
 		_check(game.shadow.global_position.is_equal_approx(Act1Layout.SEWER_ENTRY),"Act 1 scene restores the sewer entry checkpoint")
 		_check(str(game.shadow_proxy.weapon_root.name)=="WeaponVisual" if game.shadow_proxy.weapon_root else false,"Act 1 preserves the forged weapon visual")
