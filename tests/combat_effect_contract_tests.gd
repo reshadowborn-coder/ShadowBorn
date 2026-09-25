@@ -16,6 +16,7 @@ func _run()->void:
 	_test_definition_runtime_isolation()
 	_test_tag_contributors()
 	_test_tag_snapshot_atomic_restore()
+	_test_tag_property_sequence()
 	print("Combat effect contract tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -83,3 +84,48 @@ func _test_tag_snapshot_atomic_restore()->void:
 	var before:=restored.snapshot()
 	_check(not restored.restore({"Status.Guarded":{"shield":0}}),"Invalid contribution counts are rejected")
 	_check(restored.snapshot()==before,"Failed restore is atomic and leaves live ledger unchanged")
+
+func _test_tag_property_sequence()->void:
+	var rng:=RandomNumberGenerator.new()
+	rng.seed=0x5A17B0
+	var ledger:=CombatTagLedger.new()
+	var oracle:Dictionary={}
+	var tags:=[&"Status.Marked",&"Status.Poison",&"State.Guarded",&"Aura.Field",&"Status.Broken"]
+	var sources:=[&"shadow",&"hero_a",&"hero_b",&"weapon",&"school",&"enemy_a",&"enemy_b",&"relic"]
+
+	for step in range(600):
+		var tag:StringName=tags[rng.randi_range(0,tags.size()-1)]
+		var source:StringName=sources[rng.randi_range(0,sources.size()-1)]
+		var amount:=rng.randi_range(1,3)
+		var do_add:=rng.randf()<0.58
+
+		if do_add:
+			ledger.add(tag,source,amount)
+			var tag_key:=str(tag)
+			var source_key:=str(source)
+			if not oracle.has(tag_key):
+				oracle[tag_key]={}
+			var src:Dictionary=oracle[tag_key]
+			src[source_key]=int(src.get(source_key,0))+amount
+		else:
+			var tag_key:=str(tag)
+			var source_key:=str(source)
+			var expected_success:=oracle.has(tag_key) and (oracle[tag_key] as Dictionary).has(source_key)
+			var actual_success:=ledger.remove(tag,source,amount)
+			_check(actual_success==expected_success,"Property sequence remove result matches oracle at step %d"%step)
+			if expected_success:
+				var src:Dictionary=oracle[tag_key]
+				var next_count:=int(src[source_key])-amount
+				if next_count>0:
+					src[source_key]=next_count
+				else:
+					src.erase(source_key)
+				if src.is_empty():
+					oracle.erase(tag_key)
+
+		_check(ledger.snapshot()==oracle,"Tag ledger matches independent oracle at step %d"%step)
+
+		if step%75==0:
+			var roundtrip:=CombatTagLedger.new()
+			_check(roundtrip.restore(ledger.snapshot()),"Property sequence snapshot restores at step %d"%step)
+			_check(roundtrip.snapshot()==oracle,"Property sequence roundtrip matches oracle at step %d"%step)
