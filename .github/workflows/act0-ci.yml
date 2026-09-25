@@ -370,15 +370,57 @@ jobs:
             exit 1
           fi
 
+      - name: Export and compile unsigned iPhone Release app
+        run: |
+          set -euo pipefail
+          rm -rf build/ios-release
+          mkdir -p build/ios-release
+          set -o pipefail
+          /tmp/godot-macos/Godot.app/Contents/MacOS/Godot --verbose --headless --path . \
+            --export-release "iPhone QA" build/ios-release/Shadowborn-Act0-iPhone-Release.zip \
+            2>&1 | tee /tmp/iphone-release-export.log
+          ! grep -Fq "SCRIPT ERROR:" /tmp/iphone-release-export.log
+          ! grep -Fq "Project export for preset \"iPhone QA\" failed" /tmp/iphone-release-export.log
+          XCODEPROJ="build/ios-release/Shadowborn-Act0-iPhone-Release.xcodeproj"
+          test -f "$XCODEPROJ/project.pbxproj"
+          SCHEME_FILE="$(find "$XCODEPROJ/xcshareddata/xcschemes" -type f -name '*.xcscheme' -print -quit)"
+          test -n "$SCHEME_FILE"
+          SCHEME="$(basename "$SCHEME_FILE" .xcscheme)"
+          xcodebuild \
+            -project "$XCODEPROJ" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios-release/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee /tmp/iphone-release-xcodebuild.log
+          grep -Fq "** BUILD SUCCEEDED **" /tmp/iphone-release-xcodebuild.log
+          RELEASE_APP="$(find build/ios-release/DerivedData/Build/Products -type d -name '*.app' -print -quit)"
+          test -n "$RELEASE_APP"
+          test -f "$RELEASE_APP/Info.plist"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$RELEASE_APP/Info.plist")" = "org.shadowborn.chapter0.qa"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$RELEASE_APP/Info.plist")" = "16.0"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily:0' "$RELEASE_APP/Info.plist")" = "1"
+          test -f "$RELEASE_APP/PrivacyInfo.xcprivacy"
+
       - name: Package iPhone QA Xcode artifact
         run: |
           set -euo pipefail
           rm -f build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip
+          test -d build/ios/Shadowborn-Act0-iPhone-QA.xcframework
+          test -d build/ios/MoltenVK.xcframework
+          test -f build/ios/PrivacyInfo.xcprivacy
           (
             cd build/ios
             zip -qry Shadowborn-Act0-iPhone-Xcode-QA.zip \
               Shadowborn-Act0-iPhone-QA.xcodeproj \
-              Shadowborn-Act0-iPhone-QA
+              Shadowborn-Act0-iPhone-QA \
+              Shadowborn-Act0-iPhone-QA.xcframework \
+              MoltenVK.xcframework \
+              PrivacyInfo.xcprivacy
           )
           shasum -a 256 build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip | tee build/ios/Shadowborn-Act0-iPhone-Xcode-QA.zip.sha256
           cat > build/ios/qa-build-manifest.txt <<EOF
@@ -391,7 +433,8 @@ jobs:
           min_ios=16.0
           renderer=Metal
           bundle_id=org.shadowborn.chapter0.qa
-          xcode_compile=unsigned-iphoneos
+          xcode_compile=unsigned-iphoneos-debug-and-release
+          artifact_contains=project-app-source-godot-framework-moltenvk-privacy-manifest
           signing=not-included
           EOF
 
