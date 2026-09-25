@@ -40,8 +40,8 @@ func _run()->void:
 		["A1","A2","A1","A1","A1"],
 		"Shield HOLD V20"
 	)
-	_test_pending_guard()
-	_test_pending_visibility_boundary()
+	_test_independent_opportunities()
+	_test_enemy_phase_visibility_boundary()
 	print("Chapter 0 split-phase tests complete. failures=%d"%failures)
 	quit(1 if failures>0 else 0)
 
@@ -63,13 +63,11 @@ func _test_case(script_id:String,veil:float,actions:Array,label:String)->void:
 
 		var phased_result:Dictionary
 		if str(phase_one.get("terminal","CONTINUE"))=="WIN":
-			_check(not phased.has_pending_enemy_opportunity(),label+" lethal Shadow action creates no enemy opportunity")
-			phased_result=phase_one
+			phased_result=phase_one.duplicate(true)
 		else:
-			_check(phased.has_pending_enemy_opportunity(),label+" nonlethal Shadow action creates one enemy opportunity")
 			var second:Dictionary=phased.resolve_enemy_opportunity()
 			_check(not second.has("error"),label+" enemy opportunity resolves")
-			phased_result=second
+			phased_result=_merge_phases_for_atomic_compare(phase_one,second)
 
 		_compare_result(atomic_result,phased_result,label+" "+action)
 		_compare_snapshot(atomic.snapshot(),phased.snapshot(),label+" snapshot")
@@ -91,6 +89,7 @@ func _compare_result(a:Dictionary,b:Dictionary,label:String)->void:
 func _compare_snapshot(a:Dictionary,b:Dictionary,label:String)->void:
 	_check(str(a.get("terminal",""))==str(b.get("terminal","")),label+" terminal matches")
 	_check(int(a.get("decision",-1))==int(b.get("decision",-2)),label+" decision matches")
+	_check(int(a.get("enemy_phase",-1))==int(b.get("enemy_phase",-2)),label+" enemy phase matches")
 	var ashadow:Dictionary=a.get("shadow",{})
 	var bshadow:Dictionary=b.get("shadow",{})
 	var aenemy:Dictionary=a.get("enemy",{})
@@ -101,21 +100,56 @@ func _compare_snapshot(a:Dictionary,b:Dictionary,label:String)->void:
 	_check(bool(ashadow.get("fray",false))==bool(bshadow.get("fray",false)),label+" Fray matches")
 	_check(_close(float(ashadow.get("veil",0.0)),float(bshadow.get("veil",0.0))),label+" Veil matches")
 
-func _test_pending_guard()->void:
-	var model:=Ch00CombatModel.new()
-	_check(model.setup("ENC_HOUND_A1A2_V01",0.15),"pending guard fixture setup")
-	var first:Dictionary=model.begin_shadow_action("A1")
-	_check(not first.has("error"),"first phased Shadow action succeeds")
-	_check(model.has_pending_enemy_opportunity(),"enemy opportunity is pending")
-	var duplicate:Dictionary=model.begin_shadow_action("A1")
-	_check(str(duplicate.get("error",""))=="enemy_opportunity_pending","second Shadow action is rejected until enemy opportunity resolves")
-	var enemy:Dictionary=model.resolve_enemy_opportunity()
-	_check(not enemy.has("error"),"pending enemy opportunity resolves")
-	_check(not model.has_pending_enemy_opportunity(),"pending flag clears after enemy resolution")
-	var extra:Dictionary=model.resolve_enemy_opportunity()
-	_check(str(extra.get("error",""))=="no_enemy_opportunity_pending","duplicate enemy opportunity is rejected")
 
-func _test_pending_visibility_boundary()->void:
+func _merge_phases_for_atomic_compare(shadow_phase:Dictionary,enemy_phase_result:Dictionary)->Dictionary:
+	var out:=shadow_phase.duplicate(true)
+	out.erase("phase")
+	out.erase("enemy_phase")
+	for key in [
+		"enemy_action","incoming_damage","veil_prevented","shadow_hp_after",
+		"enemy_hp_after","a2_cd_after","fray_after","veil_after","terminal"
+	]:
+		out[key]=enemy_phase_result.get(key)
+	return out
+
+func _test_independent_opportunities()->void:
+	var hound:=Ch00CombatModel.new()
+	_check(hound.setup("ENC_HOUND_A1A2_V01",0.15),"independent Hound setup")
+	var first:Dictionary=hound.begin_shadow_action("A1")
+	_check(not first.has("error"),"first Shadow opportunity resolves without forcing enemy response")
+	var second:Dictionary=hound.begin_shadow_action("A1")
+	_check(not second.has("error"),"second Shadow opportunity can resolve before enemy when Speed grants it")
+	var before_enemy:=hound.snapshot()
+	_check(int(before_enemy.get("decision",-1))==2,"two Shadow decisions are counted independently")
+	_check(int(before_enemy.get("enemy_phase",-1))==0,"enemy phase does not advance from Shadow actions")
+	var enemy:Dictionary=hound.resolve_enemy_opportunity()
+	_check(not enemy.has("error"),"enemy can resolve its first opportunity after two Shadow opportunities")
+	_check(str(enemy.get("enemy_action",""))=="BITE","enemy still executes phase-zero Bite")
+	_check(int(hound.snapshot().get("enemy_phase",-1))==1,"enemy phase advances only on enemy opportunity")
+
+	var shield:=Ch00CombatModel.new()
+	_check(shield.setup("ENC_SHIELD_BRACE_V02_HP87_ATK20",0.15),"independent Shield setup")
+	var shield_one:Dictionary=shield.begin_shadow_action("A1")
+	_check(not shield_one.has("error"),"Shield first Shadow opportunity resolves")
+	_check(bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard stays authoritative after first Shadow action")
+	var shield_two:Dictionary=shield.begin_shadow_action("A1")
+	_check(not shield_two.has("error"),"faster Shadow can receive a second action into the same Guard phase")
+	_check(bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard remains until enemy BRACE_EXIT opportunity")
+	var brace_exit:Dictionary=shield.resolve_enemy_opportunity()
+	_check(str(brace_exit.get("enemy_action",""))=="BRACE_EXIT","enemy opportunity resolves BRACE_EXIT")
+	_check(not bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard clears only after BRACE_EXIT")
+
+	var veil:=Ch00CombatModel.new()
+	_check(veil.setup("ENC_HOUND_A1A2_V01",0.15),"independent Veil setup")
+	var a2:Dictionary=veil.begin_shadow_action("A2")
+	_check(not a2.has("error") and bool((veil.snapshot().get("shadow",{}) as Dictionary).get("veil",0.0)>0.0),"A2 grants Veil")
+	var lap:Dictionary=veil.begin_shadow_action("A1")
+	_check(not lap.has("error"),"Shadow can lap before enemy after A2")
+	_check(not bool((veil.snapshot().get("shadow",{}) as Dictionary).get("veil",0.0)>0.0),"unconsumed Veil expires at the next Shadow opportunity")
+	var bite:Dictionary=veil.resolve_enemy_opportunity()
+	_check(_close(float(bite.get("veil_prevented",0.0)),0.0),"expired Veil does not mitigate the delayed enemy hit")
+
+func _test_enemy_phase_visibility_boundary()->void:
 	var hound:=Ch00CombatModel.new()
 	_check(hound.setup("ENC_HOUND_A1A2_V01",0.15),"visibility Hound setup")
 	var d1:Dictionary=hound.step("A1")
@@ -135,7 +169,7 @@ func _test_pending_visibility_boundary()->void:
 	_check(shield.setup("ENC_SHIELD_BRACE_V02_HP87_ATK20",0.15),"visibility Shield setup")
 	var hold:Dictionary=shield.begin_shadow_action("A1")
 	_check(not hold.has("error"),"visibility Shield D1 Shadow phase resolves")
-	_check(bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard remains visible until BRACE_EXIT enemy opportunity resolves")
+	_check(bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard remains visible before BRACE_EXIT enemy opportunity")
 	var exit:Dictionary=shield.resolve_enemy_opportunity()
 	_check(not exit.has("error"),"visibility Shield BRACE_EXIT resolves")
 	_check(not bool((shield.snapshot().get("enemy",{}) as Dictionary).get("guard",false)),"Guard clears only after BRACE_EXIT resolves")
