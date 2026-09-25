@@ -30,6 +30,7 @@ var room5_solo_attempt := false
 var room5_visual_cache:Array[Node3D]=[]
 var combat_trace:CombatFrameTrace
 var last_committed_state:Dictionary={}
+var mobile_reflow_pending:=false
 
 func _ready() -> void:
 	add_to_group("chapter00_game")
@@ -141,22 +142,34 @@ func _save_progress()->bool:
 	return ok
 
 func _notification(what:int)->void:
-	if what==NOTIFICATION_APPLICATION_PAUSED:
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT,NOTIFICATION_APPLICATION_PAUSED]:
 		if not is_node_ready():
 			return
+		# iOS system overlays can steal a held touch without delivering the
+		# matching release event. Always neutralize virtual movement.
 		mobile_controls.reset_input()
-		if not last_committed_state.is_empty() and not SaveManager.save_state(last_committed_state.duplicate(true)):
-			push_error("iOS suspend save failed; last committed Act 0 state remains in memory")
-	elif what==NOTIFICATION_APPLICATION_RESUMED:
+		if what==NOTIFICATION_APPLICATION_PAUSED:
+			if not last_committed_state.is_empty() and not SaveManager.save_state(last_committed_state.duplicate(true)):
+				push_error("iOS suspend save failed; last committed Act 0 state remains in memory")
+	elif what in [NOTIFICATION_APPLICATION_FOCUS_IN,NOTIFICATION_APPLICATION_RESUMED]:
 		if not is_node_ready():
 			return
-		call_deferred("_resume_mobile_session")
+		_queue_mobile_reflow()
 	elif what==NOTIFICATION_OS_MEMORY_WARNING:
 		# iOS can request memory relief at any point. Only clear rebuildable
 		# references; progression and committed save state remain untouched.
 		room5_visual_cache.clear()
 
+func _queue_mobile_reflow()->void:
+	if mobile_reflow_pending:
+		return
+	mobile_reflow_pending=true
+	call_deferred("_resume_mobile_session")
+
 func _resume_mobile_session()->void:
+	mobile_reflow_pending=false
+	if not is_inside_tree():
+		return
 	iphone_ui_layout.apply_safe_area()
 	_refresh_navigation()
 
@@ -246,7 +259,7 @@ func _position_combatants(enemy_visual: Node3D) -> void:
 	enemy_visual.look_at(Vector3(shadow.global_position.x, enemy_visual.global_position.y, shadow.global_position.z), Vector3.UP)
 
 func _restore_enemy_visual_home()->void:
-	if active_enemy_visual and active_enemy_visual.has_meta("combat_home_position"):
+	if is_instance_valid(active_enemy_visual) and active_enemy_visual.has_meta("combat_home_position"):
 		active_enemy_visual.global_position=active_enemy_visual.get_meta("combat_home_position")
 
 func _on_started(id: String) -> void:
@@ -254,7 +267,7 @@ func _on_started(id: String) -> void:
 	_refresh_navigation()
 
 func _on_combat_state(state: Dictionary) -> void:
-	if not active_enemy_visual: return
+	if not is_instance_valid(active_enemy_visual): return
 	var e: Dictionary = state.get("enemy", {})
 	var shield := active_enemy_visual.get_node_or_null("Shield") as Node3D
 	if shield:
@@ -273,7 +286,7 @@ func _on_finished(id: String) -> void:
 	presenter.play_enemy_death()
 	await get_tree().create_timer(0.30).timeout
 	hud.hide_combat()
-	if defeated_visual:
+	if is_instance_valid(defeated_visual):
 		defeated_visual.visible=false
 	active_enemy_visual = null
 	presenter.clear()
@@ -300,7 +313,7 @@ func _on_finished(id: String) -> void:
 
 	if not transition_valid or not _save_progress():
 		_restore_runtime_snapshot(before_state)
-		if defeated_visual:
+		if is_instance_valid(defeated_visual):
 			defeated_visual.visible=true
 			if defeated_visual.has_meta("combat_home_position"):
 				defeated_visual.global_position=defeated_visual.get_meta("combat_home_position")
