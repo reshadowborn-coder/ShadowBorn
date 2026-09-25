@@ -43,6 +43,10 @@ func _collect(node:Node)->void:
 			var mesh_id:=mesh.get_instance_id()
 			if not unique_meshes.has(mesh_id):
 				unique_meshes[mesh_id]=true
+				if mesh is PrimitiveMesh:
+					var primitive_material:Material=(mesh as PrimitiveMesh).material
+					if primitive_material!=null:
+						unique_materials[primitive_material.get_instance_id()]=true
 				for surface in range(mesh.get_surface_count()):
 					var arrays:=mesh.surface_get_arrays(surface)
 					if arrays.size()>Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX]!=null:
