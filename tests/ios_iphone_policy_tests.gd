@@ -23,6 +23,9 @@ func _read(path:String)->String:
 func _run()->void:
 	var project:=_read("res://project.godot")
 	var presets:=_read("res://export_presets.cfg")
+	var game:=_read("res://scripts/world/chapter00_game.gd")
+	var controls:=_read("res://scripts/ui/mobile_controls.gd")
+	var hud_layout:=_read("res://scripts/ui/iphone_ui_layout.gd")
 
 	_check(project.contains("window/handheld/orientation=4"),"project is locked to sensor-landscape orientation")
 	_check(project.contains("window/ios/allow_high_refresh_rate=false"),"iPhone runtime is capped to the authored 60 FPS modes")
@@ -39,6 +42,15 @@ func _run()->void:
 	_check(presets.contains("application/bundle_identifier=\"org.shadowborn.chapter0.qa\""),"iPhone QA bundle identifier is stable")
 	_check(presets.contains("application/export_project_only=true"),"iPhone QA preset produces an Xcode project before signing")
 	_check(presets.contains("application/app_store_team_id=\"\""),"Apple Team ID is intentionally not committed to source control")
+
+	_check(game.contains("NOTIFICATION_APPLICATION_PAUSED"),"iPhone suspend notification is handled")
+	_check(game.contains("last_committed_state"),"iPhone suspend path keeps a last committed snapshot")
+	_check(game.contains("SaveManager.save_state(last_committed_state.duplicate(true))"),"iPhone suspend writes only the committed snapshot")
+	_check(game.contains("NOTIFICATION_APPLICATION_RESUMED"),"iPhone resume notification reapplies runtime policy")
+	_check(game.contains("NOTIFICATION_OS_MEMORY_WARNING"),"iPhone memory warning is handled without mutating progression")
+	_check(controls.contains("MobileSafeArea.current"),"touch controls are positioned from iPhone Safe Area")
+	_check(controls.contains("reset_input()"),"touch input can be cleared before iOS suspension")
+	_check(hud_layout.contains("MobileSafeArea.current"),"combat HUD is positioned from iPhone Safe Area")
 
 	var margins:=MobileSafeArea.logical_margins(
 		Vector2(1920,1080),
