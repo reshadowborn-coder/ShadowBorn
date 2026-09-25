@@ -8,6 +8,9 @@ const DEV_SHADOW := "res://assets/vendor/quaternius/shadow_adventurer.gltf"
 const DEV_HOUND := "res://assets/vendor/quaternius/grave_wolf.gltf"
 const DEV_SWORD := "res://assets/vendor/quaternius/shadow_sword.gltf"
 
+const META_ANIMATION_PLAYER_PATH := &"_shadowborn_animation_player_path"
+const META_SKELETON_PATH := &"_shadowborn_skeleton_path"
+
 static func create_shadow(with_sword: bool = true) -> Node3D:
 	var final_model := _load_scene(FINAL_SHADOW)
 	if final_model != null:
@@ -414,19 +417,58 @@ static func _load_scene(path: String) -> Node3D:
 	return packed.instantiate() as Node3D
 
 static func _find_animation_player(root: Node) -> AnimationPlayer:
+	if root == null:
+		return null
+	if root is AnimationPlayer:
+		return root as AnimationPlayer
+
+	# Imported character hierarchies do not change at runtime. Cache the relative
+	# NodePath on the queried root so repeated attacks/idle/hit reactions avoid
+	# recursively traversing the full glTF tree every time an animation starts.
+	if root.has_meta(META_ANIMATION_PLAYER_PATH):
+		var cached_path: NodePath = root.get_meta(META_ANIMATION_PLAYER_PATH)
+		var cached_node := root.get_node_or_null(cached_path)
+		if cached_node is AnimationPlayer:
+			return cached_node as AnimationPlayer
+		root.remove_meta(META_ANIMATION_PLAYER_PATH)
+
+	var found := _find_animation_player_uncached(root)
+	if found != null:
+		root.set_meta(META_ANIMATION_PLAYER_PATH,root.get_path_to(found))
+	return found
+
+static func _find_animation_player_uncached(root: Node) -> AnimationPlayer:
 	if root is AnimationPlayer:
 		return root as AnimationPlayer
 	for child in root.get_children():
-		var found := _find_animation_player(child)
+		var found := _find_animation_player_uncached(child)
 		if found != null:
 			return found
 	return null
 
 static func _find_skeleton(root: Node) -> Skeleton3D:
+	if root == null:
+		return null
+	if root is Skeleton3D:
+		return root as Skeleton3D
+
+	if root.has_meta(META_SKELETON_PATH):
+		var cached_path: NodePath = root.get_meta(META_SKELETON_PATH)
+		var cached_node := root.get_node_or_null(cached_path)
+		if cached_node is Skeleton3D:
+			return cached_node as Skeleton3D
+		root.remove_meta(META_SKELETON_PATH)
+
+	var found := _find_skeleton_uncached(root)
+	if found != null:
+		root.set_meta(META_SKELETON_PATH,root.get_path_to(found))
+	return found
+
+static func _find_skeleton_uncached(root: Node) -> Skeleton3D:
 	if root is Skeleton3D:
 		return root as Skeleton3D
 	for child in root.get_children():
-		var found := _find_skeleton(child)
+		var found := _find_skeleton_uncached(child)
 		if found != null:
 			return found
 	return null
