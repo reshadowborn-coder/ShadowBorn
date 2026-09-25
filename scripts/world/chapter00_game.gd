@@ -69,7 +69,7 @@ func _ready() -> void:
 	if OS.is_debug_build():
 		combat_trace=CombatFrameTrace.new()
 		var trace_console:=bool(ProjectSettings.get_setting("debug/shadowborn/combat_trace_console",true))
-		if "--shadowborn-trace-quiet" in OS.get_cmdline_args():
+		if "--shadowborn-trace-quiet" in OS.get_cmdline_user_args() or "--shadowborn-trace-quiet" in OS.get_cmdline_args():
 			trace_console=false
 		combat_trace.set_console_output(trace_console)
 		add_child(combat_trace)
