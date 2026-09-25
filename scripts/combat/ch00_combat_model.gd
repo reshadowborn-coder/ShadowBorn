@@ -83,6 +83,15 @@ func snapshot() -> Dictionary:
 		}
 	}
 
+func open_shadow_opportunity() -> Dictionary:
+	if terminal != "CONTINUE":
+		return {"error": "encounter_already_terminal"}
+	# Veil is valid only until this opportunity opens. Presentation/UI must not
+	# display it as active while the player is choosing a later Shadow command.
+	if bool(shadow.get("veil", false)):
+		shadow["veil"] = false
+	return snapshot()
+
 func begin_shadow_action(action: String) -> Dictionary:
 	if terminal != "CONTINUE":
 		return {"error": "encounter_already_terminal"}
@@ -93,9 +102,9 @@ func begin_shadow_action(action: String) -> Dictionary:
 	if action == "A2" and int(shadow["a2_cd"]) > 0:
 		return {"error": "a2_not_ready"}
 
-	# Veil protects only until the next Shadow action opportunity. If Speed lets
-	# Shadow lap the enemy, an unconsumed Veil from the previous Shadow action
-	# expires here instead of becoming an indefinite shield.
+	# Defensive fallback for direct model callers that do not explicitly open the
+	# opportunity first. EncounterController calls open_shadow_opportunity()
+	# before exposing player input.
 	if bool(shadow.get("veil", false)):
 		shadow["veil"] = false
 
