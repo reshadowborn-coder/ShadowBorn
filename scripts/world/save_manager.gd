@@ -137,6 +137,17 @@ static func _repair_checkpoint(state:Dictionary)->Dictionary:
 	var recovery:=Vector3(0,0.9,8)
 	var checkpoint:="awakening"
 	match stage:
+		Act0Contract.STAGE_EXTERIOR:
+			var cleared:Array=state.get("cleared_encounters",[])
+			if bool(state.get("temple_reveal_seen",false)):
+				recovery=Vector3(Act0Layout.TEMPLE_REVEAL_TRIGGER.x,0.9,Act0Layout.TEMPLE_REVEAL_TRIGGER.z)
+				checkpoint="temple_reveal_seen"
+			elif "armless" in cleared:
+				recovery=Vector3(Act0Layout.ARMLESS_TRIGGER.x,0.9,Act0Layout.ARMLESS_TRIGGER.z)
+				checkpoint="armless_cleared"
+			elif "hound" in cleared:
+				recovery=Vector3(Act0Layout.HOUND_TRIGGER.x,0.9,Act0Layout.HOUND_TRIGGER.z)
+				checkpoint="hound_cleared"
 		Act0Contract.STAGE_TEMPLE_ENTRY:
 			if bool(state.get("faded_sigil_activated",false)):
 				recovery=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
