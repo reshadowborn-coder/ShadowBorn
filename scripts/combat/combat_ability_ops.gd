@@ -76,6 +76,9 @@ static func validate_step(step:Dictionary)->Array[String]:
 				errors.append("apply_status chance_bp is outside 0..10000")
 			if int(step.get("turns",1))<=0:
 				errors.append("apply_status turns must be positive")
+			var roll_scope:=str(step.get("roll_scope","per_action"))
+			if roll_scope not in ["per_action","per_hit"]:
+				errors.append("apply_status roll_scope must be per_action or per_hit")
 		REMOVE_STATUS:
 			if str(step.get("status_id","")).is_empty() and str(step.get("tag","")).is_empty():
 				errors.append("remove_status requires status_id or tag")

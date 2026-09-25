@@ -8,6 +8,7 @@ var target_actor_id:StringName=&""
 var target_team:StringName=&""
 var source_skill_id:StringName=&""
 var turn_serial:int=0
+var transaction_id:int=0
 var chain_depth:int=0
 var tags:Array[StringName]=[]
 var payload:Dictionary={}
@@ -42,6 +43,7 @@ func snapshot()->Dictionary:
 		"target_team":str(target_team),
 		"source_skill_id":str(source_skill_id),
 		"turn_serial":turn_serial,
+		"transaction_id":transaction_id,
 		"chain_depth":chain_depth,
 		"tags":out_tags,
 		"payload":payload.duplicate(true)

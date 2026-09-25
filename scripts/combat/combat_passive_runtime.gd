@@ -28,6 +28,7 @@ func register_passive(actor_id:StringName,definition:CombatPassiveDefinition)->b
 	_definitions[actor_id]=entries
 	_state[_key(actor_id,definition.id)]={
 		"used_battle":false,
+		"last_transaction_id":-1,
 		"last_turn_serial":-1,
 		"cooldown_owner_turns":0
 	}
@@ -60,7 +61,7 @@ func collect_reactions(event:CombatTriggerEvent,commit_state:bool=true)->Array[D
 			if not _eligible(owner_id,owner_team,definition,event):
 				continue
 			if commit_state:
-				_commit_trigger(owner_id,definition,event.turn_serial)
+				_commit_trigger(owner_id,definition,event.turn_serial,event.transaction_id)
 			out.append({
 				"actor_id":owner_id,
 				"passive_id":definition.id,
@@ -84,23 +85,24 @@ func collect_reactions(event:CombatTriggerEvent,commit_state:bool=true)->Array[D
 	)
 	return out
 
-func commit_trigger(actor_id:StringName,passive_id:StringName,turn_serial:int)->bool:
+func commit_trigger(actor_id:StringName,passive_id:StringName,turn_serial:int,transaction_id:int=0)->bool:
 	if not _definitions.has(actor_id):
 		return false
 	for definition_value in _definitions[actor_id]:
 		var definition:CombatPassiveDefinition=definition_value
 		if definition.id==passive_id:
-			_commit_trigger(actor_id,definition,turn_serial)
+			_commit_trigger(actor_id,definition,turn_serial,transaction_id)
 			return true
 	return false
 
 func state_snapshot()->Dictionary:
 	return _state.duplicate(true)
 
-func _commit_trigger(actor_id:StringName,definition:CombatPassiveDefinition,turn_serial:int)->void:
+func _commit_trigger(actor_id:StringName,definition:CombatPassiveDefinition,turn_serial:int,transaction_id:int)->void:
 	var key:=_key(actor_id,definition.id)
 	var state:Dictionary=_state.get(key,{})
 	state["used_battle"]=true
+	state["last_transaction_id"]=transaction_id
 	state["last_turn_serial"]=turn_serial
 	state["cooldown_owner_turns"]=definition.internal_cooldown_owner_turns
 	_state[key]=state
@@ -113,10 +115,14 @@ func _eligible(
 )->bool:
 	if definition.trigger_event!=event.event_type:
 		return false
+	if event.has_tag(CombatEventTags.ORIGIN_REACTION) and not definition.allow_reaction_trigger:
+		return false
 	if bool(_blocked_actors.get(owner_id,false)) and not definition.unblockable:
 		return false
 	var state:Dictionary=_state.get(_key(owner_id,definition.id),{})
 	if definition.once_per_battle and bool(state.get("used_battle",false)):
+		return false
+	if definition.once_per_action and event.transaction_id>0 and int(state.get("last_transaction_id",-1))==event.transaction_id:
 		return false
 	if definition.once_per_turn and event.turn_serial>0 and int(state.get("last_turn_serial",-1))==event.turn_serial:
 		return false

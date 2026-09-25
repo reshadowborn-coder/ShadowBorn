@@ -18,8 +18,10 @@ enum OwnerRelation {
 @export var owner_relation:OwnerRelation=OwnerRelation.ANY
 @export_range(-999,999,1) var priority:int=0
 @export var reaction_kind:StringName=CombatReactionQueue.KIND_FOLLOW_UP
+@export var once_per_action:bool=false
 @export var once_per_turn:bool=false
 @export var once_per_battle:bool=false
+@export var allow_reaction_trigger:bool=false
 @export_range(0,99,1) var internal_cooldown_owner_turns:int=0
 @export_range(0,10000,1) var proc_chance_bp:int=10000
 @export var unblockable:bool=false

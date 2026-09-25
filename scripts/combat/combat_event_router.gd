@@ -69,7 +69,7 @@ func dispatch(event:CombatTriggerEvent)->Dictionary:
 			receipts.append(_receipt(actor_id,passive_id,false,"queue_guard",roll,chance))
 			continue
 
-		passive_runtime.commit_trigger(actor_id,passive_id,event.turn_serial)
+		passive_runtime.commit_trigger(actor_id,passive_id,event.turn_serial,event.transaction_id)
 		receipts.append(_receipt(actor_id,passive_id,true,"queued",roll,chance))
 
 	return {
