@@ -177,6 +177,7 @@ func _build_replace_confirm()->void:
 	confirm_panel.add_child(header)
 
 	var body:=Label.new()
+	body.name="Body"
 	body.text="Your current Act 0 progress will be replaced. This cannot be undone from the game menu."
 	body.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
@@ -203,19 +204,32 @@ func _build_replace_confirm()->void:
 func _replace_confirmed()->void:
 	if pending_identity.is_empty():
 		return
-	var identity:=pending_identity
-	pending_identity=""
-	_commit_identity(identity)
+	if _commit_identity(pending_identity):
+		pending_identity=""
 
 func _cancel_replace()->void:
 	pending_identity=""
+	var body:=confirm_panel.get_node_or_null("Body") as Label
+	if body:
+		body.text="Your current Act 0 progress will be replaced. This cannot be undone from the game menu."
 	confirm_panel.visible=false
 	identity_panel.visible=true
 
-func _commit_identity(identity:String)->void:
+func _commit_identity(identity:String)->bool:
 	var ok:=SaveManager.create_new_game(identity) if identity_mode=="new" else SaveManager.set_identity_on_existing_save(identity)
 	if ok:
 		get_tree().change_scene_to_file(CHAPTER_SCENE)
+		return true
+
+	if confirm_panel.visible:
+		var body:=confirm_panel.get_node_or_null("Body") as Label
+		if body:
+			body.text="The save could not be written. Your current game has not been replaced. You can retry or cancel."
+	elif identity_panel.visible:
+		var info:=identity_panel.get_node_or_null("Info") as Label
+		if info:
+			info.text="The save could not be written. Check available storage and try again."
+	return false
 
 func _unhandled_input(event:InputEvent)->void:
 	if not event.is_action_pressed("ui_cancel"):
