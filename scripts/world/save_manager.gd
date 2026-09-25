@@ -18,6 +18,7 @@ static func default_state() -> Dictionary:
 		"shadow_identity": "",
 		"act0_stage": Act0Contract.STAGE_EXTERIOR,
 		"hound_residual_absorbed": false,
+		"temple_reveal_seen": false,
 		"faded_sigil_activated": false,
 		"covenant_joined": false,
 		"weapon_family": "",
@@ -156,12 +157,19 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		state.cleared_encounters.append("hound")
 
 	var hound_cleared:bool="hound" in state.cleared_encounters
+	var armless_cleared:bool="armless" in state.cleared_encounters
 	var shield_cleared:bool="shield_boss" in state.cleared_encounters
 
 	# Hound clear and residual absorption are persisted by the same runtime
 	# transition. A save containing the clear but not the one-shot flag is
 	# incomplete/corrupt and must converge forward rather than replay it.
 	state.hound_residual_absorbed=hound_cleared
+
+	# Shield is unreachable in the canonical flow until the reveal has played.
+	# If a later state proves Shield was reached, converge the one-shot forward.
+	state.temple_reveal_seen=bool(state.get("temple_reveal_seen",false)) and armless_cleared
+	if shield_cleared:
+		state.temple_reveal_seen=true
 
 	var downstream_after_sigil:bool=(
 		covenant
@@ -180,8 +188,16 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		# ungated threshold.
 		state.faded_sigil_activated=true
 
+	# Route position is derived from irreversible gameplay evidence instead of
+	# trusting a stale/corrupt index from an older Director implementation.
 	if shield_cleared:
-		state.route_index=maxi(state.route_index,Chapter00Director.ROUTE.size()-1)
+		state.route_index=Chapter00Director.ROUTE.find("temple_gate")
+	elif bool(state.temple_reveal_seen):
+		state.route_index=Chapter00Director.ROUTE.find("shield_boss")
+	elif armless_cleared:
+		state.route_index=Chapter00Director.ROUTE.find("temple_reveal")
+	elif hound_cleared:
+		state.route_index=Chapter00Director.ROUTE.find("ruins")
 
 	# Validate a committed forge before trusting downstream Catacomb state.
 	if forged:
