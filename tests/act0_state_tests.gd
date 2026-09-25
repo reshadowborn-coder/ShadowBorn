@@ -199,9 +199,11 @@ func _test_save_recovery()->void:
 	malformed_flags.act0_complete="false"
 	malformed_flags.reduced_motion="true"
 	var malformed_recovery:=SaveManager._migrate(malformed_flags)
+	_check(typeof(malformed_recovery.covenant_joined)==TYPE_BOOL and typeof(malformed_recovery.first_forge_done)==TYPE_BOOL,"migrated Covenant/forge flags are canonical booleans")
+	_check(typeof(malformed_recovery.story_summon_unlocked)==TYPE_BOOL and typeof(malformed_recovery.room5_rematch_ready)==TYPE_BOOL and typeof(malformed_recovery.act0_complete)==TYPE_BOOL,"migrated late Act 0 flags are canonical booleans")
 	_check(malformed_recovery.covenant_joined==false and malformed_recovery.first_forge_done==false,"non-boolean Covenant/forge flags cannot unlock progression")
 	_check(malformed_recovery.story_summon_unlocked==false and malformed_recovery.room5_rematch_ready==false and malformed_recovery.act0_complete==false,"non-boolean late Act 0 flags are rejected")
-	_check(malformed_recovery.reduced_motion==false,"non-boolean settings flags fall back safely")
+	_check(typeof(malformed_recovery.reduced_motion)==TYPE_BOOL and malformed_recovery.reduced_motion==false,"non-boolean settings flags fall back to canonical false")
 
 	var injected_forge:=SaveManager.default_state()
 	injected_forge.cleared_encounters=["hound","armless","shield_boss"]
