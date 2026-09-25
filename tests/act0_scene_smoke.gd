@@ -67,12 +67,12 @@ func _test_chapter_scene()->void:
 		if keeper:
 			var keeper_shape:=keeper.get_child(0) as CollisionShape3D
 			var keeper_box:=keeper_shape.shape as BoxShape3D
-			_check(keeper_box!=null and keeper_box.size.x>=11.5,"Keeper handoff spans the Temple nave")
+			_check(keeper_box!=null and keeper_box.size.x>=12.5,"Keeper handoff spans the Temple nave")
 		var covenant:=triggers.get_node_or_null("Covenant")
 		if covenant:
 			var covenant_shape:=covenant.get_child(0) as CollisionShape3D
 			var covenant_box:=covenant_shape.shape as BoxShape3D
-			_check(covenant_box!=null and covenant_box.size.x>=11.5,"Covenant handoff spans the Temple nave")
+			_check(covenant_box!=null and covenant_box.size.x>=12.5,"Covenant handoff spans the Temple nave")
 		var room1:=triggers.get_node_or_null("CatacombRoom1")
 		if room1:
 			var room_shape:=room1.get_child(0) as CollisionShape3D
