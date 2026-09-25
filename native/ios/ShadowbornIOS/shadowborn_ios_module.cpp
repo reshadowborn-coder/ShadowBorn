@@ -18,6 +18,12 @@ void shadowborn_ios_init() {
 
 void shadowborn_ios_deinit() {
 	if (shadowborn_ios_singleton != nullptr) {
+		Engine *engine = Engine::get_singleton();
+		if (engine != nullptr && engine->has_singleton("ShadowbornIOS")) {
+			// Remove the registry pointer before deleting the Object so plugin
+			// teardown can never leave a dangling Engine singleton reference.
+			engine->remove_singleton("ShadowbornIOS");
+		}
 		memdelete(shadowborn_ios_singleton);
 		shadowborn_ios_singleton = nullptr;
 	}
