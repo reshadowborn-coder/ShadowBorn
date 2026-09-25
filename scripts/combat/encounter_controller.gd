@@ -74,7 +74,7 @@ func start_encounter(id: String, profile: Dictionary) -> void:
 	_emit_state()
 
 func shadow_action(skill: String) -> void:
-	if not active or action_locked:
+	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if pre_temple_mode:
 		_shadow_action_pre_temple(skill)
