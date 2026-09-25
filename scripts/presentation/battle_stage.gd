@@ -15,7 +15,13 @@ var battle_camera: Camera3D
 var clock := 0.0
 var presentation_speed := 1.0
 
+# Mesh/material resources are immutable during combat. Build them once so A1/A2
+# only allocate lightweight MeshInstance3D nodes and tweens on impact.
+var vfx_meshes: Dictionary = {}
+var vfx_materials: Dictionary = {}
+
 func _ready() -> void:
+	_prepare_vfx_resources()
 	_build_environment()
 	# Real characters animate through AnimationPlayer; per-frame script work is only
 	# enabled when an emergency fallback model is actually in use.
@@ -301,20 +307,82 @@ func _update_label(unit: Dictionary) -> void:
 	var label: Label3D = actor_labels[id]
 	label.text = "%s\n%s%s" % [str(unit["name"]),"█".repeat(filled),"░".repeat(10-filled)]
 
+func _prepare_vfx_resources() -> void:
+	var flash_mat := StandardMaterial3D.new()
+	flash_mat.albedo_color = Color(0.72,0.82,1.0)
+	flash_mat.emission_enabled = true
+	flash_mat.emission = Color(0.72,0.82,1.0)
+	flash_mat.emission_energy_multiplier = 3.0
+	vfx_materials["flash"] = flash_mat
+	var flash_mesh := SphereMesh.new()
+	flash_mesh.radius = 0.14
+	flash_mesh.height = 0.28
+	flash_mesh.radial_segments = 12
+	flash_mesh.rings = 6
+	flash_mesh.material = flash_mat
+	vfx_meshes["flash"] = flash_mesh
+
+	var basic_mat := StandardMaterial3D.new()
+	basic_mat.albedo_color = Color(0.48,0.66,1.0)
+	basic_mat.emission_enabled = true
+	basic_mat.emission = Color(0.35,0.55,1.0)
+	basic_mat.emission_energy_multiplier = 2.2
+	vfx_materials["basic_slash"] = basic_mat
+	var basic_meshes: Array[BoxMesh] = []
+	for i in range(3):
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(0.045,0.035,0.62-float(i)*0.10)
+		mesh.material = basic_mat
+		basic_meshes.append(mesh)
+	vfx_meshes["basic_slash"] = basic_meshes
+
+	var charge_mat := StandardMaterial3D.new()
+	charge_mat.albedo_color = Color(0.08,0.16,0.42,0.72)
+	charge_mat.emission_enabled = true
+	charge_mat.emission = Color(0.08,0.18,0.55)
+	charge_mat.emission_energy_multiplier = 1.8
+	charge_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	vfx_materials["shadow_charge"] = charge_mat
+	var charge_mesh := TorusMesh.new()
+	charge_mesh.inner_radius = 0.26
+	charge_mesh.outer_radius = 0.34
+	charge_mesh.rings = 12
+	charge_mesh.ring_segments = 20
+	charge_mesh.material = charge_mat
+	vfx_meshes["shadow_charge"] = charge_mesh
+
+	var burst_mat := StandardMaterial3D.new()
+	burst_mat.albedo_color = Color(0.025,0.055,0.16,0.75)
+	burst_mat.emission_enabled = true
+	burst_mat.emission = Color(0.10,0.24,0.78)
+	burst_mat.emission_energy_multiplier = 2.8
+	burst_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	vfx_materials["heavy_burst"] = burst_mat
+	var burst_mesh := SphereMesh.new()
+	burst_mesh.radius = 0.24
+	burst_mesh.height = 0.48
+	burst_mesh.radial_segments = 14
+	burst_mesh.rings = 8
+	burst_mesh.material = burst_mat
+	vfx_meshes["heavy_burst"] = burst_mesh
+
+	var shard_mat := StandardMaterial3D.new()
+	shard_mat.albedo_color = Color(0.12,0.24,0.64)
+	shard_mat.emission_enabled = true
+	shard_mat.emission = Color(0.08,0.18,0.62)
+	shard_mat.emission_energy_multiplier = 2.0
+	vfx_materials["heavy_shards"] = shard_mat
+	var shard_meshes: Array[BoxMesh] = []
+	for i in range(5):
+		var shard_mesh := BoxMesh.new()
+		shard_mesh.size = Vector3(0.035,0.035,0.40+0.10*i)
+		shard_mesh.material = shard_mat
+		shard_meshes.append(shard_mesh)
+	vfx_meshes["heavy_shards"] = shard_meshes
+
 func _spawn_impact_flash(pos: Vector3) -> void:
 	var flash := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.14
-	mesh.height = 0.28
-	mesh.radial_segments = 12
-	mesh.rings = 6
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.72,0.82,1.0)
-	mat.emission_enabled = true
-	mat.emission = Color(0.72,0.82,1.0)
-	mat.emission_energy_multiplier = 3.0
-	mesh.material = mat
-	flash.mesh = mesh
+	flash.mesh = vfx_meshes["flash"] as Mesh
 	flash.position = pos
 	add_child(flash)
 	var t := create_tween()
@@ -324,18 +392,11 @@ func _spawn_impact_flash(pos: Vector3) -> void:
 	t.chain().tween_callback(flash.queue_free)
 
 func _spawn_basic_slash_impact(pos: Vector3,direction: Vector3) -> void:
-	# Cheap mobile VFX: three emissive streaks, no persistent particles.
-	for i in range(3):
+	# A1 stays cheap and readable: three streaks sharing prebuilt resources.
+	var meshes: Array = vfx_meshes["basic_slash"]
+	for i in range(meshes.size()):
 		var streak := MeshInstance3D.new()
-		var mesh := BoxMesh.new()
-		mesh.size = Vector3(0.045,0.035,0.62-float(i)*0.10)
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.48,0.66,1.0)
-		mat.emission_enabled = true
-		mat.emission = Color(0.35,0.55,1.0)
-		mat.emission_energy_multiplier = 2.2
-		mesh.material = mat
-		streak.mesh = mesh
+		streak.mesh = meshes[i] as Mesh
 		streak.position = pos + Vector3(0,0.10*float(i-1),0)
 		streak.look_at(pos+direction,Vector3.UP)
 		streak.rotation_degrees.z += -24.0+24.0*i
@@ -349,19 +410,7 @@ func _spawn_basic_slash_impact(pos: Vector3,direction: Vector3) -> void:
 
 func _spawn_shadow_charge(pos: Vector3) -> void:
 	var ring := MeshInstance3D.new()
-	var mesh := TorusMesh.new()
-	mesh.inner_radius = 0.26
-	mesh.outer_radius = 0.34
-	mesh.rings = 12
-	mesh.ring_segments = 20
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.08,0.16,0.42,0.72)
-	mat.emission_enabled = true
-	mat.emission = Color(0.08,0.18,0.55)
-	mat.emission_energy_multiplier = 1.8
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mesh.material = mat
-	ring.mesh = mesh
+	ring.mesh = vfx_meshes["shadow_charge"] as Mesh
 	ring.position = pos
 	ring.rotation_degrees.x = 90
 	add_child(ring)
@@ -374,19 +423,7 @@ func _spawn_shadow_charge(pos: Vector3) -> void:
 
 func _spawn_heavy_shadow_impact(pos: Vector3,direction: Vector3) -> void:
 	var burst := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.24
-	mesh.height = 0.48
-	mesh.radial_segments = 14
-	mesh.rings = 8
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.025,0.055,0.16,0.75)
-	mat.emission_enabled = true
-	mat.emission = Color(0.10,0.24,0.78)
-	mat.emission_energy_multiplier = 2.8
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mesh.material = mat
-	burst.mesh = mesh
+	burst.mesh = vfx_meshes["heavy_burst"] as Mesh
 	burst.position = pos
 	add_child(burst)
 
@@ -397,18 +434,11 @@ func _spawn_heavy_shadow_impact(pos: Vector3,direction: Vector3) -> void:
 	t.tween_property(burst,"modulate:a",0.0,0.22)
 	t.chain().tween_callback(burst.queue_free)
 
-	# A2 still uses only a handful of transient meshes to stay cheap on mobile.
-	for i in range(5):
+	# A2 keeps a broader silhouette but shares five prebuilt shard meshes/materials.
+	var shard_meshes: Array = vfx_meshes["heavy_shards"]
+	for i in range(shard_meshes.size()):
 		var shard := MeshInstance3D.new()
-		var shard_mesh := BoxMesh.new()
-		shard_mesh.size = Vector3(0.035,0.035,0.40+0.10*i)
-		var shard_mat := StandardMaterial3D.new()
-		shard_mat.albedo_color = Color(0.12,0.24,0.64)
-		shard_mat.emission_enabled = true
-		shard_mat.emission = Color(0.08,0.18,0.62)
-		shard_mat.emission_energy_multiplier = 2.0
-		shard_mesh.material = shard_mat
-		shard.mesh = shard_mesh
+		shard.mesh = shard_meshes[i] as Mesh
 		shard.position = pos
 		shard.look_at(pos+direction,Vector3.UP)
 		shard.rotation_degrees.z += -48.0+24.0*i
