@@ -140,7 +140,7 @@ func _test_chapter_scene()->void:
 		game._start_room5_solo_attempt([])
 		_check(not game.room5_active and not game.room5_solo_attempt,"rejected Room 5 startup cannot leave the game in an active combat state")
 		_check((chapter.get_node_or_null("Shadow") as CharacterBody3D).is_physics_processing(),"rejected Room 5 startup restores Shadow movement processing")
-		_check(not game.room5_hud.panel.visible,"rejected Room 5 startup keeps the multi-target HUD closed")
+		_check(not game.room5_hud.visible,"rejected Room 5 startup keeps the multi-target HUD closed")
 
 		var cat_gate_runtime:=triggers.get_node_or_null("CatacombsEntry") if triggers else null
 		if cat_gate_runtime and cat_gate_runtime.has_method("_should_trigger_interaction"):
