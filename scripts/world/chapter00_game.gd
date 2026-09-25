@@ -39,6 +39,7 @@ func _ready() -> void:
 	_apply_identity_state(persisted)
 	_apply_equipment_state()
 	_restore_act0_position()
+	_apply_threshold_visual_state()
 	act0_flow.companion_ready.connect(_on_companion_ready)
 	room5_combat.finished.connect(_on_room5_finished)
 	room5_combat.failed.connect(_on_room5_failed)
@@ -204,6 +205,7 @@ func _on_finished(id: String) -> void:
 	var first_clear := id not in cleared_encounters
 	var cat_room := _catacomb_room_for_encounter(id)
 	var residual_beat:=false
+	var shield_threshold_beat:=false
 	presenter.play_enemy_death()
 	await get_tree().create_timer(0.30).timeout
 	hud.hide_combat()
@@ -218,6 +220,8 @@ func _on_finished(id: String) -> void:
 			act0.silver+=1
 			if not act0.transition_to(Act0Contract.STAGE_TEMPLE_ENTRY):
 				push_error("Shield clear could not advance Act 0 to Temple threshold")
+			else:
+				shield_threshold_beat=true
 	checkpoint_position = shadow.global_position
 	director.set_checkpoint(id + "_cleared")
 	director.advance()
@@ -227,6 +231,8 @@ func _on_finished(id: String) -> void:
 	if residual_beat:
 		shadow_proxy.play_residual_absorption()
 		story_toast.show_message("The fading residual answers the Shadow. Its echo is absorbed.",2.8)
+	elif shield_threshold_beat:
+		story_toast.show_message("Silver remains in the broken shield. Ahead, a Faded Sigil stirs at the Temple threshold.",3.6)
 
 func _on_failed(_id: String) -> void:
 	hud.hide_combat()
@@ -256,11 +262,20 @@ func play_world_reveal(id: String) -> void:
 func activate_faded_sigil()->bool:
 	if not is_encounter_cleared("shield_boss") or act0.stage!=Act0Contract.STAGE_TEMPLE_ENTRY:
 		return false
+	var before:=act0.snapshot()
+	var previous_checkpoint:=checkpoint_position
+	var previous_checkpoint_id:=director.checkpoint
 	if not act0.activate_faded_sigil():
 		return false
 	checkpoint_position=Vector3(Act0Layout.FADED_SIGIL_TRIGGER.x,0.9,Act0Layout.FADED_SIGIL_TRIGGER.z)
 	director.set_checkpoint("faded_sigil")
-	_save_progress()
+	if not _save_progress():
+		act0.restore(before)
+		checkpoint_position=previous_checkpoint
+		director.set_checkpoint(previous_checkpoint_id)
+		story_toast.show_message("The Sigil recoils. Progress could not be saved.")
+		return false
+	_apply_threshold_visual_state()
 	shadow_proxy.play_residual_absorption()
 	story_toast.show_message("The Faded Sigil recognizes the wounded Shadow. The Temple threshold yields.",3.2)
 	return true
@@ -279,12 +294,28 @@ func enter_temple() -> void:
 func temple_interact(kind:String) -> void:
 	match kind:
 		"keeper":
-			if act0.stage==Act0Contract.STAGE_TEMPLE_ENTRY and act0.join_covenant():
-				story_toast.show_message("Keeper: The dead do not fear the dark. Only what wakes inside it. Bind your shape to the Forgotten Covenant.")
-				_save_progress()
-			elif act0.stage==Act0Contract.STAGE_ROOM5_RETURN and act0_flow.temple_story_handoff():
-				story_toast.show_message("Keeper: One shadow has found its limit. Call the one who still answers beneath the stone.")
-				_save_progress()
+			if act0.stage==Act0Contract.STAGE_TEMPLE_ENTRY:
+				var before:=act0.snapshot()
+				if act0.join_covenant():
+					if _save_progress():
+						story_toast.show_message("Keeper: The dead do not fear the dark. Only what wakes inside it. Bind your shape to the Forgotten Covenant.")
+					else:
+						act0.restore(before)
+						story_toast.show_message("The Keeper falls silent. Progress could not be saved.")
+			elif act0.stage==Act0Contract.STAGE_ROOM5_RETURN:
+				var before_state:=_build_save_state()
+				var before_checkpoint:=checkpoint_position
+				var before_checkpoint_id:=director.checkpoint
+				if act0_flow.temple_story_handoff():
+					if _save_progress():
+						story_toast.show_message("Keeper: One shadow has found its limit. Call the one who still answers beneath the stone.")
+					else:
+						act0.restore(before_state)
+						catacombs.restore(before_state)
+						team.restore(before_state)
+						checkpoint_position=before_checkpoint
+						director.set_checkpoint(before_checkpoint_id)
+						story_toast.show_message("The summoning breaks before it settles. Progress could not be saved.")
 		"covenant":
 			if act0.covenant_joined and act0.weapon_family.is_empty():
 				covenant_menu.open()
@@ -301,19 +332,34 @@ func temple_interact(kind:String) -> void:
 		"engraver":
 			story_toast.show_message("The engraver's stones are dormant. Runes will answer later.")
 		"catacombs":
+			var before_state:=_build_save_state()
+			var before_position:=shadow.global_position
+			var before_checkpoint:=checkpoint_position
 			if act0_flow.enter_catacombs():
 				checkpoint_position=Act0Layout.CATACOMB_ENTRY_CHECKPOINT
 				shadow.global_position=checkpoint_position
 				shadow.velocity=Vector3.ZERO
-				story_toast.show_message("The lower passage opens. The air below carries old bone-dust.")
-				_save_progress()
+				if _save_progress():
+					story_toast.show_message("The lower passage opens. The air below carries old bone-dust.")
+				else:
+					act0.restore(before_state)
+					catacombs.restore(before_state)
+					checkpoint_position=before_checkpoint
+					shadow.global_position=before_position
+					shadow.velocity=Vector3.ZERO
+					story_toast.show_message("The lower passage closes again. Progress could not be saved.")
 			else:
 				story_toast.show_message("The passage does not answer an unbound, unforged shadow.")
 
 func choose_covenant_weapon(family:String) -> bool:
-	var ok:=act0.choose_weapon(family)
-	if ok:_save_progress()
-	return ok
+	var before:=act0.snapshot()
+	if not act0.choose_weapon(family):
+		return false
+	if not _save_progress():
+		act0.restore(before)
+		story_toast.show_message("The Covenant rejects an unsaved choice. Choose again.")
+		return false
+	return true
 
 func enter_catacomb_room(room:int) -> void:
 	if catacombs.complete or act0.stage==Act0Contract.STAGE_COMPLETE:
@@ -488,6 +534,11 @@ func _restore_act0_position()->void:
 	shadow.global_position=checkpoint_position
 	shadow.velocity=Vector3.ZERO
 
+
+func _apply_threshold_visual_state()->void:
+	var door:=get_parent().get_node_or_null("Graybox/VisualGeometry/TempleDoor") as Node3D
+	if door:
+		door.visible=not act0.faded_sigil_activated
 
 func _apply_equipment_state()->void:
 	var family:=""
