@@ -75,6 +75,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/ios_iphone_policy_tests.gd 2>&1 | tee /tmp/ios-iphone-policy.log
           ! grep -q "SCRIPT ERROR:" /tmp/ios-iphone-policy.log
 
+      - name: Validate centralized platform runtime policy
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/platform_runtime_service_tests.gd 2>&1 | tee /tmp/platform-runtime-service.log
+          ! grep -q "SCRIPT ERROR:" /tmp/platform-runtime-service.log
+
       - name: Run performance and visual consistency regressions
         run: |
           set -o pipefail
