@@ -12,6 +12,7 @@ const ROOF := Color(0.24,0.09,0.065)
 const DEADWOOD := Color(0.12,0.095,0.075)
 var _materials: Dictionary = {}
 var _box_meshes: Dictionary = {}
+var _disc_meshes: Dictionary = {}
 var _visual_root: Node3D
 var _collision_root: Node3D
 const TRIGGER_SCRIPT = preload("res://scripts/combat/encounter_trigger.gd")
@@ -48,6 +49,30 @@ func _box(name:String,pos:Vector3,size:Vector3,color:Color=STONE,parent:Node3D=n
 	m.name=name
 	m.mesh=_box_mesh(size,color)
 	m.position=pos
+	target.add_child(m)
+	return m
+
+func _disc_mesh(radius:float,depth:float,color:Color)->CylinderMesh:
+	var key:="%0.3f|%0.3f|%s"%[radius,depth,str(color)]
+	if _disc_meshes.has(key):
+		return _disc_meshes[key]
+	var mesh:=CylinderMesh.new()
+	mesh.top_radius=radius
+	mesh.bottom_radius=radius
+	mesh.height=depth
+	mesh.radial_segments=16
+	mesh.rings=1
+	mesh.material=_material(color)
+	_disc_meshes[key]=mesh
+	return mesh
+
+func _disc(name:String,pos:Vector3,radius:float,depth:float,color:Color,parent:Node3D=null)->MeshInstance3D:
+	var target:=parent if parent!=null else _visual_root
+	var m:=MeshInstance3D.new()
+	m.name=name
+	m.mesh=_disc_mesh(radius,depth,color)
+	m.position=pos
+	m.rotation_degrees.x=90.0
 	target.add_child(m)
 	return m
 
@@ -97,6 +122,11 @@ func _build_route() -> void:
 	var roof_l:=_box("TempleRoofL",Vector3(-4.6,11.2,-72.5),Vector3(9.5,0.55,5.0),ROOF); roof_l.rotation_degrees.z=-18
 	var roof_r:=_box("TempleRoofR",Vector3(4.6,11.2,-72.5),Vector3(9.5,0.55,5.0),ROOF); roof_r.rotation_degrees.z=18
 	_box("DoorLintel",Vector3(0,6.3,-70.15),Vector3(6.2,0.7,0.7),STONE)
+	# Canon landmark: a large round opening above the entry. Two cheap
+	# 16-segment discs read as a stone frame + dark void from the reveal
+	# camera without committing final stained-glass geometry.
+	_disc("TempleRoundWindowFrame",Vector3(0,8.05,-70.32),1.62,.28,STONE)
+	_disc("TempleRoundWindowVoid",Vector3(0,8.05,-70.12),1.18,.12,Color(0.055,0.06,0.065))
 	_box("EntryColumnL",Vector3(-3.1,3.0,-69.9),Vector3(0.75,6.0,0.75),STONE)
 	_box("EntryColumnR",Vector3(3.1,3.0,-69.9),Vector3(0.75,6.0,0.75),STONE)
 	_build_faded_sigil_marker()
@@ -146,10 +176,19 @@ func _add_reveal_zone(id:String,pos:Vector3,size:Vector3) -> void:
 
 func _build_faded_sigil_marker()->void:
 	var p:=Act0Layout.floor_anchor(Act0Layout.FADED_SIGIL_TRIGGER)
+	var sigil_color:=Color(0.20,0.22,0.25)
 	_box("FadedSigilBase",p+Vector3(0,0.10,0),Vector3(2.6,0.20,1.5),STONE)
-	_box("FadedSigilMarkA",p+Vector3(0,0.22,0),Vector3(0.22,0.06,1.0),Color(0.20,0.22,0.25))
-	var cross:=_box("FadedSigilMarkB",p+Vector3(0,0.23,0),Vector3(0.22,0.06,0.75),Color(0.20,0.22,0.25))
-	cross.rotation_degrees.y=90.0
+	# Project-original broken-covenant mark: asymmetrical fragments instead of
+	# a literal real-world cross. The grammar can later be reused by Temple
+	# reliefs without locking final iconography to the graybox.
+	var spine:=_box("FadedSigilSpine",p+Vector3(0.0,0.22,0.02),Vector3(0.20,0.06,1.05),sigil_color)
+	spine.rotation_degrees.y=-14.0
+	var hook_l:=_box("FadedSigilHookL",p+Vector3(-0.38,0.23,-0.20),Vector3(0.18,0.06,0.62),sigil_color)
+	hook_l.rotation_degrees.y=42.0
+	var hook_r:=_box("FadedSigilHookR",p+Vector3(0.34,0.23,0.23),Vector3(0.18,0.06,0.50),sigil_color)
+	hook_r.rotation_degrees.y=-52.0
+	var shard:=_box("FadedSigilShard",p+Vector3(0.07,0.24,0.53),Vector3(0.13,0.06,0.28),sigil_color)
+	shard.rotation_degrees.y=73.0
 
 func _build_environment_props() -> void:
 	var rocks := [Vector3(-6.2,0.25,4),Vector3(5.8,0.18,1),Vector3(-4.8,0.22,-16),Vector3(5.4,0.3,-25),Vector3(-5.5,0.28,-43),Vector3(6.1,0.22,-53)]
