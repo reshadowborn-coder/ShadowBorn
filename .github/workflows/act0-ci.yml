@@ -185,8 +185,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SCons
-        run: python3 -m pip install --user 'scons>=4.0,<5'
+      - name: Install SCons in an isolated venv
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/shadowborn-scons
+          /tmp/shadowborn-scons/bin/python -m pip install 'scons>=4.0,<5'
+          echo "/tmp/shadowborn-scons/bin" >> "$GITHUB_PATH"
+          /tmp/shadowborn-scons/bin/scons --version
 
       - name: Generate exact Godot 4.4.1 iOS header archive
         id: godot_headers
@@ -214,7 +219,6 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x native/ios/ShadowbornIOS/build_xcframework.sh
-          export PATH="$HOME/Library/Python/3.9/bin:$HOME/.local/bin:$PATH"
           GODOT_HEADERS=/tmp/shadowborn-godot-headers \
             OUT_DIR="$GITHUB_WORKSPACE/build/native-ios" \
             ./native/ios/ShadowbornIOS/build_xcframework.sh
