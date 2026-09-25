@@ -25,6 +25,10 @@ const TEMPLE_GATE_BLOCKER_SIZE := Vector3(28,4.0,0.8)
 const CATACOMB_GATE_BLOCKER_SIZE := Vector3(7.2,4.0,0.8)
 const CATACOMB_ROOM_TRIGGER_SIZE := Vector3(11.0,2.5,3)
 const EXTERIOR_ENCOUNTER_TRIGGER_SIZE := Vector3(26,2.5,4)
+const FADED_SIGIL_TRIGGER_SIZE := Vector3(26,2.5,3)
+
+static func floor_anchor(trigger_position:Vector3)->Vector3:
+	return Vector3(trigger_position.x,0,trigger_position.z)
 
 static func catacomb_room_trigger_position(room:int)->Vector3:
 	return Vector3(0,1,-122.0-float(room-1)*13.0)
