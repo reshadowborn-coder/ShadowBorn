@@ -38,6 +38,14 @@ static func _vector3_array(v:Vector3)->Array:
 static func _strict_bool(value,default_value:bool=false)->bool:
 	return value if typeof(value)==TYPE_BOOL else default_value
 
+static func _bounded_int(value,min_value:int,max_value:int,default_value:int)->int:
+	if typeof(value) not in [TYPE_INT,TYPE_FLOAT]:
+		return clampi(default_value,min_value,max_value)
+	var number:=float(value)
+	if number!=number or is_inf(number):
+		return clampi(default_value,min_value,max_value)
+	return clampi(int(clampf(number,float(min_value),float(max_value))),min_value,max_value)
+
 static func _checkpoint_values(value)->Variant:
 	if typeof(value)!=TYPE_ARRAY or value.size()!=3:
 		return null
@@ -232,7 +240,7 @@ static func save_state(state: Dictionary) -> bool:
 	return true
 
 static func _migrate(raw: Dictionary) -> Dictionary:
-	var source_version:=int(raw.get("version",0))
+	var source_version:=_bounded_int(raw.get("version",0),0,SAVE_VERSION,0)
 	var state := default_state()
 	for key in raw.keys():
 		state[key] = raw[key]
@@ -255,9 +263,9 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 	if typeof(state.get("checkpoint_position")) != TYPE_ARRAY or state.checkpoint_position.size() != 3:
 		state.checkpoint_position = [0.0,0.9,8.0]
 
-	state.route_index = clampi(int(state.get("route_index",0)),0,Chapter00Director.ROUTE.size()-1)
-	state.silver = maxi(0,int(state.get("silver",0)))
-	state.catacomb_room = clampi(int(state.get("catacomb_room",0)),0,5)
+	state.route_index = _bounded_int(state.get("route_index",0),0,Chapter00Director.ROUTE.size()-1,0)
+	state.silver = _bounded_int(state.get("silver",0),0,1,0)
+	state.catacomb_room = _bounded_int(state.get("catacomb_room",0),0,5,0)
 
 	var mode:=str(state.get("performance_mode","smooth60"))
 	state.performance_mode = mode if mode in ["smooth60","battery30"] else "smooth60"
