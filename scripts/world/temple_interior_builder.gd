@@ -115,6 +115,31 @@ func _build()->void:
 	_build_engraver(Act0Layout.floor_anchor(Act0Layout.ENGRAVER_TRIGGER),visual)
 	_build_keeper(Act0Layout.floor_anchor(Act0Layout.KEEPER_TRIGGER),visual)
 	_build_weapon_altar(Act0Layout.floor_anchor(Act0Layout.COVENANT_TRIGGER),visual)
+	_build_ruined_nave_story(visual)
+
+func _build_ruined_nave_story(parent:Node3D)->void:
+	# Cheap silhouette/storytelling pass: keep the central route clear while
+	# making the safe hub feel like a reclaimed ruin rather than an empty box.
+	var beam_l:=box("BrokenRoofRibL",Vector3(-3.7,5.55,-88.0),Vector3(6.2,.34,.42),STONE,parent)
+	beam_l.rotation_degrees.z=-7.0
+	var beam_r:=box("BrokenRoofRibR",Vector3(3.9,5.25,-96.0),Vector3(5.8,.34,.42),STONE,parent)
+	beam_r.rotation_degrees.z=9.0
+	var banner_l:=box("TornBannerL",Vector3(-6.45,3.2,-86.0),Vector3(.08,2.8,1.25),CLOTH,parent)
+	banner_l.rotation_degrees.z=-3.0
+	var banner_r:=box("TornBannerR",Vector3(6.45,3.0,-94.0),Vector3(.08,2.45,1.10),ASH_CLOTH,parent)
+	banner_r.rotation_degrees.z=4.0
+	box("BrokenPewL",Vector3(-4.2,.34,-96.2),Vector3(2.5,.36,.62),WOOD,parent).rotation_degrees.y=8.0
+	box("BrokenPewR",Vector3(4.1,.30,-88.5),Vector3(2.2,.34,.60),WOOD,parent).rotation_degrees.y=-11.0
+	for i in range(4):
+		var side:=-1.0 if i%2==0 else 1.0
+		var rubble:=box(
+			"TempleRubble%02d"%i,
+			Vector3(side*(5.35+0.18*(i%2)),.16,-80.5-float(i)*6.0),
+			Vector3(.72+.10*(i%2),.32,.58),
+			STONE,
+			parent
+		)
+		rubble.rotation_degrees.y=float(17+i*29)
 
 func _build_covenant_focus(parent:Node3D)->void:
 	box("CovenantSpineL",Vector3(-2.6,2.2,-106.45),Vector3(.42,4.4,.42),STONE,parent)
