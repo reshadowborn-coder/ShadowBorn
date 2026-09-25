@@ -14,6 +14,7 @@ func _check(condition:bool,message:String)->void:
 
 func _run()->void:
 	_test_fixed_contract()
+	_test_director_route_contract()
 	_test_temple_progression()
 	_test_all_weapon_families()
 	_test_catacomb_progression()
@@ -30,25 +31,40 @@ func _test_fixed_contract()->void:
 	_check(Act0Contract.can_transition(Act0Contract.STAGE_EXTERIOR,Act0Contract.STAGE_TEMPLE_ENTRY),"fixed contract allows exterior -> Temple threshold")
 	_check(not Act0Contract.can_start_exterior_encounter("armless",[]),"Armless cannot start before Hound")
 	_check(Act0Contract.can_start_exterior_encounter("armless",["hound"]),"Armless unlocks after Hound")
-	_check(not Act0Contract.can_start_exterior_encounter("shield_boss",["hound"]),"Shield cannot start before Armless")
-	_check(Act0Contract.can_start_exterior_encounter("shield_boss",["hound","armless"]),"Shield unlocks only after both exterior prerequisites")
+	_check(not Act0Contract.can_start_exterior_encounter("shield_boss",["hound"],false),"Shield cannot start before Armless")
+	_check(not Act0Contract.can_start_exterior_encounter("shield_boss",["hound","armless"],false),"Shield remains locked until Temple reveal is persisted")
+	_check(Act0Contract.can_start_exterior_encounter("shield_boss",["hound","armless"],true),"Shield unlocks only after both exterior prerequisites and Temple reveal")
 	var weapon_keys:Array=Act0Progression.WEAPONS.keys()
 	_check(weapon_keys.size()==Act0Contract.WEAPON_FAMILIES.size(),"weapon data count matches fixed family contract")
 	for family in Act0Contract.WEAPON_FAMILIES:
 		_check(Act0Progression.WEAPONS.has(family),"fixed weapon family %s has progression data"%family)
+
+func _test_director_route_contract()->void:
+	var d:=Chapter00Director.new()
+	_check(d.current_route()=="awakening" and d.current_cell=="CEM_01","Chapter 0 Director starts at awakening/Cemetery cell")
+	d.mark_exterior_encounter_cleared("hound")
+	_check(d.current_route()=="ruins" and d.current_cell=="RUIN_01","Hound clear advances exactly to Ruins")
+	d.mark_exterior_encounter_cleared("armless")
+	_check(d.current_route()=="temple_reveal" and d.current_cell=="TEMPLE_EXT_01","Armless clear advances exactly to Temple reveal")
+	d.mark_temple_reveal_seen()
+	_check(d.current_route()=="shield_boss","Temple reveal advances exactly to Shield")
+	d.mark_exterior_encounter_cleared("shield_boss")
+	_check(d.current_route()=="temple_gate","Shield clear advances exactly to Temple gate")
 
 func _test_temple_progression()->void:
 	var state:=SaveManager.default_state()
 	_check(int(state.silver)==0,"new game starts with zero Silver")
 	_check(str(state.act0_stage)=="exterior","new game starts in exterior stage")
 	_check(not bool(state.reduced_motion),"Reduced Motion defaults off without affecting gameplay")
-	_check(not bool(state.hound_residual_absorbed) and not bool(state.faded_sigil_activated),"new game starts before one-shot exterior threshold beats")
+	_check(not bool(state.hound_residual_absorbed) and not bool(state.temple_reveal_seen) and not bool(state.faded_sigil_activated),"new game starts before one-shot exterior threshold beats")
 
 	var p:=Act0Progression.new()
 	p.restore(state)
 	_check(not p.join_covenant(),"Covenant cannot be joined before Temple entry")
 	_check(p.mark_hound_residual_absorbed(),"Hound residual absorption is a one-shot exterior beat")
 	_check(not p.mark_hound_residual_absorbed(),"Hound residual absorption cannot duplicate")
+	_check(p.mark_temple_reveal_seen(),"Temple reveal is a one-shot exterior beat")
+	_check(not p.mark_temple_reveal_seen(),"Temple reveal cannot duplicate")
 	p.stage=Act0Contract.STAGE_TEMPLE_ENTRY
 	_check(not p.join_covenant(),"Covenant remains locked until the Faded Sigil threshold")
 	_check(p.activate_faded_sigil(),"Faded Sigil activates once after Shield/Temple threshold")
@@ -149,17 +165,18 @@ func _test_save_recovery()->void:
 	_check("cat_r1_skeleton" in ledger.cleared_encounters and "cat_r4_revenant" in ledger.cleared_encounters,"room progress rebuilds missing encounter visual ledger")
 	_check(int(ledger.route_index)==Chapter00Director.ROUTE.size()-1,"Temple/Catacomb progress repairs exterior route index")
 	_check("hound" in ledger.cleared_encounters and "armless" in ledger.cleared_encounters and "shield_boss" in ledger.cleared_encounters,"later progress repairs the complete mandatory exterior encounter chain")
-	_check(bool(ledger.hound_residual_absorbed) and bool(ledger.faded_sigil_activated),"later progress repairs one-shot exterior threshold invariants")
+	_check(bool(ledger.hound_residual_absorbed) and bool(ledger.temple_reveal_seen) and bool(ledger.faded_sigil_activated),"later progress repairs one-shot exterior threshold invariants")
 
 	var legacy:=SaveManager.default_state()
 	legacy.version=4
 	legacy.erase("hound_residual_absorbed")
+	legacy.erase("temple_reveal_seen")
 	legacy.erase("faded_sigil_activated")
 	legacy.cleared_encounters=["shield_boss"]
 	legacy.act0_stage=Act0Contract.STAGE_TEMPLE_ENTRY
 	legacy.silver=1
 	var legacy_resume:=SaveManager._migrate(legacy)
-	_check(bool(legacy_resume.hound_residual_absorbed) and bool(legacy_resume.faded_sigil_activated),"v4 saves migrate forward without replaying newly persisted one-shot beats")
+	_check(bool(legacy_resume.hound_residual_absorbed) and bool(legacy_resume.temple_reveal_seen) and bool(legacy_resume.faded_sigil_activated),"v4 saves migrate forward without replaying newly persisted one-shot beats")
 	_check("hound" in legacy_resume.cleared_encounters and "armless" in legacy_resume.cleared_encounters,"v4 Shield progress reconstructs skipped exterior prerequisites")
 
 func _test_resume_transition_matrix()->void:
