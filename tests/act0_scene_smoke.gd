@@ -102,6 +102,16 @@ func _test_chapter_scene()->void:
 		var reveal_box:=reveal_shape.shape as BoxShape3D
 		_check(reveal_box!=null and reveal_box.size.x>=20.0,"Temple reveal trigger spans the exterior route")
 
+	var exterior_visual:=chapter.get_node_or_null("Graybox/VisualGeometry")
+	if exterior_visual:
+		var round_frame:=exterior_visual.get_node_or_null("TempleRoundWindowFrame") as MeshInstance3D
+		var round_void:=exterior_visual.get_node_or_null("TempleRoundWindowVoid") as MeshInstance3D
+		_check(round_frame!=null and round_frame.mesh is CylinderMesh,"Temple facade keeps the canonical large round window frame")
+		_check(round_void!=null and round_void.mesh is CylinderMesh,"Temple round window keeps a readable dark opening")
+		for mark_name in ["FadedSigilSpine","FadedSigilHookL","FadedSigilHookR","FadedSigilShard"]:
+			_check(exterior_visual.get_node_or_null(mark_name) is MeshInstance3D,"Faded Sigil uses original broken-covenant fragment: %s"%mark_name)
+		_check(exterior_visual.get_node_or_null("FadedSigilMarkA")==null and exterior_visual.get_node_or_null("FadedSigilMarkB")==null,"Faded Sigil no longer falls back to the old literal cross construction")
+
 	var exterior_collision:=chapter.get_node_or_null("Graybox/GameplayCollision")
 	if exterior_collision:
 		for boundary_name in ["ExteriorStartBoundary","CemeteryRouteL","CemeteryRouteR","RuinRouteL","RuinRouteR","CemeteryToRuinLeftSeam","TempleExteriorRouteL","TempleExteriorRouteR"]:
