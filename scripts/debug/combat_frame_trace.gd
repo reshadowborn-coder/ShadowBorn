@@ -40,15 +40,16 @@ func attach(controller: EncounterController, presenter: CombatPresenter, hud: Co
 	controller.combat_state_changed.connect(_on_combat_state_changed)
 	presenter.impact_presented.connect(_on_impact_presented)
 	hud.visual_state_updated.connect(_on_hud_updated)
-	print("SB_TRACE " + JSON.stringify({
-		"event":"trace_capabilities",
-		"ts_us":Time.get_ticks_usec(),
-		"engine_frame":true,
-		"hud":true,
-		"vfx":true,
-		"sfx":false,
-		"actual_present":"external_surfaceflinger_or_perfetto"
-	}))
+	if console_output:
+		print("SB_TRACE " + JSON.stringify({
+			"event":"trace_capabilities",
+			"ts_us":Time.get_ticks_usec(),
+			"engine_frame":true,
+			"hud":true,
+			"vfx":true,
+			"sfx":false,
+			"actual_present":"external_surfaceflinger_or_perfetto"
+		}))
 
 func set_context(performance_mode: String, is_reduced_motion: bool) -> void:
 	requested_fps = 30 if performance_mode == "battery30" else 60
