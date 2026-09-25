@@ -143,7 +143,7 @@ func _test_save_recovery()->void:
 	late_room.covenant_joined=true
 	late_room.weapon_family="sword_shield"
 	late_room.first_forge_done=true
-	late_room.forged_item={"family":"sword_shield","equipped":true,"level":0,"bonus_unlocked":false}
+	late_room.forged_item={"id":"shadow_sword_shield_01","family":"sword_shield","equipped":true,"level":0,"bonus_unlocked":false}
 	late_room.catacomb_room=5
 	var ledger:=SaveManager._migrate(late_room)
 	_check("cat_r1_skeleton" in ledger.cleared_encounters and "cat_r4_revenant" in ledger.cleared_encounters,"room progress rebuilds missing encounter visual ledger")
