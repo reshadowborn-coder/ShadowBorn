@@ -5,6 +5,7 @@ signal state_changed(state:Dictionary)
 signal shadow_attack_presented(target_index:int,skill:String,damage:float)
 signal enemy_attack_presented(enemy_index:int,damage:float)
 signal companion_attack_presented(target_index:int,damage:float)
+signal semantic_contact(actor:String,index:int,action:String)
 signal command_committed(skill:String)
 signal finished
 signal failed
@@ -12,7 +13,6 @@ signal solo_limit_reached
 
 const FRAY_BONUS := 1.15
 const SOLO_LIMIT_ROUNDS := 2
-const ACTION_LOCK_SECONDS := 0.42
 
 var enemies:Array=[]
 var selected:=0
@@ -27,10 +27,15 @@ var solo_limit_mode:=false
 var limit_reached:=false
 var fray:=false
 var veil:=0.0
+var reduced_motion:=false
+var phase:="idle"
 var loadout:Dictionary=ShadowLoadout.profile("")
 
 func set_loadout(family:String)->void:
 	loadout=ShadowLoadout.profile(family)
+
+func set_reduced_motion(value:bool)->void:
+	reduced_motion=value
 
 static func _valid_profile(profile)->bool:
 	if typeof(profile)!=TYPE_DICTIONARY:
@@ -78,6 +83,7 @@ func start(profiles:Array,with_companion:bool,force_solo_limit:bool=false)->bool
 	limit_reached=false
 	fray=false
 	veil=0.0
+	phase="ready"
 	active=true
 	_emit()
 	return true
@@ -88,15 +94,28 @@ func select_target(index:int)->void:
 	selected=index
 	_emit()
 
+func _wait(duration:float)->void:
+	if duration<=0.0:
+		return
+	await get_tree().create_timer(duration,false).timeout
+
+func _turn_valid(generation:int)->bool:
+	return generation==encounter_generation and active and is_inside_tree()
+
 func shadow_action(skill:String)->void:
 	if not active or action_locked or skill not in ["A1","A2"]:
 		return
 	if skill=="A2" and a2_cd>0:
 		return
 
+	var generation:=encounter_generation
+	var target_index:=selected
 	action_locked=true
+	phase="shadow"
 	command_committed.emit(skill)
-	var e:Dictionary=enemies[selected]
+	_emit()
+
+	var e:Dictionary=enemies[target_index]
 	var coeff:=float(loadout.get("a1_coeff",1.0))
 	var guard_mult:=float(loadout.get("a1_guard_mult",0.65))
 	var state_mult:=1.0
@@ -116,26 +135,46 @@ func shadow_action(skill:String)->void:
 		state_mult*=guard_mult
 
 	var damage:=CombatResolver.damage(8.0,coeff,float(e.def),state_mult)
-	shadow_attack_presented.emit(selected,skill,damage)
+	var shadow_timing:=CombatPresentationContract.shadow_timing(skill,reduced_motion)
+	shadow_attack_presented.emit(target_index,skill,damage)
+	await _wait(float(shadow_timing.get("contact",0.0)))
+	if not _turn_valid(generation):
+		return
+
+	semantic_contact.emit("shadow",target_index,skill)
 	var next_hp:=maxf(0.0,float(e.current_hp)-damage)
-	# The first Room 5 encounter is an authored tutorial limit, not a hidden
-	# DPS check. Keep enemies non-lethal until the story beat resolves.
+	# The first authored pack contact is a narrative solo limit, not a DPS
+	# check. Presentation timing may change, but the enemies stay non-lethal
+	# until the fixed story beat resolves.
 	if solo_limit_mode:
 		next_hp=maxf(1.0,next_hp)
 	e.current_hp=next_hp
-	enemies[selected]=e
+	enemies[target_index]=e
+	_emit()
 
-	if companion_active and not _all_dead():
-		_companion_assist()
-
-	if _all_dead():
-		active=false
-		action_locked=false
-		_emit()
-		finished.emit()
+	await _wait(CombatPresentationContract.remainder_after_contact(shadow_timing))
+	if not _turn_valid(generation):
 		return
 
-	_enemy_phase()
+	if _all_dead():
+		_finish_victory()
+		return
+
+	if companion_active:
+		await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
+		if not _turn_valid(generation):
+			return
+		await _companion_assist(generation)
+		if not _turn_valid(generation):
+			return
+		if _all_dead():
+			_finish_victory()
+			return
+
+	await _enemy_phase(generation)
+	if not _turn_valid(generation):
+		return
+
 	rounds+=1
 	if a2_cd>0:
 		a2_cd-=1
@@ -143,6 +182,7 @@ func shadow_action(skill:String)->void:
 	if solo_limit_mode and rounds>=SOLO_LIMIT_ROUNDS:
 		active=false
 		action_locked=false
+		phase="terminal"
 		limit_reached=true
 		_emit()
 		solo_limit_reached.emit()
@@ -151,57 +191,79 @@ func shadow_action(skill:String)->void:
 	if shadow_hp<=0.0:
 		active=false
 		action_locked=false
+		phase="terminal"
 		_emit()
 		failed.emit()
 		return
 
 	_select_living()
+	action_locked=false
+	phase="ready"
 	_emit()
-	_schedule_action_unlock()
 
-func _companion_assist()->void:
+func _finish_victory()->void:
+	active=false
+	action_locked=false
+	phase="terminal"
+	_emit()
+	finished.emit()
+
+func _companion_assist(generation:int)->void:
 	_select_living()
-	var e:Dictionary=enemies[selected]
+	var target_index:=selected
+	var e:Dictionary=enemies[target_index]
 	var p:=StoryCompanion.profile()
 	var damage:=CombatResolver.damage(float(p.atk),float(p.a1.coeff),float(e.def))
-	companion_attack_presented.emit(selected,damage)
+	var timing:=CombatPresentationContract.shadow_timing("A1",reduced_motion)
+	phase="companion"
+	companion_attack_presented.emit(target_index,damage)
+	_emit()
+	await _wait(float(timing.get("contact",0.0)))
+	if not _turn_valid(generation):
+		return
+	semantic_contact.emit("companion",target_index,"A1")
 	e.current_hp=maxf(0.0,float(e.current_hp)-damage)
-	enemies[selected]=e
+	enemies[target_index]=e
+	_emit()
+	await _wait(CombatPresentationContract.remainder_after_contact(timing))
 
-func _enemy_phase()->void:
+func _enemy_phase(generation:int)->void:
 	var veil_pending:=veil
 	for i in range(enemies.size()):
+		if not _turn_valid(generation):
+			return
 		var e:Dictionary=enemies[i]
 		if float(e.current_hp)<=0.0:
 			continue
+
+		await _wait(CombatPresentationContract.inter_beat_gap(reduced_motion))
+		if not _turn_valid(generation):
+			return
+
 		var incoming:=float(e.damage)
-		if veil_pending>0.0:
+		var consumes_veil:=veil_pending>0.0
+		if consumes_veil:
 			incoming*=(1.0-veil_pending)
 			veil_pending=0.0
-			veil=0.0
+		var timing:=CombatPresentationContract.enemy_timing("ATTACK",reduced_motion)
+		phase="enemy"
 		enemy_attack_presented.emit(i,incoming)
+		_emit()
+		await _wait(float(timing.get("contact",0.0)))
+		if not _turn_valid(generation):
+			return
+
+		semantic_contact.emit("enemy",i,"ATTACK")
+		if consumes_veil:
+			veil=0.0
 		shadow_hp=maxf(0.0,shadow_hp-incoming)
 		if solo_limit_mode:
-			# Authored solo-limit encounters are story gates, not balance checks.
-			# Enemy tuning may change presentation pressure, but cannot kill
-			# Shadow before the fixed round limit is reached.
 			shadow_hp=maxf(1.0,shadow_hp)
+		_emit()
 
-func _schedule_action_unlock()->void:
-	if not active:
-		action_locked=false
-		return
-	if not is_inside_tree():
-		action_locked=false
-		_emit()
-		return
-	var generation:=encounter_generation
-	get_tree().create_timer(ACTION_LOCK_SECONDS,false).timeout.connect(func():
-		if generation!=encounter_generation or not active:
+		await _wait(CombatPresentationContract.remainder_after_contact(timing))
+		if shadow_hp<=0.0 and not solo_limit_mode:
 			return
-		action_locked=false
-		_emit()
-	)
 
 func _all_dead()->bool:
 	for e in enemies:
@@ -230,5 +292,7 @@ func _emit()->void:
 		"limit_reached":limit_reached,
 		"fray":fray,
 		"veil":veil,
+		"phase":phase,
+		"reduced_motion":reduced_motion,
 		"loadout":loadout.duplicate(true)
 	})

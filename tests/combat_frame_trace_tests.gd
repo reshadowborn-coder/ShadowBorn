@@ -105,20 +105,43 @@ func _test_multi_enemy_trace() -> void:
 	_flush(trace)
 
 	var names:Array[String]=[]
-	var enemy_rows:=0
 	var target_index:=-1
 	for row in rows:
 		var event_name:=str(row.get("event",""))
 		names.append(event_name)
-		if event_name=="multi_enemy_presentation_start":
-			enemy_rows+=1
 		if event_name=="multi_shadow_presentation_start":
 			target_index=int(row.get("target_index",-1))
 	_check("multi_state_initial" in names,"multi trace records the initial pack projection")
 	_check("multi_command_committed" in names,"multi trace records the accepted command")
 	_check("multi_shadow_presentation_start" in names and target_index==0,"multi trace records the selected target for Shadow presentation")
-	_check(enemy_rows==2,"multi trace records one presentation event for each living enemy response")
-	_check("multi_state_projection" in names,"multi trace records resulting HP/round/action-lock projection")
+	_check("multi_semantic_contact" not in names,"pack HP cannot advance before the authored contact point")
+	_check(float(combat.enemies[0].current_hp)==30.0,"pack target HP remains unchanged during attack anticipation")
+
+	await create_timer(.22).timeout
+	_flush(trace)
+	var saw_shadow_contact:=false
+	for row in rows:
+		if str(row.get("event",""))=="multi_semantic_contact" and str(row.get("actor",""))=="shadow":
+			saw_shadow_contact=true
+	_check(saw_shadow_contact,"multi trace records Shadow semantic contact separately from presentation start")
+	_check(float(combat.enemies[0].current_hp)<30.0,"pack target HP changes at semantic contact")
+
+	var elapsed:=0.0
+	while combat.active and combat.action_locked and elapsed<2.0:
+		await create_timer(.05).timeout
+		elapsed+=.05
+	_flush(trace)
+	var enemy_rows:=0
+	var enemy_contacts:=0
+	for row in rows:
+		var event_name:=str(row.get("event",""))
+		if event_name=="multi_enemy_presentation_start":
+			enemy_rows+=1
+		elif event_name=="multi_semantic_contact" and str(row.get("actor",""))=="enemy":
+			enemy_contacts+=1
+	_check(enemy_rows==2,"multi trace records one presentation start for each living enemy")
+	_check(enemy_contacts==2,"multi trace records one semantic contact for each living enemy")
+	_check(combat.rounds==1 and not combat.action_locked,"pack round completes only after the presentation timeline resolves")
 
 	combat.queue_free()
 	await process_frame

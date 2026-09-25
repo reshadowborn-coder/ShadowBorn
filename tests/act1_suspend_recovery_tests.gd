@@ -17,6 +17,13 @@ func _cleanup_save()->void:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
+func _wait_for_pack_resolution(pack:MultiEnemyEncounter,timeout_seconds:float=2.0)->bool:
+	var elapsed:=0.0
+	while pack.active and pack.action_locked and elapsed<timeout_seconds:
+		await create_timer(.02).timeout
+		elapsed+=.02
+	return not pack.action_locked or not pack.active
+
 func _completed_act0_state()->Dictionary:
 	var s:=SaveManager.default_state()
 	s.shadow_identity="male"
@@ -95,15 +102,17 @@ func _run()->void:
 			game.enter_sewer_room(3)
 			_check(game.pack_active and game.pack_combat.active,"pack encounter is active before suspend")
 			game.pack_combat.shadow_action("A1")
-			_check(game.pack_combat.rounds==1 and game.pack_combat.action_locked,"first pack round is accepted but still inside presentation lock")
+			_check(game.pack_combat.action_locked and game.pack_combat.rounds==0,"first pack round is accepted but not semantically resolved before presentation contacts")
 			game._notification(MainLoop.NOTIFICATION_APPLICATION_PAUSED)
 			var mid_pack:=SaveManager.load_state()
 			_check(str(mid_pack.act1_stage)==Act1Contract.STAGE_SEWER_ROOM3,"suspend after pack round 1 preserves Room 3")
 			_check(not bool(mid_pack.act1_sewer_defeat_seen),"suspend after pack round 1 cannot commit the authored defeat early")
 			_check(str(mid_pack.checkpoint)=="act1_room2_cleared","suspend after pack round 1 preserves the pre-pack checkpoint")
 
-			await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.05).timeout
+			_check(await _wait_for_pack_resolution(game.pack_combat),"first pack presentation timeline resolves after resume-safe checkpoint test")
+			_check(game.pack_combat.rounds==1,"first pack round increments only after all presentation contacts resolve")
 			game.pack_combat.shadow_action("A1")
+			_check(await _wait_for_pack_resolution(game.pack_combat),"second pack presentation timeline resolves")
 			await process_frame
 			var committed:=SaveManager.load_state()
 			_check(str(committed.act1_stage)==Act1Contract.STAGE_TEMPLE_RETURN and bool(committed.act1_sewer_defeat_seen),"second accepted pack round atomically commits Temple return")

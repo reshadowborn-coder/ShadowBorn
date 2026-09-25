@@ -12,6 +12,13 @@ func _check(condition:bool,message:String)->void:
 		failures+=1
 		push_error("FAIL: "+message)
 
+func _wait_for_pack_resolution(pack:MultiEnemyEncounter,timeout_seconds:float=2.0)->bool:
+	var elapsed:=0.0
+	while pack.active and pack.action_locked and elapsed<timeout_seconds:
+		await create_timer(.02).timeout
+		elapsed+=.02
+	return not pack.action_locked or not pack.active
+
 func _completed_act0_state()->Dictionary:
 	var s:=SaveManager.default_state()
 	s.shadow_identity="male"
@@ -72,6 +79,7 @@ func _run()->void:
 	var pack:=MultiEnemyEncounter.new()
 	root.add_child(pack)
 	pack.set_loadout("sword_shield")
+	pack.set_reduced_motion(true)
 	var pack_shadow_presentations:Array=[]
 	var pack_enemy_presentations:Array=[]
 	pack.shadow_attack_presented.connect(func(target_index:int,skill:String,damage:float): pack_shadow_presentations.append([target_index,skill,damage]))
@@ -79,15 +87,14 @@ func _run()->void:
 	_check(pack.start(SewerEncounterPlan.enemies(3),false,true),"Act 1 pack encounter starts as an authored solo limit")
 	pack.shadow_action("A1")
 	_check(pack_shadow_presentations.size()==1 and int(pack_shadow_presentations[0][0])==0 and str(pack_shadow_presentations[0][1])=="A1","pack combat emits a target-specific Shadow presentation event")
-	_check(pack_enemy_presentations.size()==2 and int(pack_enemy_presentations[0][0])==0 and int(pack_enemy_presentations[1][0])==1,"both living pack enemies emit presentation events each enemy phase")
-	_check(pack.active and pack.action_locked,"Act 1 pack survives first solo round and locks rapid follow-up input")
-	var round_after_first:=pack.rounds
+	_check(pack.active and pack.action_locked,"Act 1 pack locks rapid follow-up input while the turn is presenting")
 	var presentations_after_first:=pack_shadow_presentations.size()
 	pack.shadow_action("A1")
-	_check(pack.rounds==round_after_first and pack_shadow_presentations.size()==presentations_after_first and not pack.limit_reached,"rapid double-tap cannot consume the second scripted pack round")
-	await create_timer(MultiEnemyEncounter.ACTION_LOCK_SECONDS+.05).timeout
-	_check(not pack.action_locked,"Act 1 pack unlocks after the presentation window")
+	_check(pack_shadow_presentations.size()==presentations_after_first and not pack.limit_reached,"rapid double-tap cannot consume the second scripted pack round")
+	_check(await _wait_for_pack_resolution(pack),"Act 1 pack completes the first presentation timeline")
+	_check(pack.rounds==1 and pack_enemy_presentations.size()==2 and int(pack_enemy_presentations[0][0])==0 and int(pack_enemy_presentations[1][0])==1,"both living pack enemies resolve exactly once in the first enemy phase")
 	pack.shadow_action("A1")
+	_check(await _wait_for_pack_resolution(pack),"Act 1 pack completes the second presentation timeline")
 	_check(not pack.active and pack.limit_reached,"Act 1 pack forces the authored defeat after the second accepted round")
 	for enemy in pack.enemies:
 		_check(float(enemy.current_hp)>=1.0,"Act 1 pack rats cannot be killed during first-contact story limit")

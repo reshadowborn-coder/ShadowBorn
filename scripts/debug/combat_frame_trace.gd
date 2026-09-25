@@ -61,6 +61,7 @@ func attach_multi(controller: MultiEnemyEncounter) -> void:
 	controller.shadow_attack_presented.connect(_on_multi_shadow_attack_presented)
 	controller.enemy_attack_presented.connect(_on_multi_enemy_attack_presented)
 	controller.companion_attack_presented.connect(_on_multi_companion_attack_presented)
+	controller.semantic_contact.connect(_on_multi_semantic_contact)
 	controller.state_changed.connect(_on_multi_state_changed)
 	if console_output:
 		print("SB_TRACE " + JSON.stringify({
@@ -154,6 +155,9 @@ func _on_multi_enemy_attack_presented(enemy_index:int,damage:float)->void:
 func _on_multi_companion_attack_presented(target_index:int,damage:float)->void:
 	_mark("multi_companion_presentation_start",{"target_index":target_index,"action":"A1","damage":damage})
 
+func _on_multi_semantic_contact(actor:String,index:int,action:String)->void:
+	_mark("multi_semantic_contact",{"actor":actor,"index":index,"action":action})
+
 func _on_multi_state_changed(state:Dictionary)->void:
 	var current:=state.duplicate(true)
 	if _last_multi_state.is_empty():
@@ -183,7 +187,8 @@ func _multi_state_summary(state:Dictionary)->Dictionary:
 		"solo_limit_mode":bool(state.get("solo_limit_mode",false)),
 		"limit_reached":bool(state.get("limit_reached",false)),
 		"fray":bool(state.get("fray",false)),
-		"veil":float(state.get("veil",0.0))
+		"veil":float(state.get("veil",0.0)),
+		"phase":str(state.get("phase",""))
 	}
 
 func _on_combat_state_changed(state: Dictionary) -> void:
