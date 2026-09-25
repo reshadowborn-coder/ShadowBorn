@@ -57,12 +57,12 @@ static func can_transition(current:String,next:String)->bool:
 static func is_exterior_encounter(id:String)->bool:
 	return id in EXTERIOR_ENCOUNTERS
 
-static func can_start_exterior_encounter(id:String,cleared:Array)->bool:
+static func can_start_exterior_encounter(id:String,cleared:Array,temple_reveal_seen:bool=false)->bool:
 	match id:
 		"hound":
 			return true
 		"armless":
 			return "hound" in cleared
 		"shield_boss":
-			return "hound" in cleared and "armless" in cleared
+			return "hound" in cleared and "armless" in cleared and temple_reveal_seen
 	return true
