@@ -105,6 +105,12 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/temple_npc_animation_tests.gd 2>&1 | tee /tmp/temple-npc-animation.log
           ! grep -q "SCRIPT ERROR:" /tmp/temple-npc-animation.log
 
+      - name: Validate Temple milestone memory
+        run: |
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/temple_memory_state_tests.gd 2>&1 | tee /tmp/temple-memory-state.log
+          ! grep -q "SCRIPT ERROR:" /tmp/temple-memory-state.log
+
       - name: Run Act 1.1 deterministic progression tests
         run: |
           set -o pipefail
