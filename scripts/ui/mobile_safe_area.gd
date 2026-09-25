@@ -27,8 +27,8 @@ static func current(viewport:Viewport)->Vector4:
 	if viewport==null:
 		return Vector4(BASE_EDGE_PADDING,BASE_EDGE_PADDING,BASE_EDGE_PADDING,BASE_EDGE_PADDING)
 	var view_size:=viewport.get_visible_rect().size
-	var window_size:=Vector2(DisplayServer.window_get_size())
 	if OS.get_name() not in ["iOS","Android"]:
 		return Vector4(BASE_EDGE_PADDING,BASE_EDGE_PADDING,BASE_EDGE_PADDING,BASE_EDGE_PADDING)
+	var screen_size:=Vector2(DisplayServer.screen_get_size())
 	var safe_i:=DisplayServer.get_display_safe_area()
-	return logical_margins(view_size,window_size,Rect2(safe_i))
+	return logical_margins(view_size,screen_size,Rect2(safe_i))
