@@ -38,6 +38,14 @@ func _test_fixed_contract()->void:
 	_check(weapon_keys.size()==Act0Contract.WEAPON_FAMILIES.size(),"weapon data count matches fixed family contract")
 	for family in Act0Contract.WEAPON_FAMILIES:
 		_check(Act0Progression.WEAPONS.has(family),"fixed weapon family %s has progression data"%family)
+	for room in range(1,6):
+		var expected_ids:Array=Act0Contract.catacomb_encounter_ids(room)
+		var profiles:=CatacombEncounterPlan.enemies(room)
+		var actual_ids:Array=[]
+		for profile in profiles:
+			actual_ids.append(str(profile.get("id","")))
+		_check(actual_ids==expected_ids,"Catacomb Room %d matches the fixed encounter membership contract"%room)
+	_check(Act0Contract.catacomb_encounter_ids(5).size()==2,"fixed Room 5 contract remains the authored 1v2")
 
 func _test_director_route_contract()->void:
 	var d:=Chapter00Director.new()
