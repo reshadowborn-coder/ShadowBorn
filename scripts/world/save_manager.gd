@@ -70,7 +70,10 @@ static func _expected_checkpoint_id(state:Dictionary)->String:
 		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
 			return "temple_entry"
 		Act0Contract.STAGE_CATACOMBS:
-			match clampi(int(state.get("catacomb_room",1)),1,5):
+			var room:=clampi(int(state.get("catacomb_room",0)),0,5)
+			if room==0:
+				return "temple_entry"
+			match room:
 				1: return "catacombs_entry"
 				2: return "cat_r1_skeleton_cleared"
 				3: return "cat_r2_hound_cleared"
@@ -116,7 +119,9 @@ static func _checkpoint_matches_stage(state:Dictionary,p:Vector3)->bool:
 		Act0Contract.STAGE_WEAPON_CHOICE,Act0Contract.STAGE_FIRST_FORGE:
 			return checkpoint=="temple_entry" and _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
 		Act0Contract.STAGE_CATACOMBS:
-			var room:=clampi(int(state.get("catacomb_room",1)),1,5)
+			var room:=clampi(int(state.get("catacomb_room",0)),0,5)
+			if room==0:
+				return checkpoint=="temple_entry" and _near_checkpoint(p,Act0Layout.TEMPLE_ENTRY_CHECKPOINT,2.0)
 			var room_z:=Act0Layout.catacomb_room_z(room)
 			# A legitimate checkpoint for the current room can originate from
 			# the previous room clear or from the approach to this room, but
@@ -148,9 +153,13 @@ static func _repair_checkpoint(state:Dictionary)->Dictionary:
 			recovery=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
 			checkpoint="temple_entry"
 		Act0Contract.STAGE_CATACOMBS:
-			var room:=clampi(int(state.get("catacomb_room",1)),1,5)
-			recovery=Act0Layout.catacomb_room_resume_position(room)
-			checkpoint=_expected_checkpoint_id(state)
+			var room:=clampi(int(state.get("catacomb_room",0)),0,5)
+			if room==0:
+				recovery=Act0Layout.TEMPLE_ENTRY_CHECKPOINT
+				checkpoint="temple_entry"
+			else:
+				recovery=Act0Layout.catacomb_room_resume_position(room)
+				checkpoint=_expected_checkpoint_id(state)
 		Act0Contract.STAGE_ROOM5_RETURN:
 			recovery=Act0Layout.ROOM5_RETURN_CHECKPOINT
 			checkpoint="room5_return"
@@ -399,8 +408,10 @@ static func _migrate(raw: Dictionary) -> Dictionary:
 		return _repair_checkpoint(state)
 
 	# From this point on, Covenant + weapon + committed forge are valid.
+	# Room 0 is meaningful: the forge is complete and the Catacomb passage is
+	# unlocked, but the player has not physically entered Room 1 yet.
 	state.first_forge_done=true
-	state.catacomb_room=clampi(maxi(1,state.catacomb_room),1,5)
+	state.catacomb_room=clampi(int(state.catacomb_room),0,5)
 
 	# Rebuild the visual/encounter ledger from authoritative room progress.
 	var cleared_by_room:={
