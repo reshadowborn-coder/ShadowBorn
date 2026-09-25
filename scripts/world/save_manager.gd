@@ -189,7 +189,15 @@ static func _repair_checkpoint(state:Dictionary)->Dictionary:
 	return state
 
 static func load_state() -> Dictionary:
+	var primary_exists:=FileAccess.file_exists(SAVE_PATH)
 	var parsed = _read_dictionary(SAVE_PATH)
+
+	# Crash window recovery: after primary -> backup but before tmp -> primary,
+	# SAVE_PATH is absent while TMP_PATH contains the fully flushed newest
+	# generation. Prefer that committed candidate over the older backup.
+	if parsed==null and not primary_exists:
+		parsed=_read_dictionary(TMP_PATH)
+
 	if parsed == null:
 		parsed = _read_dictionary(BAK_PATH)
 	if parsed == null:
@@ -517,7 +525,11 @@ func patch_and_save(patch:Dictionary)->bool:
 	return save_state(state)
 
 static func has_save()->bool:
-	return _read_dictionary(SAVE_PATH)!=null or _read_dictionary(BAK_PATH)!=null
+	if _read_dictionary(SAVE_PATH)!=null:
+		return true
+	if not FileAccess.file_exists(SAVE_PATH) and _read_dictionary(TMP_PATH)!=null:
+		return true
+	return _read_dictionary(BAK_PATH)!=null
 
 static func create_new_game(identity:String)->bool:
 	if identity not in ["male","female"]:
