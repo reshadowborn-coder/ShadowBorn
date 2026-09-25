@@ -177,6 +177,7 @@ func _restore_runtime_snapshot(state:Dictionary,restore_position:bool=true)->voi
 	act0.restore(state)
 	catacombs.restore(state)
 	team.restore(state)
+	act0_flow.restore(state)
 	cleared_encounters.assign(state.get("cleared_encounters",[]))
 	director.set_route_index(int(state.get("route_index",0)))
 	director.set_checkpoint(str(state.get("checkpoint","awakening")))
@@ -503,11 +504,14 @@ func enter_catacomb_room(room:int) -> void:
 	var enemies:=CatacombEncounterPlan.enemies(room)
 	if room==5 and not catacombs.summon_unlocked:
 		if catacombs.room5_solo_limit_seen:
+			var before_state:=_build_save_state()
 			checkpoint_position=Act0Layout.ROOM5_RETURN_CHECKPOINT
 			shadow.global_position=checkpoint_position
 			shadow.velocity=Vector3.ZERO
 			director.set_checkpoint("room5_return")
-			_save_progress()
+			if not _save_progress():
+				_restore_runtime_snapshot(before_state)
+				story_toast.show_message("The retreat point could not be saved. Progress remains at the last safe checkpoint.")
 			return
 		_start_room5_solo_attempt(enemies)
 		return
@@ -555,6 +559,13 @@ func _show_room5_visuals(value:bool)->void:
 func _start_room5_solo_attempt(enemies:Array)->void:
 	if room5_active:
 		return
+	if _room5_visuals().size()!=2:
+		room5_hud.close()
+		shadow.set_physics_process(true)
+		_refresh_navigation()
+		story_toast.show_message("Room 5 cannot stage safely. The encounter remains uncommitted.")
+		push_error("Room 5 requires exactly two valid encounter visuals")
+		return
 	if not room5_combat.start(enemies,false,true):
 		room5_active=false
 		room5_solo_attempt=false
@@ -574,6 +585,13 @@ func _start_room5_solo_attempt(enemies:Array)->void:
 
 func _start_room5_rematch(enemies:Array) -> void:
 	if room5_active:
+		return
+	if _room5_visuals().size()!=2:
+		room5_hud.close()
+		shadow.set_physics_process(true)
+		_refresh_navigation()
+		story_toast.show_message("Room 5 cannot stage safely. The rematch remains uncommitted.")
+		push_error("Room 5 rematch requires exactly two valid encounter visuals")
 		return
 	if not room5_combat.start(enemies,true,false):
 		room5_active=false
@@ -669,7 +687,8 @@ func _on_room5_failed() -> void:
 	shadow.velocity=Vector3.ZERO
 	shadow.set_physics_process(true)
 	_refresh_navigation()
-	_save_progress()
+	if not _save_progress():
+		story_toast.show_message("The defeat checkpoint could not be refreshed. Continue will use the previous committed checkpoint.")
 
 
 func _on_covenant_weapon_requested(family:String)->void:
