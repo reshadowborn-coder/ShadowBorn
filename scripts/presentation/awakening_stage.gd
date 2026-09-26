@@ -120,9 +120,10 @@ func _build_debug_world() -> void:
 	camera = Camera3D.new()
 	camera.current = true
 	camera.fov = 34.0
-	camera.position = Vector3(-0.55,1.52,4.25)
+	camera.position = Vector3(-0.55,1.48,4.15)
 	add_child(camera)
-	camera.look_at(Vector3(-2.15,1.00,-2.55),Vector3.UP)
+	# Initial corpse shot must read Shadow low in frame, not disappear into the wall.
+	camera.look_at(Vector3(-2.08,0.68,-2.85),Vector3.UP)
 
 func _build_crypt() -> void:
 	var floor := MeshInstance3D.new()
@@ -176,6 +177,14 @@ func _build_crypt() -> void:
 	# A broken stone bench/altar in the middle depth.
 	_add_box(Vector3(1.25,0.26,-0.55),Vector3(2.7,0.44,1.25),Color(0.078,0.082,0.090))
 	_add_box(Vector3(1.15,0.57,-0.58),Vector3(2.2,0.18,0.95),Color(0.11,0.112,0.118))
+
+	var awakening_slab := EnvironmentAssetLibrary.create_awakening_slab_hero()
+	if awakening_slab != null:
+		awakening_slab.name = "ProductionPreviewAwakeningSlab"
+		awakening_slab.position = Vector3(-2.10,0.015,-3.10)
+		awakening_slab.rotation_degrees.y = -8.0
+		awakening_slab.scale = Vector3(1.05,1.0,1.05)
+		add_child(awakening_slab)
 
 	_build_grave_markers()
 	_build_autumn_leaves()
