@@ -125,17 +125,17 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	# while skin weights keep the visible silhouette continuous during motion.
 	_append_skinned_chain(st,skeleton,
 		["Hips","Torso","Chest","Neck"],
-		[0.19,0.225,0.25,0.10],
-		[0.13,0.15,0.165,0.085],10)
+		[0.18,0.205,0.225,0.095],
+		[0.12,0.14,0.150,0.080],10)
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Chest","UpperArm.%s" % side,"LowerArm.%s" % side,"Wrist.%s" % side],
-			[0.145,0.090,0.068,0.045],
-			[0.110,0.075,0.055,0.040],9)
+			[0.125,0.085,0.064,0.043],
+			[0.095,0.070,0.052,0.038],9)
 		_append_skinned_chain(st,skeleton,
-			["Hips","UpperLeg.%s" % side,"LowerLeg.%s" % side],
-			[0.135,0.110,0.080],
-			[0.105,0.085,0.065],9)
+			["Hips","UpperLeg.%s" % side,"LowerLeg.%s" % side,"Foot.%s" % side],
+			[0.125,0.105,0.075,0.050],
+			[0.098,0.080,0.060,0.042],9)
 
 	st.generate_normals()
 	var mesh := st.commit()
