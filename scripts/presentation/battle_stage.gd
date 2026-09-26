@@ -3,6 +3,8 @@ extends Node3D
 
 const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
 
+const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
+
 const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
 const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
 const CAMERA_HOME := Vector3(-6.25,4.55,8.10)
@@ -528,7 +530,10 @@ func _spawn_damage_text(pos: Vector3,damage: int,effect: String) -> void:
 	t.tween_property(label,"modulate:a",0.15,0.55)
 	t.chain().tween_callback(label.queue_free)
 
-func _cobblestone_material() -> ShaderMaterial:
+func _cobblestone_material() -> Material:
+	var production := MaterialLibrary.create_cemetery_cobble()
+	if production != null:
+		return production
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
