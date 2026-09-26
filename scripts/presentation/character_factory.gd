@@ -71,6 +71,14 @@ static func create_hound() -> Node3D:
 	if VisualPolicy.is_acceptance_mode():
 		return _build_missing_production_asset("Grave Hound",FINAL_HOUND)
 
+	var preview_model := _load_scene(VisualPolicy.HOUND_PREVIEW_SCENE)
+	if preview_model != null:
+		preview_model.name = "GraveHoundProductionPreview"
+		VisualPolicy.tag_visual_tier(preview_model,"production_preview",VisualPolicy.HOUND_PREVIEW_SCENE)
+		preview_model.set_meta("shadowborn_visible_tier","production_preview_original")
+		preview_model.set_meta("shadowborn_preview_contract","vendor_quadruped_rig_hidden_by_preview_scene")
+		return preview_model
+
 	VisualPolicy.report_debug_fallback("Grave Hound",FINAL_HOUND,DEV_HOUND)
 	var dev_model := _load_scene(DEV_HOUND)
 	if dev_model != null:
