@@ -88,11 +88,10 @@ func _has_production_tier_ancestor(node: Node) -> bool:
 	return false
 
 func _build_original_silhouette(skeleton: Skeleton3D) -> void:
-	# Narrow weakened torso with overlapping faceted volumes.
-	_attach_segment(skeleton,"Hips","ShadowWaist",0.22,0.21,0.14,0.19,0.13,-0.055,_body_material)
-	_attach_segment(skeleton,"Abdomen","ShadowAbdomen",0.21,0.22,0.15,0.24,0.16,-0.050,_body_material)
-	_attach_segment(skeleton,"Torso","ShadowTorso",0.26,0.25,0.17,0.29,0.19,-0.050,_body_material)
-	_attach_segment(skeleton,"Chest","ShadowChest",0.20,0.31,0.20,0.27,0.17,-0.060,_body_material)
+	# V3: one continuously skinned body surface replaces the visible rigid
+	# torso/limb tubes. Mid-rings carry 50/50 weights between semantic bones so
+	# shoulders, elbows, hips and knees deform instead of opening hard seams.
+	_build_skinned_body(skeleton)
 
 	# Identity layers: short cowl, asymmetric rear drape and split hip cloth.
 	_attach_mesh(skeleton,"Chest","ShadowCowl",_make_cowl_mesh(),Vector3(0.0,0.01,0.0),Vector3.ZERO,_cloth_material)
@@ -108,15 +107,143 @@ func _build_original_silhouette(skeleton: Skeleton3D) -> void:
 	_attach_mesh(skeleton,"Head","ShadowEyeR",_make_diamond_mesh(0.028,0.008),Vector3(0.045,0.006,0.191),Vector3.ZERO,_accent_material)
 
 	for side in ["L","R"]:
-		_attach_segment(skeleton,"UpperArm.%s" % side,"ShadowUpperArm_%s" % side,0.235,0.078,0.068,0.072,0.060,-0.025,_body_material)
-		_attach_segment(skeleton,"LowerArm.%s" % side,"ShadowLowerArm_%s" % side,0.255,0.072,0.060,0.058,0.050,-0.020,_body_material)
-		_attach_segment(skeleton,"Wrist.%s" % side,"ShadowHand_%s" % side,0.110,0.058,0.046,0.046,0.038,-0.010,_body_material)
-		_attach_segment(skeleton,"UpperLeg.%s" % side,"ShadowUpperLeg_%s" % side,0.445,0.118,0.092,0.095,0.078,-0.035,_body_material)
-		_attach_segment(skeleton,"LowerLeg.%s" % side,"ShadowLowerLeg_%s" % side,0.420,0.096,0.076,0.072,0.060,-0.025,_body_material)
+		# Hands/feet remain small rigid extremity previews; the major deformation
+		# envelope is now owned by the continuous skinned body surface.
+		_attach_segment(skeleton,"Wrist.%s" % side,"ShadowHand_%s" % side,0.105,0.055,0.043,0.044,0.036,-0.008,_body_material)
 		_attach_mesh(skeleton,"Foot.%s" % side,"ShadowFoot_%s" % side,_make_foot_mesh(),Vector3(0.0,-0.015,0.05),Vector3.ZERO,_body_material)
 
 	# Restrained semantic accent. It should support identity, never become the focal point.
 	_attach_mesh(skeleton,"Chest","ShadowChestCore",_make_diamond_mesh(0.042,0.060),Vector3(0.0,0.070,0.205),Vector3.ZERO,_accent_material)
+
+func _build_skinned_body(skeleton: Skeleton3D) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(0)
+
+	# Body proportions are intentionally narrow/weak. Each branch begins inside a
+	# larger mass (Chest or Hips) so the disconnected topology overlaps invisibly
+	# while skin weights keep the visible silhouette continuous during motion.
+	_append_skinned_chain(st,skeleton,
+		["Hips","Torso","Chest","Neck"],
+		[0.22,0.255,0.295,0.105],
+		[0.145,0.170,0.195,0.090],10)
+	for side in ["L","R"]:
+		_append_skinned_chain(st,skeleton,
+			["Chest","UpperArm.%s" % side,"LowerArm.%s" % side,"Wrist.%s" % side],
+			[0.175,0.105,0.082,0.052],
+			[0.135,0.088,0.068,0.046],9)
+		_append_skinned_chain(st,skeleton,
+			["Hips","UpperLeg.%s" % side,"LowerLeg.%s" % side],
+			[0.155,0.128,0.092],
+			[0.125,0.100,0.078],9)
+
+	st.generate_normals()
+	var mesh := st.commit()
+	if mesh == null:
+		push_error("Shadow preview: failed to build skinned body mesh")
+		return
+
+	var visual := MeshInstance3D.new()
+	visual.name = "ShadowSkinnedBodyV3"
+	visual.mesh = mesh
+	visual.material_override = _body_material
+	visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	visual.set_meta("shadowborn_visual_tier","production_preview")
+	visual.set_meta("shadowborn_visual_source","generated://shadowborn/shadow_skinned_preview_v3")
+	visual.set_meta("shadowborn_deformation_contract","continuous_skinned_surface")
+	skeleton.add_child(visual)
+	visual.skeleton = visual.get_path_to(skeleton)
+	visual.skin = skeleton.create_skin_from_rest_transforms()
+
+func _append_skinned_chain(st: SurfaceTool,skeleton: Skeleton3D,bone_names: Array,radii_x: Array,radii_z: Array,sides: int) -> void:
+	if bone_names.size() < 2 or radii_x.size() != bone_names.size() or radii_z.size() != bone_names.size():
+		push_error("Shadow preview: invalid skinned chain definition")
+		return
+
+	var bone_indices: Array[int] = []
+	var centers: Array[Vector3] = []
+	for name_variant in bone_names:
+		var idx := skeleton.find_bone(str(name_variant))
+		if idx < 0:
+			push_warning("Shadow preview: skinned chain missing bone %s" % str(name_variant))
+			return
+		bone_indices.append(idx)
+		centers.append(skeleton.get_bone_global_rest(idx).origin)
+
+	var rings: Array = []
+	rings.append(_skin_ring_record(centers[0],float(radii_x[0]),float(radii_z[0]),bone_indices[0],bone_indices[0],1.0,0.0))
+	for i in range(bone_indices.size()-1):
+		var center_a: Vector3 = centers[i]
+		var center_b: Vector3 = centers[i+1]
+		var mid := center_a.lerp(center_b,0.5)
+		rings.append(_skin_ring_record(
+			mid,
+			lerpf(float(radii_x[i]),float(radii_x[i+1]),0.5),
+			lerpf(float(radii_z[i]),float(radii_z[i+1]),0.5),
+			bone_indices[i],bone_indices[i+1],0.5,0.5
+		))
+		rings.append(_skin_ring_record(
+			center_b,float(radii_x[i+1]),float(radii_z[i+1]),
+			bone_indices[i+1],bone_indices[i+1],1.0,0.0
+		))
+
+	var ring_points: Array = []
+	for r in range(rings.size()):
+		var rec: Dictionary = rings[r]
+		var prev_center: Vector3 = (rings[maxi(0,r-1)] as Dictionary)["center"]
+		var next_center: Vector3 = (rings[mini(rings.size()-1,r+1)] as Dictionary)["center"]
+		var tangent := (next_center-prev_center).normalized()
+		if tangent.length() < 0.001:
+			tangent = Vector3.UP
+		var helper := Vector3.FORWARD if absf(tangent.dot(Vector3.UP)) > 0.82 else Vector3.UP
+		var axis_x := tangent.cross(helper).normalized()
+		if axis_x.length() < 0.001:
+			axis_x = Vector3.RIGHT
+		var axis_z := axis_x.cross(tangent).normalized()
+		var points: Array[Vector3] = []
+		for side_idx in range(sides):
+			var a := TAU*float(side_idx)/float(sides)
+			points.append(
+				(rec["center"] as Vector3)
+				+axis_x*cos(a)*float(rec["rx"])
+				+axis_z*sin(a)*float(rec["rz"])
+			)
+		ring_points.append(points)
+
+	for r in range(rings.size()-1):
+		var rec_a: Dictionary = rings[r]
+		var rec_b: Dictionary = rings[r+1]
+		var pts_a: Array = ring_points[r]
+		var pts_b: Array = ring_points[r+1]
+		for side_idx in range(sides):
+			var next_idx := (side_idx+1)%sides
+			_skin_tri(st,pts_a[side_idx],rec_a,pts_b[side_idx],rec_b,pts_b[next_idx],rec_b)
+			_skin_tri(st,pts_a[side_idx],rec_a,pts_b[next_idx],rec_b,pts_a[next_idx],rec_a)
+
+func _skin_ring_record(center: Vector3,rx: float,rz: float,bone_a: int,bone_b: int,weight_a: float,weight_b: float) -> Dictionary:
+	return {
+		"center":center,
+		"rx":rx,
+		"rz":rz,
+		"bone_a":bone_a,
+		"bone_b":bone_b,
+		"weight_a":weight_a,
+		"weight_b":weight_b
+	}
+
+func _skin_tri(st: SurfaceTool,a: Vector3,ra: Dictionary,b: Vector3,rb: Dictionary,c: Vector3,rc: Dictionary) -> void:
+	_skin_vertex(st,a,ra)
+	_skin_vertex(st,b,rb)
+	_skin_vertex(st,c,rc)
+
+func _skin_vertex(st: SurfaceTool,position: Vector3,record: Dictionary) -> void:
+	st.set_bones(PackedInt32Array([
+		int(record["bone_a"]),int(record["bone_b"]),0,0
+	]))
+	st.set_weights(PackedFloat32Array([
+		float(record["weight_a"]),float(record["weight_b"]),0.0,0.0
+	]))
+	st.add_vertex(position)
 
 func _attach_segment(skeleton: Skeleton3D,bone_name: String,node_name: String,length: float,rx0: float,rz0: float,rx1: float,rz1: float,start_y: float,material: Material) -> void:
 	_attach_mesh(skeleton,bone_name,node_name,_make_frustum_mesh(length,rx0,rz0,rx1,rz1,start_y),Vector3.ZERO,Vector3.ZERO,material)
