@@ -5,6 +5,8 @@ const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd"
 
 signal finished
 
+const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
+
 var camera: Camera3D
 var shadow_root: Node3D
 var shadow_visual: Node3D
@@ -368,7 +370,10 @@ func _finish_sequence() -> void:
 	await out.finished
 	finished.emit()
 
-func _cobblestone_material() -> ShaderMaterial:
+func _cobblestone_material() -> Material:
+	var production := MaterialLibrary.create_cemetery_cobble()
+	if production != null:
+		return production
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
