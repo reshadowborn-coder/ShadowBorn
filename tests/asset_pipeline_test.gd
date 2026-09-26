@@ -10,10 +10,10 @@ func _init() -> void:
 	failures += _check_hound_identity()
 
 	if failures == 0:
-		print("Shadowborn asset pipeline: PASS")
+		print("Shadowborn DEBUG fallback asset pipeline: PASS (not production-art acceptance)")
 		quit(0)
 	else:
-		push_error("Shadowborn asset pipeline: %d failure(s)" % failures)
+		push_error("Shadowborn DEBUG fallback asset pipeline: %d failure(s)" % failures)
 		quit(1)
 
 func _check_scene(path: String,required: Array[String],label: String) -> int:
@@ -56,7 +56,7 @@ func _check_hound_identity() -> int:
 		failures += 1
 	hound.free()
 	if failures == 0:
-		print("PASS: Hound undead visual identity")
+		print("PASS: Hound DEBUG undead dressing exists")
 	return failures
 
 func _check_resource(path: String,label: String) -> int:

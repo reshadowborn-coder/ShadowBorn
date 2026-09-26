@@ -1,6 +1,8 @@
 class_name AwakeningStage
 extends Node3D
 
+const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
+
 signal finished
 
 var camera: Camera3D
@@ -18,6 +20,10 @@ var stone_material_shared: ShaderMaterial
 const SWORD_GROUND_HILT := Vector3(-1.18,0.10,-2.20)
 const SWORD_GROUND_BLADE_DIR := Vector3(0.72,0.0,-0.69)
 
+var production_environment: Node3D
+var shadow_spawn := Vector3(-2.15,0.0,-3.15)
+var sword_ground_hilt := SWORD_GROUND_HILT
+
 func _ready() -> void:
 	_build_world()
 	_build_shadow_and_sword()
@@ -33,6 +39,38 @@ func _unhandled_input(event: InputEvent) -> void:
 		_finish_sequence()
 
 func _build_world() -> void:
+	production_environment = VisualPolicy.instantiate_scene(VisualPolicy.AWAKENING_ENVIRONMENT)
+	if production_environment != null:
+		production_environment.name = "ProductionAwakeningEnvironment"
+		VisualPolicy.tag_visual_tier(production_environment,"production",VisualPolicy.AWAKENING_ENVIRONMENT)
+		add_child(production_environment)
+
+		var authored_camera := production_environment.find_child("AwakeningCamera",true,false) as Camera3D
+		var shadow_anchor := production_environment.find_child("ShadowSpawn",true,false) as Node3D
+		var sword_anchor := production_environment.find_child("SwordSpawn",true,false) as Node3D
+
+		if authored_camera != null:
+			camera = authored_camera
+			camera.current = true
+		else:
+			push_error("Production awakening scene must provide Camera3D named AwakeningCamera")
+		if shadow_anchor != null:
+			shadow_spawn = shadow_anchor.global_position
+		else:
+			push_error("Production awakening scene must provide Node3D named ShadowSpawn")
+		if sword_anchor != null:
+			sword_ground_hilt = sword_anchor.global_position
+		else:
+			push_error("Production awakening scene must provide Node3D named SwordSpawn")
+
+		if camera != null and shadow_anchor != null and sword_anchor != null:
+			return
+	elif VisualPolicy.is_acceptance_mode():
+		push_error("VISUAL ACCEPTANCE BLOCKED: missing production awakening environment: %s" % VisualPolicy.AWAKENING_ENVIRONMENT)
+
+	_build_debug_world()
+
+func _build_debug_world() -> void:
 	var world := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -139,7 +177,7 @@ func _build_crypt() -> void:
 func _build_shadow_and_sword() -> void:
 	shadow_root = Node3D.new()
 	shadow_root.name = "AwakeningShadow"
-	shadow_root.position = Vector3(-2.15,0.0,-3.15)
+	shadow_root.position = shadow_spawn
 	shadow_root.rotation_degrees.y = 18.0
 	add_child(shadow_root)
 
@@ -154,7 +192,7 @@ func _build_shadow_and_sword() -> void:
 	# from both the body and the camera so the pickup cannot read backwards.
 	var sword_scale := sword_prop.scale
 	var ground_basis := _sword_ground_basis(SWORD_GROUND_BLADE_DIR).scaled(sword_scale)
-	sword_prop.transform = Transform3D(ground_basis,SWORD_GROUND_HILT)
+	sword_prop.transform = Transform3D(ground_basis,sword_ground_hilt)
 	add_child(sword_prop)
 
 func _sword_ground_basis(blade_direction: Vector3) -> Basis:

@@ -1,12 +1,15 @@
 class_name CharacterFactory
 extends RefCounted
 
-const FINAL_SHADOW := "res://assets/characters/shadow/shadow.glb"
-const FINAL_HOUND := "res://assets/characters/grave_hound/grave_hound.glb"
+const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
 
-const DEV_SHADOW := "res://assets/vendor/quaternius/shadow_adventurer.gltf"
-const DEV_HOUND := "res://assets/vendor/quaternius/grave_wolf.gltf"
-const DEV_SWORD := "res://assets/vendor/quaternius/shadow_sword.gltf"
+const FINAL_SHADOW := VisualPolicy.SHADOW_SCENE
+const FINAL_HOUND := VisualPolicy.HOUND_SCENE
+const FINAL_SWORD := VisualPolicy.SWORD_SCENE
+
+const DEV_SHADOW := VisualPolicy.DEV_SHADOW_SCENE
+const DEV_HOUND := VisualPolicy.DEV_HOUND_SCENE
+const DEV_SWORD := VisualPolicy.DEV_SWORD_SCENE
 
 const META_ANIMATION_PLAYER_PATH := &"_shadowborn_animation_player_path"
 const META_SKELETON_PATH := &"_shadowborn_skeleton_path"
@@ -15,40 +18,69 @@ static func create_shadow(with_sword: bool = true) -> Node3D:
 	var final_model := _load_scene(FINAL_SHADOW)
 	if final_model != null:
 		final_model.name = "ShadowModel"
+		VisualPolicy.tag_visual_tier(final_model,"production",FINAL_SHADOW)
 		_set_named_weapon_visible(final_model,with_sword)
 		return final_model
 
+	if VisualPolicy.is_acceptance_mode():
+		return _build_missing_production_asset("Shadow",FINAL_SHADOW)
+
+	VisualPolicy.report_debug_fallback("Shadow",FINAL_SHADOW,DEV_SHADOW)
 	var dev_model := _load_scene(DEV_SHADOW)
 	if dev_model != null:
 		dev_model.name = "ShadowDevModel"
+		VisualPolicy.tag_visual_tier(dev_model,"debug_vendor",DEV_SHADOW)
 		_prepare_dev_shadow(dev_model)
 		if with_sword:
 			attach_sword(dev_model)
 		return dev_model
 
-	return _build_emergency_shadow(with_sword)
+	var emergency := _build_emergency_shadow(with_sword)
+	VisualPolicy.tag_visual_tier(emergency,"debug_emergency","generated://shadow")
+	return emergency
 
 static func create_hound() -> Node3D:
 	var final_model := _load_scene(FINAL_HOUND)
 	if final_model != null:
 		final_model.name = "GraveHoundModel"
+		VisualPolicy.tag_visual_tier(final_model,"production",FINAL_HOUND)
 		return final_model
 
+	if VisualPolicy.is_acceptance_mode():
+		return _build_missing_production_asset("Grave Hound",FINAL_HOUND)
+
+	VisualPolicy.report_debug_fallback("Grave Hound",FINAL_HOUND,DEV_HOUND)
 	var dev_model := _load_scene(DEV_HOUND)
 	if dev_model != null:
 		dev_model.name = "GraveHoundDevModel"
+		VisualPolicy.tag_visual_tier(dev_model,"debug_vendor",DEV_HOUND)
 		_prepare_dev_hound(dev_model)
 		return dev_model
 
-	return _build_emergency_hound()
+	var emergency := _build_emergency_hound()
+	VisualPolicy.tag_visual_tier(emergency,"debug_emergency","generated://grave_hound")
+	return emergency
 
 static func create_sword_prop() -> Node3D:
+	var final_model := _load_scene(FINAL_SWORD)
+	if final_model != null:
+		final_model.name = "ShadowSword"
+		VisualPolicy.tag_visual_tier(final_model,"production",FINAL_SWORD)
+		return final_model
+
+	if VisualPolicy.is_acceptance_mode():
+		return _build_missing_production_asset("Shadow Sword",FINAL_SWORD)
+
+	VisualPolicy.report_debug_fallback("Shadow Sword",FINAL_SWORD,DEV_SWORD)
 	var model := _load_scene(DEV_SWORD)
 	if model != null:
-		model.name = "SwordProp"
+		model.name = "SwordDevProp"
+		VisualPolicy.tag_visual_tier(model,"debug_vendor",DEV_SWORD)
 		_prepare_sword(model)
 		return model
-	return _build_emergency_sword()
+	var emergency := _build_emergency_sword()
+	VisualPolicy.tag_visual_tier(emergency,"debug_emergency","generated://shadow_sword")
+	return emergency
 
 static func attach_sword(root: Node3D) -> void:
 	_set_named_weapon_visible(root,true)
@@ -549,6 +581,28 @@ static func _capsule(radius: float,height: float,color: Color) -> MeshInstance3D
 	mesh.material = _mat(color)
 	node.mesh = mesh
 	return node
+
+static func _build_missing_production_asset(label: String,path: String) -> Node3D:
+	push_error("VISUAL ACCEPTANCE BLOCKED: missing production asset for %s: %s" % [label,path])
+	var root := Node3D.new()
+	root.name = "MISSING_PRODUCTION_%s" % label.to_upper().replace(" ","_")
+	VisualPolicy.tag_visual_tier(root,"missing_production",path)
+	root.set_meta("visual_acceptance_error",true)
+
+	var marker := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.75,1.75,0.75)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.92,0.0,0.72)
+	material.emission_enabled = true
+	material.emission = Color(0.92,0.0,0.72)
+	material.emission_energy_multiplier = 1.8
+	material.roughness = 0.55
+	mesh.material = material
+	marker.mesh = mesh
+	marker.position.y = 0.875
+	root.add_child(marker)
+	return root
 
 static func _build_emergency_sword() -> Node3D:
 	var root := Node3D.new()
