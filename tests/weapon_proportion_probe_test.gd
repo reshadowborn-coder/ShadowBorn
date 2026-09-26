@@ -16,11 +16,12 @@ func _run() -> void:
 	var sword_bounds: AABB = _combined_bounds(sword)
 	var shadow_height: float = shadow_bounds.size.y
 	var sword_length: float = maxf(sword_bounds.size.x,maxf(sword_bounds.size.y,sword_bounds.size.z))
-	var ratio: float = sword_length/maxf(shadow_height,0.0001)
+	var raw_ratio: float = sword_length/maxf(shadow_height,0.0001)
+	var presented_ratio: float = sword_length*CharacterFactory.DEV_SWORD_PRESENTATION_SCALE/maxf(shadow_height,0.0001)
 
 	print("WEAPON_PROPORTION_PROBE shadow_bounds=",shadow_bounds)
 	print("WEAPON_PROPORTION_PROBE sword_bounds=",sword_bounds)
-	print("WEAPON_PROPORTION_PROBE shadow_height=%.4f sword_long_axis=%.4f ratio=%.4f" % [shadow_height,sword_length,ratio])
+	print("WEAPON_PROPORTION_PROBE shadow_height=%.4f sword_long_axis=%.4f raw_ratio=%.4f presented_ratio=%.4f" % [shadow_height,sword_length,raw_ratio,presented_ratio])
 
 	var failures := 0
 	if shadow_height <= 0.5:
@@ -29,9 +30,30 @@ func _run() -> void:
 	if sword_length <= 0.2:
 		push_error("Sword imported bounds are unexpectedly small/nonexistent")
 		failures += 1
+	if presented_ratio < 0.47 or presented_ratio > 0.53:
+		push_error("Debug starter sword/body ratio escaped the 47-53%% visual target: %.4f" % presented_ratio)
+		failures += 1
+
+	var armed_shadow: Node3D = CharacterFactory.create_shadow(true)
+	root.add_child(armed_shadow)
+	await process_frame
+	var attached := armed_shadow.find_child("ShadowbornWeapon",true,false) as Node3D
+	if attached == null:
+		push_error("Attached debug sword missing")
+		failures += 1
+	else:
+		var tier := str(attached.get_meta("shadowborn_visual_tier",""))
+		if tier == "debug_vendor":
+			if attached.position.length() > 0.001:
+				push_error("Debug sword grip root is offset from Wrist.R: %s" % attached.position)
+				failures += 1
+			if not attached.rotation_degrees.is_equal_approx(CharacterFactory.DEV_SWORD_WRIST_ROTATION):
+				push_error("Debug sword wrist rotation drifted: %s" % attached.rotation_degrees)
+				failures += 1
 
 	shadow.queue_free()
 	sword.queue_free()
+	armed_shadow.queue_free()
 	await process_frame
 	if failures == 0:
 		print("Shadowborn weapon proportion probe: PASS")
