@@ -240,41 +240,46 @@ static func _add_shadow_hood_and_eyes(root: Node3D) -> void:
 	socket.bone_name = "Head"
 	skeleton.add_child(socket)
 
+	# Keep the temporary hood close to believable adult-human head proportions.
+	# The previous oversized sphere read as a ball from the actual combat camera.
 	var hood := MeshInstance3D.new()
-	var hood_mesh := SphereMesh.new()
-	hood_mesh.radius = 0.27
-	hood_mesh.height = 0.54
+	var hood_mesh := CapsuleMesh.new()
+	hood_mesh.radius = 0.205
+	hood_mesh.height = 0.455
 	hood_mesh.radial_segments = 20
-	hood_mesh.rings = 10
+	hood_mesh.rings = 8
 	hood_mesh.material = _mat(Color(0.006,0.008,0.013),0.97,0.0)
 	hood.mesh = hood_mesh
-	hood.position = Vector3(0.0,0.055,-0.012)
-	hood.scale = Vector3(1.20,1.22,1.12)
+	hood.position = Vector3(0.0,0.035,-0.018)
+	hood.scale = Vector3(0.92,1.02,0.88)
 	socket.add_child(hood)
 
+	# A narrow recessed void hides the imported face without swelling the silhouette.
 	var face_void := MeshInstance3D.new()
 	var void_mesh := SphereMesh.new()
-	void_mesh.radius = 0.19
-	void_mesh.height = 0.38
+	void_mesh.radius = 0.145
+	void_mesh.height = 0.29
 	void_mesh.radial_segments = 16
 	void_mesh.rings = 8
 	void_mesh.material = _mat(Color(0.0,0.0,0.002),1.0,0.0)
 	face_void.mesh = void_mesh
-	face_void.position = Vector3(0.0,-0.01,0.19)
-	face_void.scale = Vector3(0.88,1.03,0.36)
+	face_void.position = Vector3(0.0,-0.015,0.155)
+	face_void.scale = Vector3(0.78,0.96,0.30)
 	socket.add_child(face_void)
 
 	for side in [-1.0,1.0]:
 		var eye := MeshInstance3D.new()
 		var eye_mesh := SphereMesh.new()
-		eye_mesh.radius = 0.026
-		eye_mesh.height = 0.052
-		eye_mesh.radial_segments = 12
-		eye_mesh.rings = 6
-		eye_mesh.material = _mat(Color(0.22,0.48,1.0),0.35,0.0,true)
+		eye_mesh.radius = 0.016
+		eye_mesh.height = 0.032
+		eye_mesh.radial_segments = 10
+		eye_mesh.rings = 5
+		var eye_mat := _mat(Color(0.10,0.27,0.62),0.42,0.0,true)
+		eye_mat.emission_energy_multiplier = 0.75
+		eye_mesh.material = eye_mat
 		eye.mesh = eye_mesh
-		eye.position = Vector3(0.067*side,0.012,0.263)
-		eye.scale = Vector3(1.25,0.72,0.55)
+		eye.position = Vector3(0.050*side,0.005,0.198)
+		eye.scale = Vector3(1.18,0.58,0.48)
 		socket.add_child(eye)
 
 static func _add_shadow_mist(root: Node3D) -> void:
