@@ -14,7 +14,11 @@ func _run() -> void:
 	var awakening := AwakeningStageScript.new()
 	root.add_child(awakening)
 	await create_timer(1.15).timeout
-	await _capture(OUT_DIR+"/awakening.png")
+	await _capture(OUT_DIR+"/awakening_corpse.png")
+	await create_timer(1.10).timeout
+	await _capture(OUT_DIR+"/awakening_rise.png")
+	await create_timer(1.58).timeout
+	await _capture(OUT_DIR+"/awakening_pickup.png")
 	awakening.queue_free()
 	await process_frame
 
