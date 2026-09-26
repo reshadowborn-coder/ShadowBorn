@@ -76,17 +76,27 @@ func _check_shadow_sword_direction(stage: Node) -> int:
 	if grip == null or tip == null:
 		push_error("Sword direction regression: Grip/BladeTip markers missing")
 		return 1
-	var grip_from_body := grip.global_position.distance_to(shadow_root.global_position)
-	var tip_from_body := tip.global_position.distance_to(shadow_root.global_position)
 	var blade_length_world := grip.global_position.distance_to(tip.global_position)
+	var camera := stage.get("battle_camera") as Camera3D
 	var failures := 0
 	failures += _expect(CharacterFactory.PRODUCTION_SWORD_WRIST_ROTATION.is_equal_approx(Vector3(0.0,0.0,-90.0)),"Production starter sword keeps camera-verified -90 degree Wrist.R mount")
-	# A slash does not have to point at the enemy center. The regression we actually
-	# need to prevent is the old 180-degree mount, where most of the blade entered
-	# Shadow's forearm/torso. The tip must extend materially farther from the body
-	# than the grip while preserving the authored blade length.
-	failures += _expect(tip_from_body > grip_from_body+0.20,"Production starter sword BladeTip extends away from Shadow instead of back into the torso")
 	failures += _expect(blade_length_world > 0.70,"Production starter sword keeps its authored Grip-to-BladeTip reach")
+	if camera == null:
+		push_error("Sword direction regression: battle camera missing")
+		failures += 1
+	else:
+		# This is a camera-readability regression, so test it in the shipping camera's
+		# projected space. From the character's torso center to the sword hand, then
+		# from the hand to BladeTip, the direction must keep moving outward instead
+		# of folding back across the body silhouette as the old 180-degree mount did.
+		var body_screen := camera.unproject_position(shadow_root.global_position+Vector3(0.0,1.05,0.0))
+		var grip_screen := camera.unproject_position(grip.global_position)
+		var tip_screen := camera.unproject_position(tip.global_position)
+		var hand_out := grip_screen-body_screen
+		var blade_out := tip_screen-grip_screen
+		var outward_dot := hand_out.normalized().dot(blade_out.normalized()) if hand_out.length() > 0.001 and blade_out.length() > 0.001 else -1.0
+		failures += _expect(blade_out.length() >= 24.0,"Production starter sword projects to a readable blade length in the battle camera")
+		failures += _expect(outward_dot > 0.0,"Production starter sword BladeTip continues outward from the weapon hand instead of folding across Shadow")
 	return failures
 
 func _check_hound_visual_forward(stage: Node) -> int:
