@@ -23,8 +23,14 @@ var stone_material_shared: ShaderMaterial
 const SWORD_GROUND_HILT := Vector3(-1.18,0.10,-2.20)
 const SWORD_GROUND_BLADE_DIR := Vector3(0.72,0.0,-0.69)
 
+# The debug corpse wall's visible front face is at z=-3.575. Keep the actor root
+# a full metre in front of it so the seated/death pose, hood and skinned limbs
+# cannot visually intersect the masonry and read as "waking out of the wall".
+const DEBUG_CORPSE_WALL_FRONT_Z := -3.575
+const DEBUG_MIN_CORPSE_WALL_CLEARANCE := 1.00
+
 var production_environment: Node3D
-var shadow_spawn := Vector3(-2.15,0.0,-3.15)
+var shadow_spawn := Vector3(-2.15,0.0,DEBUG_CORPSE_WALL_FRONT_Z + DEBUG_MIN_CORPSE_WALL_CLEARANCE)
 var sword_ground_hilt := SWORD_GROUND_HILT
 
 func _ready() -> void:
@@ -123,7 +129,7 @@ func _build_debug_world() -> void:
 	camera.position = Vector3(-0.55,1.48,4.15)
 	add_child(camera)
 	# Initial corpse shot must read Shadow low in frame, not disappear into the wall.
-	camera.look_at(Vector3(-2.08,0.68,-2.85),Vector3.UP)
+	camera.look_at(Vector3(-2.05,0.68,-2.42),Vector3.UP)
 
 func _build_crypt() -> void:
 	var floor := MeshInstance3D.new()
@@ -181,7 +187,7 @@ func _build_crypt() -> void:
 	var awakening_slab := EnvironmentAssetLibrary.create_awakening_slab_hero()
 	if awakening_slab != null:
 		awakening_slab.name = "ProductionPreviewAwakeningSlab"
-		awakening_slab.position = Vector3(-2.10,0.015,-3.10)
+		awakening_slab.position = Vector3(-2.10,0.015,-2.58)
 		awakening_slab.rotation_degrees.y = -8.0
 		awakening_slab.scale = Vector3(1.05,1.0,1.05)
 		add_child(awakening_slab)
@@ -319,7 +325,7 @@ func _play_sequence() -> void:
 	wake_cam.tween_property(camera,"position",Vector3(-0.10,1.62,3.55),0.42).set_trans(Tween.TRANS_SINE)
 	wake_cam.tween_property(camera,"fov",30.5,0.42)
 	await wake_cam.finished
-	camera.look_at(Vector3(-2.12,1.02,-3.10),Vector3.UP)
+	camera.look_at(Vector3(-2.08,1.02,-2.55),Vector3.UP)
 	if skipping: return
 
 	var rising := CharacterFactory.play_resurrection(shadow_visual)
@@ -327,7 +333,7 @@ func _play_sequence() -> void:
 	rise_root.set_parallel(true)
 	rise_root.tween_property(shadow_visual,"rotation_degrees",Vector3.ZERO,1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	rise_root.tween_property(shadow_visual,"position",Vector3.ZERO,1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	rise_root.tween_property(shadow_root,"position",Vector3(-1.90,0.0,-2.92),1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	rise_root.tween_property(shadow_root,"position",Vector3(-1.90,0.0,-2.48),1.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	rise_root.tween_property(camera,"position",Vector3(0.95,2.12,5.02),1.18).set_trans(Tween.TRANS_CUBIC)
 	await get_tree().create_timer(1.20 if rising else 1.00).timeout
 	CharacterFactory.pose_standing(shadow_visual)
@@ -356,7 +362,7 @@ func _play_sequence() -> void:
 	# rotating the prop toward the actor made the old shot look like Shadow was
 	# grabbing the blade backwards from the camera.
 	var pickup := create_tween()
-	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.44),0.52).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.30),0.52).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	await get_tree().create_timer(0.46).timeout
 	CharacterFactory.attach_sword(shadow_visual)
 	sword_prop.visible = false
