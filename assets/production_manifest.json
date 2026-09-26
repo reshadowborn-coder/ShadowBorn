@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "project": "Shadowborn",
+  "scope": "ACT0_TEMPLE_VERTICAL_SLICE",
+  "status": "research_candidates",
+  "rules": {
+    "user_canon_overrides_research": true,
+    "camera_first_approval_required": true,
+    "physical_ios_profile_required_for_perf_claims": true,
+    "runtime_source_resolution_policy": "start_1k_2k_then_profile",
+    "no_8k_runtime_by_default": true
+  },
+  "material_families": [
+    {
+      "id": "MAT_GROUND_WET_COBBLE_PRIMARY",
+      "role": "awakening_and_battle_primary_path",
+      "candidate": "Poly Haven Cobblestone 01",
+      "source": "https://polyhaven.com/a/cobblestone_01",
+      "license": "CC0",
+      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "runtime_resolution_candidate": "2K",
+      "status": "candidate_not_integrated",
+      "acceptance": [
+        "path remains readable at phone size",
+        "wetness uses roughness/specular not mirror reflection",
+        "no high-frequency shimmer during camera motion"
+      ]
+    },
+    {
+      "id": "MAT_GROUND_PATH_TRANSITION",
+      "role": "leafy_damp_transition_and_edge_blend",
+      "candidate": "Poly Haven Stone Pathway 02",
+      "source": "https://polyhaven.com/a/stone_pathway_02",
+      "license": "CC0",
+      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "runtime_resolution_candidate": "1K-2K",
+      "status": "candidate_not_integrated",
+      "acceptance": [
+        "leaf debris does not obscure combat feet/contact",
+        "used as transition/edge family, not full arena noise"
+      ]
+    },
+    {
+      "id": "MAT_WALL_MEDIEVAL_PRIMARY",
+      "role": "cemetery_wall_and_temple_exterior",
+      "candidate": "Poly Haven Medieval Blocks 05",
+      "source": "https://polyhaven.com/a/medieval_blocks_05",
+      "license": "CC0",
+      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "runtime_resolution_candidate": "2K",
+      "status": "candidate_not_integrated",
+      "acceptance": [
+        "broad block scale reads from battle camera",
+        "chipped edges supported by geometry on hero silhouettes",
+        "material not used to fake every structural break"
+      ]
+    },
+    {
+      "id": "MAT_WALL_MEDIEVAL_SECONDARY",
+      "role": "cleaner_value_control_for_temple_landmark",
+      "candidate": "Poly Haven Medieval Blocks 03",
+      "source": "https://polyhaven.com/a/medieval_blocks_03",
+      "license": "CC0",
+      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "runtime_resolution_candidate": "1K-2K",
+      "status": "candidate_not_integrated"
+    },
+    {
+      "id": "MAT_GROUND_ORGANIC",
+      "role": "grave_edges_roots_leaf_pockets",
+      "candidate": "Poly Haven Forest Leaves 02",
+      "source": "https://polyhaven.com/a/forest_leaves_02",
+      "license": "CC0",
+      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "runtime_resolution_candidate": "1K",
+      "status": "candidate_not_integrated",
+      "acceptance": [
+        "kept outside core combat readability envelope",
+        "no full-screen alpha leaf carpet"
+      ]
+    }
+  ],
+  "production_mesh_families": [
+    {
+      "id": "ENV_GRAVE_HERO_PROP",
+      "needed": true,
+      "status": "missing",
+      "requirements": ["non-box silhouette", "chipped edges", "original funerary motif", "LOD-capable"]
+    },
+    {
+      "id": "ENV_BROKEN_ARCH",
+      "needed": true,
+      "status": "missing",
+      "requirements": ["asymmetric damage", "camera framing role", "original silhouette", "LOD-capable"]
+    },
+    {
+      "id": "ENV_WALL_RUBBLE_KIT",
+      "needed": true,
+      "status": "missing",
+      "requirements": ["3-5 reusable pieces", "shared material", "size hierarchy", "camera-safe"]
+    },
+    {
+      "id": "TEMPLE_EXTERIOR_KIT",
+      "needed": true,
+      "status": "missing",
+      "requirements": ["wall", "pillar_or_buttress", "arch", "round_window", "roof_tile", "stair", "rubble"]
+    }
+  ],
+  "character_replacements": [
+    {
+      "id": "CHAR_SHADOW_PRODUCTION",
+      "current": "Quaternius dev humanoid + procedural hood/eyes/mist",
+      "status": "missing",
+      "requirements": [
+        "authored hood and cloth silhouette",
+        "faceless recessed void",
+        "human proportions",
+        "mobile-readable eyes",
+        "humanoid retarget-compatible rig",
+        "weapon socket validation"
+      ]
+    },
+    {
+      "id": "CHAR_GRAVE_HOUND_PRODUCTION",
+      "current": "Quaternius wolf + procedural undead overlays",
+      "status": "missing",
+      "requirements": [
+        "waist-high scale",
+        "emaciated dog anatomy",
+        "undead skull/torso silhouette",
+        "quadruped rig",
+        "idle_attack_hit_death clips",
+        "camera-verified forward axis"
+      ]
+    }
+  ],
+  "animation_pipeline": {
+    "shadow": {
+      "strategy": "SkeletonProfileHumanoid_BoneMap_AnimationLibrary_retarget",
+      "temporary_library": "Quaternius Universal Animation Library",
+      "dedicated_clips_required": [
+        "awakening",
+        "sword_pickup",
+        "combat_idle",
+        "A1_basic",
+        "A2_shadow_lunge",
+        "hit_light",
+        "hit_heavy",
+        "death",
+        "victory"
+      ]
+    },
+    "hound": {
+      "strategy": "dedicated_quadruped_rig_and_clips",
+      "do_not_force_humanoid_profile": true
+    }
+  }
+}
