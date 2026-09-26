@@ -582,6 +582,28 @@ static func _capsule(radius: float,height: float,color: Color) -> MeshInstance3D
 	node.mesh = mesh
 	return node
 
+static func _build_missing_production_asset(label: String,path: String) -> Node3D:
+	push_error("VISUAL ACCEPTANCE BLOCKED: missing production asset for %s: %s" % [label,path])
+	var root := Node3D.new()
+	root.name = "MISSING_PRODUCTION_%s" % label.to_upper().replace(" ","_")
+	VisualPolicy.tag_visual_tier(root,"missing_production",path)
+	root.set_meta("visual_acceptance_error",true)
+
+	var marker := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.75,1.75,0.75)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.92,0.0,0.72)
+	material.emission_enabled = true
+	material.emission = Color(0.92,0.0,0.72)
+	material.emission_energy_multiplier = 1.8
+	material.roughness = 0.55
+	mesh.material = material
+	marker.mesh = mesh
+	marker.position.y = 0.875
+	root.add_child(marker)
+	return root
+
 static func _build_emergency_sword() -> Node3D:
 	var root := Node3D.new()
 	root.name = "EmergencySword"
