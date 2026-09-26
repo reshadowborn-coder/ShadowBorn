@@ -120,7 +120,7 @@
     {
       "id": "ENV_GRAVE_HERO_PROP",
       "needed": true,
-      "status": "original_mesh_runtime_preview_integrated_needs_uv_bevel_lod_acceptance",
+      "status": "original_mesh_integrated_production_preview",
       "requirements": [
         "non-box silhouette",
         "chipped edges",
@@ -131,6 +131,20 @@
       "runtime_preview_targets": [
         "Awakening grave-marker clusters",
         "Grave Hound battle edge dressing"
+      ],
+      "path": "res://assets/environments/checkpoint01/grave_marker_hero.obj",
+      "geometry": {
+        "authoring": "original_shadowborn",
+        "approximate_triangles": 100,
+        "silhouette": "asymmetric_broken_stele",
+        "motif": "original_broken_covenant_relief",
+        "runtime_role": "foreground_midground_camera_frame"
+      },
+      "research_sources": [
+        "https://docs.godotengine.org/en/4.4/tutorials/3d/mesh_lod.html",
+        "https://docs.godotengine.org/en/4.4/tutorials/assets_pipeline/importing_3d_scenes/advanced_import_settings.html",
+        "https://kenney.nl/assets/graveyard-kit",
+        "https://polyhaven.com/a/modular_fort_01"
       ]
     },
     {
