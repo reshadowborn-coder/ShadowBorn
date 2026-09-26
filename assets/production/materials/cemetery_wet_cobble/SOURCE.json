@@ -1,0 +1,27 @@
+{
+  "asset": "cobblestone_01",
+  "resolution": "2k",
+  "provider": "Poly Haven",
+  "asset_page": "https://polyhaven.com/a/cobblestone_01",
+  "asset_license": "CC0",
+  "license_url": "https://polyhaven.com/license",
+  "api": "https://api.polyhaven.com/files/cobblestone_01",
+  "api_credit": "Powered by Poly Haven",
+  "maps": {
+    "diff": {
+      "file": "cobblestone_01_diff_2k.png",
+      "source_url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/cobblestone_01/cobblestone_01_diff_2k.png",
+      "md5": "a685063903dc66df3ae3cfc100c332e7"
+    },
+    "nor_gl": {
+      "file": "cobblestone_01_nor_gl_2k.png",
+      "source_url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/cobblestone_01/cobblestone_01_nor_gl_2k.png",
+      "md5": "8246a9f4ce43cdf9eecdce1cc40aed69"
+    },
+    "arm": {
+      "file": "cobblestone_01_arm_2k.png",
+      "source_url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/cobblestone_01/cobblestone_01_arm_2k.png",
+      "md5": "f12f15d2018729aca2f93083ecc7b80d"
+    }
+  }
+}

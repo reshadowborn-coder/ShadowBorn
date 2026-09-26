@@ -24,11 +24,17 @@
         "ao_or_arm"
       ],
       "runtime_resolution_candidate": "2K",
-      "status": "candidate_not_integrated",
+      "status": "maps_integrated_scene_use_pending",
       "acceptance": [
         "path remains readable at phone size",
         "wetness uses roughness/specular not mirror reflection",
         "no high-frequency shimmer during camera motion"
+      ],
+      "runtime_files": [
+        "assets/production/materials/cemetery_wet_cobble/cobblestone_01_diff_2k.png",
+        "assets/production/materials/cemetery_wet_cobble/cobblestone_01_nor_gl_2k.png",
+        "assets/production/materials/cemetery_wet_cobble/cobblestone_01_arm_2k.png",
+        "assets/production/materials/cemetery_wet_cobble/SOURCE.json"
       ]
     },
     {
