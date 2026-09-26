@@ -110,7 +110,7 @@ static func attach_sword(root: Node3D) -> void:
 	fallback_sword.name = "ShadowbornWeapon"
 	fallback_socket.add_child(fallback_sword)
 
-const DEV_CORPSE_DEATH_FRACTION := 0.68
+const DEV_CORPSE_DEATH_FRACTION := 0.48
 const DEV_CORPSE_LOCAL_OFFSET := Vector3(0.0,0.13,0.04)
 
 static func pose_seated_corpse(root: Node3D) -> void:
@@ -133,7 +133,7 @@ static func pose_seated_corpse(root: Node3D) -> void:
 
 static func play_resurrection(root: Node3D) -> bool:
 	root.position = DEV_CORPSE_LOCAL_OFFSET
-	return play_backwards_from_fraction(root,["Death"],DEV_CORPSE_DEATH_FRACTION,0.52,0.20)
+	return play_backwards_from_fraction(root,["Death"],DEV_CORPSE_DEATH_FRACTION,0.44,0.20)
 
 static func pose_standing(root: Node3D) -> void:
 	root.position = Vector3.ZERO
