@@ -30,8 +30,14 @@ func _run() -> void:
 	await process_frame
 	failures += _expect(_count_shadowed_lights(battle_stage) <= 1,"battle keeps one real-time shadow-casting light")
 	var battle_box_stats := _box_material_stats(battle_stage)
-	failures += _expect(int(battle_box_stats["box_count"]) >= 10,"battle arena contains reusable stone box geometry")
-	failures += _expect(int(battle_box_stats["unique_shader_materials"]) <= 1,"battle stone boxes share one shader material")
+	# The old prototype budget required >=10 BoxMesh nodes, which accidentally
+	# protected the blockout representation. The visual rebuild intentionally
+	# removes those boxes. Budget the authored replacement instead: fewer primitive
+	# stand-ins, enough reusable authored modules, and one shared stone material.
+	failures += _expect(int(battle_box_stats["box_count"]) <= 4,"battle does not regress to repeated BoxMesh blockout geometry")
+	var authored_stats := _authored_checkpoint_mesh_stats(battle_stage)
+	failures += _expect(int(authored_stats["mesh_count"]) >= 19,"battle uses the authored Checkpoint 01 masonry/grave kit")
+	failures += _expect(int(authored_stats["unique_override_materials"]) <= 1,"authored Checkpoint 01 stone meshes share one override material")
 	battle_stage.queue_free()
 	await process_frame
 
@@ -69,6 +75,28 @@ func _box_material_stats(node: Node) -> Dictionary:
 	return {
 		"box_count": box_count,
 		"unique_shader_materials": material_ids.size(),
+		"material_ids": material_ids
+	}
+
+func _authored_checkpoint_mesh_stats(node: Node) -> Dictionary:
+	var mesh_count := 0
+	var material_ids: Dictionary = {}
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		var source := str(mesh_instance.get_meta("shadowborn_visual_source",""))
+		if source.begins_with("res://assets/environments/checkpoint01/") and source.ends_with(".obj"):
+			mesh_count += 1
+			var override_material := mesh_instance.material_override
+			if override_material != null:
+				material_ids[override_material.get_instance_id()] = true
+	for child in node.get_children():
+		var nested := _authored_checkpoint_mesh_stats(child)
+		mesh_count += int(nested["mesh_count"])
+		for key in (nested["material_ids"] as Dictionary).keys():
+			material_ids[key] = true
+	return {
+		"mesh_count": mesh_count,
+		"unique_override_materials": material_ids.size(),
 		"material_ids": material_ids
 	}
 
