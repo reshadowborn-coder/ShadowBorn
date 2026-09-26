@@ -39,9 +39,9 @@ func _run() -> void:
 		quit(1)
 
 func _check_sword_pickup_staging(stage: Node) -> int:
-	var sword: Node3D = stage.sword_prop
-	var shadow: Node3D = stage.shadow_root
-	var camera: Camera3D = stage.camera
+	var sword := stage.get("sword_prop") as Node3D
+	var shadow := stage.get("shadow_root") as Node3D
+	var camera := stage.get("camera") as Camera3D
 	if sword == null or shadow == null or camera == null:
 		push_error("Sword pickup staging nodes missing")
 		return 1
@@ -60,7 +60,8 @@ func _check_sword_pickup_staging(stage: Node) -> int:
 	return failures
 
 func _check_hound_visual_forward(stage: Node) -> int:
-	var hound_root: Node3D = stage.actor_nodes.get("hound")
+	var actors: Dictionary = stage.get("actor_nodes")
+	var hound_root := actors.get("hound") as Node3D
 	if hound_root == null:
 		push_error("Hound actor missing")
 		return 1
