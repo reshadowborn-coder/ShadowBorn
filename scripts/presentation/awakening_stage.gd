@@ -152,8 +152,9 @@ func _build_shadow_and_sword() -> void:
 	# Sword mesh origin sits near the hilt and its local +Y runs along the blade.
 	# Keep the hilt close to Shadow's right-side reach and point the blade away
 	# from both the body and the camera so the pickup cannot read backwards.
-	sword_prop.position = SWORD_GROUND_HILT
-	sword_prop.transform = Transform3D(_sword_ground_basis(SWORD_GROUND_BLADE_DIR),sword_prop.position)
+	var sword_scale := sword_prop.scale
+	var ground_basis := _sword_ground_basis(SWORD_GROUND_BLADE_DIR).scaled(sword_scale)
+	sword_prop.transform = Transform3D(ground_basis,SWORD_GROUND_HILT)
 	add_child(sword_prop)
 
 func _sword_ground_basis(blade_direction: Vector3) -> Basis:
