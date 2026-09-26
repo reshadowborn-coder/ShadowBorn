@@ -29,7 +29,7 @@ Required production paths:
 
 - `assets/characters/shadow/shadow.glb`
 - `assets/characters/grave_hound/grave_hound.glb`
-- `assets/weapons/shadow_sword/shadow_sword.glb`
+- `assets/weapons/shadow_sword/shadow_sword.tscn` (authored assembly with `Grip`/`BladeTip` markers)
 - `assets/environments/checkpoint01/awakening_environment.tscn`
 - `assets/environments/checkpoint01/grave_hound_arena.tscn`
 
