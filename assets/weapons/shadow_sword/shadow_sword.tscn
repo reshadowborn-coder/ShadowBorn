@@ -39,7 +39,7 @@ cast_shadow = 1
 [node name="Grip" type="Marker3D" parent="."]
 
 [node name="BladeTip" type="Marker3D" parent="."]
-position = Vector3(0, 0.815, 0)
+position = Vector3(0, 0.765, 0)
 
 [node name="GuardCenter" type="Marker3D" parent="."]
 position = Vector3(0, 0.087, 0)

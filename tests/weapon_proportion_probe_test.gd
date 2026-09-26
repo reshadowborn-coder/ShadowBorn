@@ -47,8 +47,8 @@ func _run() -> void:
 		if blade_tip == null:
 			push_error("Production starter sword is missing BladeTip marker")
 			failures += 1
-		elif blade_tip.position.y < 0.78 or blade_tip.position.y > 0.86:
-			push_error("Production BladeTip marker escaped expected authored length: %s" % blade_tip.position)
+		elif blade_tip.position.y < 0.74 or blade_tip.position.y > 0.79:
+			push_error("Production BladeTip marker escaped shortened authored length: %s" % blade_tip.position)
 			failures += 1
 
 	var armed_shadow: Node3D = CharacterFactory.create_shadow(true)
