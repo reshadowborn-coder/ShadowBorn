@@ -125,17 +125,17 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	# while skin weights keep the visible silhouette continuous during motion.
 	_append_skinned_chain(st,skeleton,
 		["Hips","Torso","Chest","Neck"],
-		[0.22,0.255,0.295,0.105],
-		[0.145,0.170,0.195,0.090],10)
+		[0.19,0.225,0.25,0.10],
+		[0.13,0.15,0.165,0.085],10)
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Chest","UpperArm.%s" % side,"LowerArm.%s" % side,"Wrist.%s" % side],
-			[0.175,0.105,0.082,0.052],
-			[0.135,0.088,0.068,0.046],9)
+			[0.145,0.090,0.068,0.045],
+			[0.110,0.075,0.055,0.040],9)
 		_append_skinned_chain(st,skeleton,
 			["Hips","UpperLeg.%s" % side,"LowerLeg.%s" % side],
-			[0.155,0.128,0.092],
-			[0.125,0.100,0.078],9)
+			[0.135,0.110,0.080],
+			[0.105,0.085,0.065],9)
 
 	st.generate_normals()
 	var mesh := st.commit()
@@ -289,10 +289,10 @@ func _make_cowl_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var p := [
-		Vector3(-0.34,0.07,0.10),Vector3(0.33,0.06,0.10),
-		Vector3(0.27,-0.10,0.16),Vector3(-0.29,-0.09,0.16),
-		Vector3(-0.31,0.05,-0.13),Vector3(0.29,0.04,-0.14),
-		Vector3(0.23,-0.12,-0.17),Vector3(-0.26,-0.11,-0.17)
+		Vector3(-0.27,0.065,0.095),Vector3(0.25,0.055,0.095),
+		Vector3(0.20,-0.115,0.145),Vector3(-0.235,-0.145,0.150),
+		Vector3(-0.25,0.045,-0.125),Vector3(0.23,0.035,-0.130),
+		Vector3(0.18,-0.145,-0.155),Vector3(-0.22,-0.185,-0.160)
 	]
 	_quad(st,p[0],p[1],p[2],p[3])
 	_quad(st,p[5],p[4],p[7],p[6])
@@ -322,25 +322,27 @@ func _make_back_drape_mesh() -> ArrayMesh:
 func _make_hood_mesh() -> ArrayMesh:
 	var st:=SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var fl:=Vector3(-0.165,0.13,0.17)
-	var fr:=Vector3(0.165,0.13,0.17)
-	var bl:=Vector3(-0.19,0.12,-0.15)
-	var br:=Vector3(0.19,0.12,-0.15)
-	var crown:=Vector3(-0.01,0.285,-0.045)
-	var jl:=Vector3(-0.155,-0.19,0.145)
-	var jr:=Vector3(0.155,-0.19,0.145)
-	var nape:=Vector3(0.00,-0.22,-0.17)
-	_tri(st,fl,crown,bl)
-	_tri(st,crown,fr,br)
-	_tri(st,crown,br,bl)
-	_tri(st,fl,bl,nape)
-	_tri(st,fl,nape,jl)
-	_tri(st,br,fr,jr)
-	_tri(st,br,jr,nape)
-	_tri(st,bl,br,nape)
-	_quad(st,fl,fr,Vector3(0.125,0.065,0.182),Vector3(-0.125,0.065,0.182))
-	_tri(st,bl,crown,fl)
-	_tri(st,br,fr,crown)
+	# Low asymmetrical ridge replaces the old single pyramid crown. The face stays
+	# recessed, but the outer read should be cloth/void rather than a metal helmet.
+	var brow_l:=Vector3(-0.150,0.115,0.170)
+	var brow_r:=Vector3(0.145,0.105,0.170)
+	var top_l:=Vector3(-0.105,0.245,-0.005)
+	var top_r:=Vector3(0.085,0.225,-0.030)
+	var back_l:=Vector3(-0.175,0.100,-0.155)
+	var back_r:=Vector3(0.170,0.085,-0.160)
+	var jaw_l:=Vector3(-0.145,-0.185,0.140)
+	var jaw_r:=Vector3(0.140,-0.180,0.140)
+	var nape_l:=Vector3(-0.115,-0.215,-0.165)
+	var nape_r:=Vector3(0.105,-0.220,-0.170)
+
+	_quad(st,brow_l,top_l,top_r,brow_r)
+	_quad(st,top_l,back_l,back_r,top_r)
+	_quad(st,brow_l,jaw_l,nape_l,back_l)
+	_quad(st,brow_r,back_r,nape_r,jaw_r)
+	_quad(st,back_l,nape_l,nape_r,back_r)
+	_quad(st,jaw_l,jaw_r,nape_r,nape_l)
+	# Narrow brow band frames the void but leaves the face opening physically open.
+	_quad(st,brow_l,brow_r,Vector3(0.110,0.055,0.182),Vector3(-0.112,0.060,0.182))
 	st.generate_normals()
 	return st.commit()
 
