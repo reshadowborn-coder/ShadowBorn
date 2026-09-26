@@ -24,6 +24,7 @@ func _run() -> void:
 	await process_frame
 
 	await _capture_corpse_pose_sheet()
+	await _capture_shadow_idle_sheet()
 
 	var battle := BattleStageScript.new()
 	root.add_child(battle)
@@ -141,6 +142,53 @@ func _override_mesh_material_recursive(node: Node,material: Material) -> void:
 		(node as MeshInstance3D).material_override = material
 	for child in node.get_children():
 		_override_mesh_material_recursive(child,material)
+
+func _capture_shadow_idle_sheet() -> void:
+	var stage := Node3D.new()
+	stage.name = "ShadowIdleStudy"
+	root.add_child(stage)
+
+	var world := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.022,0.027,0.038)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.35,0.40,0.54)
+	env.ambient_light_energy = 1.25
+	world.environment = env
+	stage.add_child(world)
+
+	var light := DirectionalLight3D.new()
+	light.rotation_degrees = Vector3(-42,-28,0)
+	light.light_color = Color(0.72,0.80,1.0)
+	light.light_energy = 1.45
+	stage.add_child(light)
+
+	var clips := ["Idle_Neutral","Idle","Idle_Sword"]
+	for i in range(clips.size()):
+		var model := CharacterFactory.create_shadow(true)
+		model.position = Vector3(-2.25+2.25*i,0.0,0.0)
+		model.scale = Vector3.ONE*0.92
+		stage.add_child(model)
+		CharacterFactory.play_named_animation(model,[clips[i]],1.0,0.0)
+		var label := Label3D.new()
+		label.text = clips[i]
+		label.position = model.position+Vector3(0,2.42,0)
+		label.font_size = 28
+		label.outline_size = 7
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		stage.add_child(label)
+
+	var camera := Camera3D.new()
+	camera.current = true
+	camera.fov = 40.0
+	camera.position = Vector3(0.0,2.55,8.0)
+	stage.add_child(camera)
+	camera.look_at(Vector3(0.0,1.05,0.0),Vector3.UP)
+	await create_timer(0.28).timeout
+	await _capture(OUT_DIR+"/shadow_idle_sheet.png")
+	stage.queue_free()
+	await process_frame
 
 func _capture_corpse_pose_sheet() -> void:
 	var stage := Node3D.new()
