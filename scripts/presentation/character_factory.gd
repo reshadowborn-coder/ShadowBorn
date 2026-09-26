@@ -110,25 +110,30 @@ static func attach_sword(root: Node3D) -> void:
 	fallback_sword.name = "ShadowbornWeapon"
 	fallback_socket.add_child(fallback_sword)
 
+const DEV_CORPSE_DEATH_FRACTION := 0.68
+const DEV_CORPSE_LOCAL_OFFSET := Vector3(0.0,0.13,0.04)
+
 static func pose_seated_corpse(root: Node3D) -> void:
-	# Production model can ship a dedicated seated-death clip later.
+	# Production Shadow will ship a dedicated seated/slumped corpse clip.
 	if set_animation_end_pose(root,["Dead_Seated","dead_seated","Corpse_Seated","corpse_seated"]):
 		return
 
-	# The CC0 development character has a real skeletal Death clip. Its final frame
-	# gives us a physically collapsed body instead of a rigid primitive mannequin.
-	if set_animation_end_pose(root,["Death"]):
-		root.position = Vector3(0.0,-0.06,0.04)
-		root.rotation_degrees = Vector3(-7.0,0.0,-13.0)
+	# The final frame of the temporary Quaternius Death clip lies almost flat and
+	# disappeared inside the burial slab in camera captures. Freeze an earlier
+	# collapse phase instead: head/torso stay above the slab and read as a slumped
+	# body rather than a dark patch on the floor.
+	if set_animation_pose_fraction(root,["Death"],DEV_CORPSE_DEATH_FRACTION):
+		root.position = DEV_CORPSE_LOCAL_OFFSET
+		root.rotation_degrees = Vector3(-10.0,0.0,-12.0)
 		return
 
 	# Last-resort emergency stand-in.
-	root.position = Vector3(0.0,-0.08,0.0)
+	root.position = Vector3(0.0,0.10,0.0)
 	root.rotation_degrees = Vector3(8.0,0.0,-16.0)
 
 static func play_resurrection(root: Node3D) -> bool:
-	root.position = Vector3(0.0,-0.06,0.04)
-	return play_backwards_named(root,["Death"],0.52,0.20)
+	root.position = DEV_CORPSE_LOCAL_OFFSET
+	return play_backwards_from_fraction(root,["Death"],DEV_CORPSE_DEATH_FRACTION,0.52,0.20)
 
 static func pose_standing(root: Node3D) -> void:
 	root.position = Vector3.ZERO
@@ -185,6 +190,29 @@ static func play_backwards_named(root: Node,candidates: Array[String],speed: flo
 	for candidate in candidates:
 		if player.has_animation(candidate):
 			player.play(candidate,blend,-absf(speed),true)
+			return true
+	return false
+
+static func set_animation_pose_fraction(root: Node,candidates: Array[String],fraction: float) -> bool:
+	var player := _find_animation_player(root)
+	if player == null:
+		return false
+	for candidate in candidates:
+		if player.has_animation(candidate):
+			player.play(candidate,0.0,1.0,false)
+			player.seek(player.current_animation_length*clampf(fraction,0.0,1.0),true)
+			player.pause()
+			return true
+	return false
+
+static func play_backwards_from_fraction(root: Node,candidates: Array[String],fraction: float,speed: float = 1.0,blend: float = 0.12) -> bool:
+	var player := _find_animation_player(root)
+	if player == null:
+		return false
+	for candidate in candidates:
+		if player.has_animation(candidate):
+			player.play(candidate,blend,-absf(speed),true)
+			player.seek(player.current_animation_length*clampf(fraction,0.0,1.0),true)
 			return true
 	return false
 
