@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/vendor/quaternius/shadow_adventurer.gltf" id="1_carrier"]
+[ext_resource type="Script" path="res://assets/characters/shadow/shadow_preview.gd" id="2_script"]
+
+[node name="ShadowProductionPreview" type="Node3D"]
+script = ExtResource("2_script")
+
+[node name="AnimationCarrier" parent="." instance=ExtResource("1_carrier")]
+
+[node name="HeadTop" type="Marker3D" parent="."]
+position = Vector3(0, 2.12, 0)
