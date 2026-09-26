@@ -42,6 +42,8 @@ func _run() -> void:
 
 	await _capture_shadow_skill("shadow_basic",OUT_DIR+"/shadow_a1.png",0.18)
 	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
+	await _capture_shadow_weapon_debug("shadow_basic",OUT_DIR+"/weapon_debug_a1.png",0.18)
+	await _capture_shadow_weapon_debug("shadow_lunge",OUT_DIR+"/weapon_debug_a2.png",0.48)
 
 	print("Shadowborn visual capture: PASS")
 	quit(0)
@@ -63,6 +65,47 @@ func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 	await _capture(path)
 	battle.queue_free()
 	await process_frame
+
+func _capture_shadow_weapon_debug(skill_id: String,path: String,delay: float) -> void:
+	var battle := BattleStageScript.new()
+	root.add_child(battle)
+	await process_frame
+	battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await create_timer(0.20).timeout
+	var actors: Dictionary = battle.get("actor_nodes")
+	var shadow_root := actors.get("shadow") as Node3D
+	if shadow_root != null:
+		_highlight_attached_sword(shadow_root)
+	battle.play_windup("shadow","hound",skill_id)
+	await create_timer(delay).timeout
+	await _capture(path)
+	battle.queue_free()
+	await process_frame
+
+func _highlight_attached_sword(root_node: Node) -> void:
+	var sword := root_node.find_child("ShadowbornWeapon",true,false)
+	if sword == null:
+		push_error("Weapon debug capture: ShadowbornWeapon missing")
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0,0.03,0.72)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0,0.03,0.72)
+	mat.emission_energy_multiplier = 4.0
+	mat.roughness = 0.35
+	_override_mesh_material_recursive(sword,mat)
+
+func _override_mesh_material_recursive(node: Node,material: Material) -> void:
+	if node is MeshInstance3D:
+		(node as MeshInstance3D).material_override = material
+	for child in node.get_children():
+		_override_mesh_material_recursive(child,material)
 
 func _capture_corpse_pose_sheet() -> void:
 	var stage := Node3D.new()
