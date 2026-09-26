@@ -258,16 +258,10 @@ func _build_debug_environment() -> void:
 		floor.set_meta("shadowborn_visual_source",MaterialLibrary.COBBLE_ALBEDO)
 	add_child(floor)
 
-	# Raised broken edges leave the central combat lane open.
-	for i in range(8):
-		var left := _box_node(Vector3(1.0+0.18*(i%3),0.18,0.72),Color(0.064,0.068,0.075))
-		left.position = Vector3(-6.65+0.18*(i%2),0.10,-4.3+1.25*i)
-		left.rotation_degrees.y = -12+5*i
-		add_child(left)
-		var right := _box_node(Vector3(1.05+0.12*((i+1)%3),0.18,0.70),Color(0.064,0.068,0.075))
-		right.position = Vector3(6.45-0.16*(i%2),0.10,-4.1+1.22*i)
-		right.rotation_degrees.y = 10-4*i
-		add_child(right)
+	# Authored low boundary ruins replace the previous repeated BoxMesh border row.
+	# The module exposes broken masonry skins and rubble core, while leaving the
+	# central fight plane open and keeping edge detail at phone-readable scale.
+	_build_preview_boundary_ruins()
 
 	# Production-preview wall modules replace the former 15.8 m flat BoxMesh
 	# backdrop. Staggered masonry courses and asymmetric collapse create actual
@@ -297,6 +291,28 @@ func _build_debug_environment() -> void:
 	battle_camera.position = camera_home
 	add_child(battle_camera)
 	battle_camera.look_at(camera_target,Vector3.UP)
+
+func _build_preview_boundary_ruins() -> void:
+	var placements := [
+		[Vector3(-6.42,0.01,-3.85),Vector3(0.0,2.0,0.0),Vector3(1.00,0.96,1.08)],
+		[Vector3(-6.50,0.01,-1.55),Vector3(0.0,-3.0,0.0),Vector3(0.96,0.88,1.02)],
+		[Vector3(-6.38,0.01,0.88),Vector3(0.0,4.5,0.0),Vector3(1.04,1.02,1.06)],
+		[Vector3(-6.48,0.01,3.20),Vector3(0.0,-1.5,0.0),Vector3(0.92,0.82,0.96)],
+		[Vector3(6.30,0.01,-3.72),Vector3(0.0,178.0,0.0),Vector3(0.98,0.92,1.05)],
+		[Vector3(6.42,0.01,-1.35),Vector3(0.0,183.5,0.0),Vector3(1.02,1.00,1.08)],
+		[Vector3(6.34,0.01,1.10),Vector3(0.0,176.0,0.0),Vector3(0.94,0.86,1.00)],
+		[Vector3(6.45,0.01,3.42),Vector3(0.0,181.0,0.0),Vector3(1.00,0.94,1.04)]
+	]
+	for i in range(placements.size()):
+		var ruin := EnvironmentAssetLibrary.create_boundary_wall_ruin_hero()
+		if ruin == null:
+			break
+		ruin.name = "ProductionPreviewBoundaryRuin_%02d" % i
+		var data: Array = placements[i]
+		ruin.position = data[0]
+		ruin.rotation_degrees = data[1]
+		ruin.scale = data[2]
+		add_child(ruin)
 
 func _build_preview_wall_and_rubble() -> void:
 	var wall_placements := [
