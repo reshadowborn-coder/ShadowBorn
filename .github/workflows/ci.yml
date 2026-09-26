@@ -28,6 +28,9 @@ jobs:
       - name: Asset pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
+      - name: Visual asset policy
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/visual_asset_policy_test.gd
       - name: Presentation budget
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/presentation_budget_test.gd
