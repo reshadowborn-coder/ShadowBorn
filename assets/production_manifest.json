@@ -172,13 +172,22 @@
     {
       "id": "ENV_WALL_RUBBLE_KIT",
       "needed": true,
-      "status": "missing",
+      "status": "original_meshes_integrated_production_preview_not_user_accepted",
       "requirements": [
         "3-5 reusable pieces",
         "shared material",
         "size hierarchy",
         "camera-safe"
-      ]
+      ],
+      "runtime_paths": [
+        "res://assets/environments/checkpoint01/wall_fragment_hero.obj",
+        "res://assets/environments/checkpoint01/rubble_cluster_hero.obj"
+      ],
+      "runtime_preview_targets": [
+        "Grave Hound battle rear masonry silhouette",
+        "Grave Hound battle wall-base rubble"
+      ],
+      "acceptance_note": "Replaces the former giant flat background BoxMesh in the debug preview. Still requires gameplay screenshot/user review and final PBR wall material before production acceptance."
     },
     {
       "id": "TEMPLE_EXTERIOR_KIT",
