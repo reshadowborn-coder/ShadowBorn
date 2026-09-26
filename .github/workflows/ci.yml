@@ -31,3 +31,6 @@ jobs:
       - name: Presentation budget
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/presentation_budget_test.gd
+      - name: Presentation orientation
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/presentation_orientation_test.gd
