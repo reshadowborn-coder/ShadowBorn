@@ -6,17 +6,17 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var shadow := CharacterFactory.create_shadow(false)
-	var sword := CharacterFactory.create_sword_prop()
+	var shadow: Node3D = CharacterFactory.create_shadow(false)
+	var sword: Node3D = CharacterFactory.create_sword_prop()
 	root.add_child(shadow)
 	root.add_child(sword)
 	await process_frame
 
-	var shadow_bounds := _combined_bounds(shadow)
-	var sword_bounds := _combined_bounds(sword)
-	var shadow_height := shadow_bounds.size.y
-	var sword_length := max(sword_bounds.size.x,max(sword_bounds.size.y,sword_bounds.size.z))
-	var ratio := sword_length/max(shadow_height,0.0001)
+	var shadow_bounds: AABB = _combined_bounds(shadow)
+	var sword_bounds: AABB = _combined_bounds(sword)
+	var shadow_height: float = shadow_bounds.size.y
+	var sword_length: float = maxf(sword_bounds.size.x,maxf(sword_bounds.size.y,sword_bounds.size.z))
+	var ratio: float = sword_length/maxf(shadow_height,0.0001)
 
 	print("WEAPON_PROPORTION_PROBE shadow_bounds=",shadow_bounds)
 	print("WEAPON_PROPORTION_PROBE sword_bounds=",sword_bounds)
@@ -45,14 +45,14 @@ func _combined_bounds(root3d: Node3D) -> AABB:
 	var max_v := Vector3.ZERO
 	var stack: Array[Node] = [root3d]
 	while not stack.is_empty():
-		var node := stack.pop_back()
+		var node: Node = stack.pop_back() as Node
 		if node is MeshInstance3D:
 			var mi := node as MeshInstance3D
 			if mi.mesh != null:
-				var aabb := mi.get_aabb()
+				var aabb: AABB = mi.get_aabb()
 				for corner in _aabb_corners(aabb):
-					var world_point := mi.to_global(corner)
-					var p := root3d.to_local(world_point)
+					var world_point: Vector3 = mi.to_global(corner)
+					var p: Vector3 = root3d.to_local(world_point)
 					if not has_point:
 						min_v = p
 						max_v = p
