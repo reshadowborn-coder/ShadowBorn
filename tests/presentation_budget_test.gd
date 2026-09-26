@@ -57,7 +57,8 @@ func _box_material_stats(node: Node) -> Dictionary:
 		var mesh_instance := node as MeshInstance3D
 		if mesh_instance.mesh is BoxMesh:
 			box_count += 1
-			var material := mesh_instance.mesh.material
+			var box_mesh := mesh_instance.mesh as BoxMesh
+			var material: Material = box_mesh.material
 			if material is ShaderMaterial:
 				material_ids[material.get_instance_id()] = true
 	for child in node.get_children():
