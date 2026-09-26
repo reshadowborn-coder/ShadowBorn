@@ -150,12 +150,23 @@
     {
       "id": "ENV_BROKEN_ARCH",
       "needed": true,
-      "status": "missing",
+      "status": "original_mesh_integrated_production_preview",
       "requirements": [
         "asymmetric damage",
         "camera framing role",
         "original silhouette",
         "LOD-capable"
+      ],
+      "path": "res://assets/environments/checkpoint01/broken_arch_hero.obj",
+      "geometry": {
+        "authoring": "original_shadowborn",
+        "silhouette": "asymmetric_open_arch_with_missing_arc_segment",
+        "runtime_role": "grave_hound_arena_landmark_and_frame"
+      },
+      "acceptance": [
+        "real negative-space opening reads from battle camera",
+        "damage asymmetry survives phone-size view",
+        "does not cross actor silhouettes or attack lane"
       ]
     },
     {
