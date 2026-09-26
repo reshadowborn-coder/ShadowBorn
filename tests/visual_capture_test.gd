@@ -42,10 +42,9 @@ func _run() -> void:
 
 	await _capture_shadow_skill("shadow_basic",OUT_DIR+"/shadow_a1.png",0.18)
 	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
-	await _capture_shadow_weapon_debug("shadow_basic",OUT_DIR+"/weapon_debug_a1.png",0.18)
-	await _capture_shadow_weapon_debug("shadow_lunge",OUT_DIR+"/weapon_debug_a2.png",0.48)
-	await _capture_weapon_rotation_sweep()
-
+	# Highlighted weapon and rotation-sweep captures are intentionally no longer
+	# part of every push. The -90° mount is now locked by presentation orientation
+	# regression tests; keep the helpers below for manual diagnosis only.
 	print("Shadowborn visual capture: PASS")
 	quit(0)
 
