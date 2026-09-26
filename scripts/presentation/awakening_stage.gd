@@ -348,6 +348,10 @@ func _play_sequence() -> void:
 
 	subtitle.text = "A blade remembers its hand."
 	CharacterFactory.play_pickup(shadow_visual,1.05)
+	# Frame hand + weapon + hood together. The previous low sword-only aim cropped
+	# Shadow's head during the pickup screenshot and made orientation hard to read.
+	camera.position = Vector3(0.52,1.72,3.42)
+	camera.look_at(Vector3(-1.48,0.88,-2.38),Vector3.UP)
 	# The world sword stays physically planted until hand contact. Moving and
 	# rotating the prop toward the actor made the old shot look like Shadow was
 	# grabbing the blade backwards from the camera.
