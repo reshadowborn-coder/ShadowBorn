@@ -22,12 +22,18 @@ jobs:
           set -o pipefail
           /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/parse.log
           ! grep -q "SCRIPT ERROR:" /tmp/parse.log
+      - name: Python asset tool syntax
+        run: |
+          python3 -m py_compile tools/acquire_polyhaven_texture.py
       - name: Combat rules
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_rules_test.gd
       - name: Asset pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
+      - name: Material pipeline
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/material_pipeline_test.gd
       - name: Visual asset policy
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/visual_asset_policy_test.gd
