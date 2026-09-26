@@ -269,13 +269,10 @@ func _build_debug_environment() -> void:
 		right.rotation_degrees.y = 10-4*i
 		add_child(right)
 
-	# Distant architecture gives depth behind the enemy team instead of a flat wall.
-	_add_box(Vector3(0,2.35,-5.55),Vector3(15.8,4.7,0.48),Color(0.050,0.055,0.064))
-	for x in [-5.0,-2.2,0.8,3.8,5.7]:
-		_add_box(Vector3(x,1.85,-5.20),Vector3(0.38,3.7,0.42),Color(0.085,0.09,0.10))
-		var cap := _box_node(Vector3(0.70,0.17,0.60),Color(0.105,0.11,0.12))
-		cap.position=Vector3(x,3.70,-5.20)
-		add_child(cap)
+	# Production-preview wall modules replace the former 15.8 m flat BoxMesh
+	# backdrop. Staggered masonry courses and asymmetric collapse create actual
+	# construction scale and broken negative space while keeping the battle lane clear.
+	_build_preview_wall_and_rubble()
 
 	# Authored broken arch replaces the old TorusMesh landmark. Its real opening
 	# and asymmetric damage produce a funerary silhouette without adding clutter
@@ -300,6 +297,40 @@ func _build_debug_environment() -> void:
 	battle_camera.position = camera_home
 	add_child(battle_camera)
 	battle_camera.look_at(camera_target,Vector3.UP)
+
+func _build_preview_wall_and_rubble() -> void:
+	var wall_placements := [
+		[Vector3(-4.95,0.02,-5.56),Vector3(0.0,3.0,0.0),Vector3(1.02,1.06,1.0)],
+		[Vector3(-0.25,0.02,-5.62),Vector3(0.0,-1.5,0.0),Vector3(0.94,0.98,1.0)],
+		[Vector3(4.72,0.02,-5.58),Vector3(0.0,176.0,0.0),Vector3(1.00,1.03,1.0)]
+	]
+	for i in range(wall_placements.size()):
+		var wall := EnvironmentAssetLibrary.create_wall_fragment_hero()
+		if wall == null:
+			break
+		wall.name = "ProductionPreviewWallFragment_%02d" % i
+		var data: Array = wall_placements[i]
+		wall.position = data[0]
+		wall.rotation_degrees = data[1]
+		wall.scale = data[2]
+		add_child(wall)
+
+	var rubble_placements := [
+		[Vector3(-4.10,0.01,-5.05),Vector3(0.0,18.0,0.0),1.05],
+		[Vector3(-0.75,0.01,-5.08),Vector3(0.0,-12.0,0.0),0.92],
+		[Vector3(5.10,0.01,-5.02),Vector3(0.0,21.0,0.0),1.00]
+	]
+	for i in range(rubble_placements.size()):
+		var rubble := EnvironmentAssetLibrary.create_rubble_cluster_hero()
+		if rubble == null:
+			break
+		rubble.name = "ProductionPreviewRubbleCluster_%02d" % i
+		var data: Array = rubble_placements[i]
+		rubble.position = data[0]
+		rubble.rotation_degrees = data[1]
+		var s := float(data[2])
+		rubble.scale = Vector3.ONE*s
+		add_child(rubble)
 
 func _build_preview_grave_markers() -> void:
 	var placements := [

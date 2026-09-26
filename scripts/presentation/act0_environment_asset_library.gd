@@ -4,6 +4,8 @@ extends RefCounted
 const GRAVE_MARKER_HERO := "res://assets/environments/checkpoint01/grave_marker_hero.obj"
 const BROKEN_ARCH_HERO := "res://assets/environments/checkpoint01/broken_arch_hero.obj"
 const AWAKENING_SLAB_HERO := "res://assets/environments/checkpoint01/awakening_slab_hero.obj"
+const WALL_FRAGMENT_HERO := "res://assets/environments/checkpoint01/wall_fragment_hero.obj"
+const RUBBLE_CLUSTER_HERO := "res://assets/environments/checkpoint01/rubble_cluster_hero.obj"
 
 static var _grave_material: ShaderMaterial
 
@@ -60,6 +62,35 @@ static func create_broken_arch_hero() -> MeshInstance3D:
 	instance.set_meta("shadowborn_visual_source",BROKEN_ARCH_HERO)
 	instance.material_override = _grave_stone_material()
 	instance.set_instance_shader_parameter("grave_tint",Color(0.082,0.083,0.086,1.0))
+	return instance
+
+static func has_wall_fragment_hero() -> bool:
+	return ResourceLoader.exists(WALL_FRAGMENT_HERO)
+
+static func has_rubble_cluster_hero() -> bool:
+	return ResourceLoader.exists(RUBBLE_CLUSTER_HERO)
+
+static func create_wall_fragment_hero() -> MeshInstance3D:
+	return _create_stone_preview_mesh(WALL_FRAGMENT_HERO,"WallFragmentHero",Color(0.070,0.073,0.080,1.0))
+
+static func create_rubble_cluster_hero() -> MeshInstance3D:
+	return _create_stone_preview_mesh(RUBBLE_CLUSTER_HERO,"RubbleClusterHero",Color(0.082,0.080,0.076,1.0))
+
+static func _create_stone_preview_mesh(path: String,node_name: String,tint: Color) -> MeshInstance3D:
+	if not ResourceLoader.exists(path):
+		return null
+	var mesh := load(path) as Mesh
+	if mesh == null:
+		push_error("Failed to load production-preview stone mesh: %s" % path)
+		return null
+	var instance := MeshInstance3D.new()
+	instance.name = node_name
+	instance.mesh = mesh
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	instance.set_meta("shadowborn_visual_tier","production_preview")
+	instance.set_meta("shadowborn_visual_source",path)
+	instance.material_override = _grave_stone_material()
+	instance.set_instance_shader_parameter("grave_tint",tint)
 	return instance
 
 static func _grave_stone_material() -> ShaderMaterial:

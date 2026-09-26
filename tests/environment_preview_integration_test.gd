@@ -12,6 +12,8 @@ func _run() -> void:
 	var failures := 0
 	failures += _expect(MaterialLibrary.has_cemetery_cobble(),"production cobble maps are available")
 	failures += _expect(EnvironmentAssetLibrary.has_grave_marker_hero(),"original grave marker mesh is available")
+	failures += _expect(EnvironmentAssetLibrary.has_wall_fragment_hero(),"authored wall fragment mesh is available")
+	failures += _expect(EnvironmentAssetLibrary.has_rubble_cluster_hero(),"authored rubble cluster mesh is available")
 
 	var awakening := AwakeningStageScript.new()
 	root.add_child(awakening)
@@ -43,17 +45,24 @@ func _check_stage_preview_assets(stage: Node,label: String,min_grave_markers: in
 		failures += _expect(material is ORMMaterial3D,"%s floor uses production ORMMaterial3D" % label)
 		failures += _expect(str(floor.get_meta("shadowborn_visual_tier","")) == "production_preview","%s floor is tagged production_preview" % label)
 
-	var grave_count := _count_preview_graves(stage)
+	var grave_count := _count_preview_assets(stage,EnvironmentAssetLibrary.GRAVE_MARKER_HERO)
 	failures += _expect(grave_count >= min_grave_markers,"%s uses at least %d original grave markers (found %d)" % [label,min_grave_markers,grave_count])
+
+	if label == "Battle":
+		var wall_count := _count_preview_assets(stage,EnvironmentAssetLibrary.WALL_FRAGMENT_HERO)
+		var rubble_count := _count_preview_assets(stage,EnvironmentAssetLibrary.RUBBLE_CLUSTER_HERO)
+		failures += _expect(wall_count >= 3,"Battle uses authored wall fragments instead of one flat background BoxMesh (found %d)" % wall_count)
+		failures += _expect(rubble_count >= 3,"Battle uses authored rubble clusters at the wall base (found %d)" % rubble_count)
+		failures += _expect(stage.find_child("ProductionPreviewWallFragment_00",true,false) != null,"Battle wall preview has stable named geometry for screenshot regression")
 	return failures
 
-func _count_preview_graves(node: Node) -> int:
+func _count_preview_assets(node: Node,source_path: String) -> int:
 	var count := 0
 	if node is MeshInstance3D:
-		if str(node.get_meta("shadowborn_visual_source","")) == EnvironmentAssetLibrary.GRAVE_MARKER_HERO:
+		if str(node.get_meta("shadowborn_visual_source","")) == source_path:
 			count += 1
 	for child in node.get_children():
-		count += _count_preview_graves(child)
+		count += _count_preview_assets(child,source_path)
 	return count
 
 func _expect(condition: bool,label: String) -> int:
