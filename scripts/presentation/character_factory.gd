@@ -168,7 +168,10 @@ static func play_shadow_hit(root: Node3D,speed: float = 1.0) -> bool:
 	return play_named_animation(root,["HitRecieve","HitRecieve_2","Hit","Damage"],speed,0.08)
 
 static func play_hound_idle(root: Node3D,speed: float = 1.0) -> bool:
-	return play_named_animation(root,["Idle","Idle_2","Idle_2_HeadLow"],speed,0.16)
+	# Prefer the low-head dev idle when available: it produces a clearer threat
+	# silhouette in the fixed battle camera. This remains a debug-only improvement;
+	# the production Grave Hound still requires a bespoke HND_IDLE_LOW clip.
+	return play_named_animation(root,["Idle_2_HeadLow","Idle_2","Idle"],speed,0.16)
 
 static func play_hound_attack(root: Node3D,speed: float = 1.0) -> bool:
 	return play_named_animation(root,["Attack"],speed,0.08)
