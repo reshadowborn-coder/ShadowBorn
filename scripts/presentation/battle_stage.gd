@@ -145,7 +145,7 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		cam_back.set_speed_scale(presentation_speed)
 		cam_back.set_parallel(true)
 		cam_back.tween_property(battle_camera,"position",camera_home,0.40)
-		cam_back.tween_property(battle_camera,"fov",37.0,0.40)
+		cam_back.tween_property(battle_camera,"fov",CAMERA_FOV,0.40)
 
 func play_death(actor_id: String) -> void:
 	if not actor_nodes.has(actor_id):
