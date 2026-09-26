@@ -98,7 +98,10 @@ func _combined_bounds(root3d: Node3D) -> AABB:
 		var node: Node = stack.pop_back() as Node
 		if node is MeshInstance3D:
 			var mi := node as MeshInstance3D
-			if mi.mesh != null:
+			# Proportion acceptance must measure what the player can actually see.
+			# Hidden vendor carrier meshes remain in the rig hierarchy but must not
+			# inflate Shadow's visible body bounds.
+			if mi.mesh != null and mi.is_visible_in_tree():
 				var aabb: AABB = mi.get_aabb()
 				for corner in _aabb_corners(aabb):
 					var world_point: Vector3 = mi.to_global(corner)
