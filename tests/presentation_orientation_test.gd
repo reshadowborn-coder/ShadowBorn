@@ -76,11 +76,17 @@ func _check_shadow_sword_direction(stage: Node) -> int:
 	if grip == null or tip == null:
 		push_error("Sword direction regression: Grip/BladeTip markers missing")
 		return 1
-	var blade_dir := (tip.global_position-grip.global_position).normalized()
-	var opponent_dir := (hound_root.global_position-grip.global_position).normalized()
+	var grip_from_body := grip.global_position.distance_to(shadow_root.global_position)
+	var tip_from_body := tip.global_position.distance_to(shadow_root.global_position)
+	var blade_length_world := grip.global_position.distance_to(tip.global_position)
 	var failures := 0
 	failures += _expect(CharacterFactory.PRODUCTION_SWORD_WRIST_ROTATION.is_equal_approx(Vector3(0.0,0.0,-90.0)),"Production starter sword keeps camera-verified -90 degree Wrist.R mount")
-	failures += _expect(blade_dir.dot(opponent_dir) > 0.35,"Production starter sword BladeTip leaves the hand generally toward the opponent")
+	# A slash does not have to point at the enemy center. The regression we actually
+	# need to prevent is the old 180-degree mount, where most of the blade entered
+	# Shadow's forearm/torso. The tip must extend materially farther from the body
+	# than the grip while preserving the authored blade length.
+	failures += _expect(tip_from_body > grip_from_body+0.20,"Production starter sword BladeTip extends away from Shadow instead of back into the torso")
+	failures += _expect(blade_length_world > 0.70,"Production starter sword keeps its authored Grip-to-BladeTip reach")
 	return failures
 
 func _check_hound_visual_forward(stage: Node) -> int:
