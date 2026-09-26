@@ -37,6 +37,9 @@ jobs:
       - name: Visual asset policy
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/visual_asset_policy_test.gd
+      - name: Production manifest contract
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/production_manifest_contract_test.gd
       - name: Presentation budget
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/presentation_budget_test.gd
