@@ -5,6 +5,7 @@ const ACCEPTANCE_SETTING := "shadowborn/visual/acceptance_mode"
 const ACCEPTANCE_ENV := "SHADOWBORN_VISUAL_ACCEPTANCE"
 
 const SHADOW_SCENE := "res://assets/characters/shadow/shadow.glb"
+const SHADOW_PREVIEW_SCENE := "res://assets/characters/shadow/shadow_preview.tscn"
 const HOUND_SCENE := "res://assets/characters/grave_hound/grave_hound.glb"
 const SWORD_SCENE := "res://assets/weapons/shadow_sword/shadow_sword.tscn"
 const AWAKENING_ENVIRONMENT := "res://assets/environments/checkpoint01/awakening_environment.tscn"
