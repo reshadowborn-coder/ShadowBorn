@@ -8,8 +8,8 @@ const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environ
 
 const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
 const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
-const CAMERA_HOME := Vector3(-6.25,4.55,8.10)
-const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)
+const CAMERA_HOME := Vector3(-5.05,4.00,6.55)
+const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)\nconst CAMERA_FOV := 34.0
 const SHADOW_WORLD_LABEL_HEIGHT := 2.55
 const HOUND_WORLD_LABEL_HEIGHT := 1.48
 
@@ -287,7 +287,7 @@ func _build_debug_environment() -> void:
 	# Camera: rear-left of player, elevated, aimed diagonally across the field.
 	battle_camera = Camera3D.new()
 	battle_camera.current = true
-	battle_camera.fov = 37.0
+	battle_camera.fov = CAMERA_FOV
 	battle_camera.position = camera_home
 	add_child(battle_camera)
 	battle_camera.look_at(camera_target,Vector3.UP)
@@ -406,7 +406,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 
 	var label := Label3D.new()
 	label.position = Vector3(0,SHADOW_WORLD_LABEL_HEIGHT,0) if id=="shadow" else Vector3(0,HOUND_WORLD_LABEL_HEIGHT,0)
-	label.font_size = 28
+	label.font_size = 24
 	label.outline_size = 9
 	# Actor roots rotate to face their opponent. World-space UI must not inherit
 	# that yaw or the text becomes mirrored/back-facing from the battle camera.
