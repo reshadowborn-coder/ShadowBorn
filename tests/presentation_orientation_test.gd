@@ -80,6 +80,14 @@ func _check_hound_visual_forward(stage: Node) -> int:
 	failures += _expect(hound_label != null,"Grave Hound world health label exists")
 	if hound_label != null:
 		failures += _expect(hound_label.position.y >= 1.45,"Grave Hound world health label keeps user-requested head clearance")
+		failures += _expect(hound_label.billboard == BaseMaterial3D.BILLBOARD_ENABLED,"Grave Hound world health label always faces the battle camera")
+		failures += _expect(not hound_label.double_sided,"Grave Hound world health label cannot render mirrored from its back face")
+
+	var shadow_label := labels.get("shadow") as Label3D
+	failures += _expect(shadow_label != null,"Shadow world health label exists")
+	if shadow_label != null:
+		failures += _expect(shadow_label.billboard == BaseMaterial3D.BILLBOARD_ENABLED,"Shadow world health label always faces the battle camera")
+		failures += _expect(not shadow_label.double_sided,"Shadow world health label cannot render mirrored from its back face")
 	return failures
 
 func _expect(condition: bool,label: String) -> int:
