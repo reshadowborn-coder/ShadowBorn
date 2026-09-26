@@ -44,6 +44,7 @@ func _run() -> void:
 	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
 	await _capture_shadow_weapon_debug("shadow_basic",OUT_DIR+"/weapon_debug_a1.png",0.18)
 	await _capture_shadow_weapon_debug("shadow_lunge",OUT_DIR+"/weapon_debug_a2.png",0.48)
+	await _capture_weapon_rotation_sweep()
 
 	print("Shadowborn visual capture: PASS")
 	quit(0)
@@ -87,6 +88,41 @@ func _capture_shadow_weapon_debug(skill_id: String,path: String,delay: float) ->
 	await _capture(path)
 	battle.queue_free()
 	await process_frame
+
+func _capture_weapon_rotation_sweep() -> void:
+	var candidates := [
+		["z0",Vector3(0,0,0)],
+		["z90",Vector3(0,0,90)],
+		["zneg90",Vector3(0,0,-90)],
+		["x90_z180",Vector3(90,0,180)],
+		["xneg90_z180",Vector3(-90,0,180)],
+		["y90_z180",Vector3(0,90,180)],
+		["yneg90_z180",Vector3(0,-90,180)]
+	]
+	for candidate in candidates:
+		var battle := BattleStageScript.new()
+		root.add_child(battle)
+		await process_frame
+		battle.apply_state({
+			"speed":1.0,
+			"units":[
+				{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+				{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+			]
+		})
+		await create_timer(0.20).timeout
+		var actors: Dictionary = battle.get("actor_nodes")
+		var shadow_root := actors.get("shadow") as Node3D
+		if shadow_root != null:
+			_highlight_attached_sword(shadow_root)
+			var mount := shadow_root.find_child("WeaponGripMount",true,false) as Node3D
+			if mount != null:
+				mount.rotation_degrees = candidate[1]
+		battle.play_windup("shadow","hound","shadow_basic")
+		await create_timer(0.18).timeout
+		await _capture(OUT_DIR+"/weapon_rot_"+str(candidate[0])+".png")
+		battle.queue_free()
+		await process_frame
 
 func _highlight_attached_sword(root_node: Node) -> void:
 	var sword := root_node.find_child("ShadowbornWeapon",true,false)
