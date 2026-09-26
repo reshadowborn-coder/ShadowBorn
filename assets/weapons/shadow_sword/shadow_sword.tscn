@@ -5,14 +5,16 @@
 [ext_resource type="ArrayMesh" path="res://assets/weapons/shadow_sword/starter_sword_grip.obj" id="3_grip"]
 
 [sub_resource type="StandardMaterial3D" id="Steel"]
-albedo_color = Color(0.255, 0.205, 0.155, 1)
-metallic = 0.58
-roughness = 0.76
+# Worn oxidized steel: still dark/rusted, but broad value is high enough to
+# separate from Shadow's near-black hand/body under the cemetery key light.
+albedo_color = Color(0.38, 0.30, 0.22, 1)
+metallic = 0.46
+roughness = 0.70
 
 [sub_resource type="StandardMaterial3D" id="Iron"]
-albedo_color = Color(0.115, 0.052, 0.024, 1)
-metallic = 0.30
-roughness = 0.90
+albedo_color = Color(0.19, 0.075, 0.032, 1)
+metallic = 0.24
+roughness = 0.86
 
 [sub_resource type="StandardMaterial3D" id="Leather"]
 albedo_color = Color(0.052, 0.037, 0.028, 1)
