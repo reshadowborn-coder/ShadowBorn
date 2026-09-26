@@ -2,6 +2,7 @@ extends SceneTree
 
 const AwakeningStageScript = preload("res://scripts/presentation/awakening_stage.gd")
 const BattleStageScript = preload("res://scripts/presentation/battle_stage.gd")
+const CharacterFactory = preload("res://scripts/presentation/character_factory.gd")
 const OUT_DIR := "/tmp/shadowborn-visual"
 
 func _init() -> void:
@@ -22,6 +23,8 @@ func _run() -> void:
 	awakening.queue_free()
 	await process_frame
 
+	await _capture_corpse_pose_sheet()
+
 	var battle := BattleStageScript.new()
 	root.add_child(battle)
 	await process_frame
@@ -39,6 +42,51 @@ func _run() -> void:
 
 	print("Shadowborn visual capture: PASS")
 	quit(0)
+
+func _capture_corpse_pose_sheet() -> void:
+	var stage := Node3D.new()
+	stage.name = "CorpsePoseStudy"
+	root.add_child(stage)
+
+	var world := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.025,0.030,0.040)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.24,0.28,0.38)
+	env.ambient_light_energy = 1.05
+	world.environment = env
+	stage.add_child(world)
+
+	var light := DirectionalLight3D.new()
+	light.rotation_degrees = Vector3(-42,-28,0)
+	light.light_color = Color(0.70,0.78,1.0)
+	light.light_energy = 1.35
+	stage.add_child(light)
+
+	var fractions := [0.22,0.32,0.42,0.52,0.62]
+	for i in range(fractions.size()):
+		var model := CharacterFactory.create_shadow(false)
+		model.position = Vector3(-4.0+2.0*i,0.0,0.0)
+		model.scale = Vector3.ONE*0.88
+		stage.add_child(model)
+		CharacterFactory.set_animation_pose_fraction(model,["Death"],float(fractions[i]))
+		var label := Label3D.new()
+		label.text = "%.2f" % float(fractions[i])
+		label.position = Vector3(-4.0+2.0*i,2.35,0.0)
+		label.font_size = 32
+		stage.add_child(label)
+
+	var camera := Camera3D.new()
+	camera.current = true
+	camera.fov = 42.0
+	camera.position = Vector3(0.0,2.6,8.7)
+	stage.add_child(camera)
+	camera.look_at(Vector3(0.0,1.05,0.0),Vector3.UP)
+	await create_timer(0.20).timeout
+	await _capture(OUT_DIR+"/corpse_pose_sheet.png")
+	stage.queue_free()
+	await process_frame
 
 func _capture(path: String) -> void:
 	await process_frame
