@@ -1,6 +1,8 @@
 class_name BattleStage
 extends Node3D
 
+const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
+
 const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
 const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
 const CAMERA_HOME := Vector3(-6.25,4.55,8.10)
@@ -14,6 +16,11 @@ var fallback_idle_ids: Dictionary = {}
 var battle_camera: Camera3D
 var clock := 0.0
 var presentation_speed := 1.0
+var production_environment: Node3D
+var player_home := PLAYER_HOME
+var enemy_home := ENEMY_HOME
+var camera_home := CAMERA_HOME
+var camera_target := CAMERA_TARGET
 
 # Mesh/material resources are immutable during combat. Build them once so A1/A2
 # only allocate lightweight MeshInstance3D nodes and tweens on impact.
@@ -68,7 +75,7 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 			var cam := create_tween()
 			cam.set_speed_scale(presentation_speed)
 			cam.set_parallel(true)
-			cam.tween_property(battle_camera,"position",CAMERA_HOME+Vector3(0.78,-0.30,-0.95),0.30).set_trans(Tween.TRANS_SINE)
+			cam.tween_property(battle_camera,"position",camera_home+Vector3(0.78,-0.30,-0.95),0.30).set_trans(Tween.TRANS_SINE)
 			cam.tween_property(battle_camera,"fov",32.5,0.30)
 		else:
 			# A1: short readable sword cut with only a small step.
@@ -132,7 +139,7 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		var cam_back := create_tween()
 		cam_back.set_speed_scale(presentation_speed)
 		cam_back.set_parallel(true)
-		cam_back.tween_property(battle_camera,"position",CAMERA_HOME,0.40)
+		cam_back.tween_property(battle_camera,"position",camera_home,0.40)
 		cam_back.tween_property(battle_camera,"fov",37.0,0.40)
 
 func play_death(actor_id: String) -> void:
@@ -161,6 +168,44 @@ func _process(delta: float) -> void:
 		actor.position = home+Vector3(0,sin(clock*1.48+phase)*0.018,0)
 
 func _build_environment() -> void:
+	production_environment = VisualPolicy.instantiate_scene(VisualPolicy.BATTLE_ENVIRONMENT)
+	if production_environment != null:
+		production_environment.name = "ProductionGraveHoundArena"
+		VisualPolicy.tag_visual_tier(production_environment,"production",VisualPolicy.BATTLE_ENVIRONMENT)
+		add_child(production_environment)
+
+		var player_anchor := production_environment.find_child("PlayerHome",true,false) as Node3D
+		var enemy_anchor := production_environment.find_child("EnemyHome",true,false) as Node3D
+		var target_anchor := production_environment.find_child("CameraTarget",true,false) as Node3D
+		var authored_camera := production_environment.find_child("BattleCamera",true,false) as Camera3D
+
+		if player_anchor != null:
+			player_home = player_anchor.global_position
+		else:
+			push_error("Production battle scene must provide Node3D named PlayerHome")
+		if enemy_anchor != null:
+			enemy_home = enemy_anchor.global_position
+		else:
+			push_error("Production battle scene must provide Node3D named EnemyHome")
+		if target_anchor != null:
+			camera_target = target_anchor.global_position
+		else:
+			push_error("Production battle scene must provide Node3D named CameraTarget")
+		if authored_camera != null:
+			battle_camera = authored_camera
+			camera_home = authored_camera.global_position
+			battle_camera.current = true
+		else:
+			push_error("Production battle scene must provide Camera3D named BattleCamera")
+
+		if player_anchor != null and enemy_anchor != null and target_anchor != null and battle_camera != null:
+			return
+	elif VisualPolicy.is_acceptance_mode():
+		push_error("VISUAL ACCEPTANCE BLOCKED: missing production Grave Hound arena: %s" % VisualPolicy.BATTLE_ENVIRONMENT)
+
+	_build_debug_environment()
+
+func _build_debug_environment() -> void:
 	var world := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -245,15 +290,15 @@ func _build_environment() -> void:
 	battle_camera = Camera3D.new()
 	battle_camera.current = true
 	battle_camera.fov = 37.0
-	battle_camera.position = CAMERA_HOME
+	battle_camera.position = camera_home
 	add_child(battle_camera)
-	battle_camera.look_at(CAMERA_TARGET,Vector3.UP)
+	battle_camera.look_at(camera_target,Vector3.UP)
 
 func _spawn_actor(unit: Dictionary) -> void:
 	var id := str(unit["id"])
 	var root := Node3D.new()
 	root.name = id
-	root.position = PLAYER_HOME if id=="shadow" else ENEMY_HOME
+	root.position = player_home if id=="shadow" else enemy_home
 	add_child(root)
 	actor_nodes[id] = root
 	actor_home[id] = root.position
@@ -294,7 +339,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 	actor_labels[id] = label
 
 func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
-	var opponent := ENEMY_HOME if id=="shadow" else PLAYER_HOME
+	var opponent := enemy_home if id=="shadow" else player_home
 	root.look_at(opponent,Vector3.UP)
 	root.rotation_degrees.x = 0.0
 	root.rotation_degrees.z = 0.0
