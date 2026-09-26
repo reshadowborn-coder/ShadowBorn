@@ -13,21 +13,13 @@ var skip_button: Button
 var fade_rect: ColorRect
 var sequence_done := false
 var skipping := false
-var clock := 0.0
-var motes: Array[Node3D] = []
+var stone_material_shared: ShaderMaterial
 
 func _ready() -> void:
 	_build_world()
 	_build_shadow_and_sword()
 	_build_overlay()
 	_play_sequence()
-
-func _process(delta: float) -> void:
-	clock += delta
-	for mote in motes:
-		var base_y := float(mote.get_meta("base_y",0.0))
-		var phase := float(mote.get_meta("phase",0.0))
-		mote.position.y = base_y + sin(clock*0.42+phase)*0.13
 
 func _unhandled_input(event: InputEvent) -> void:
 	if skipping or sequence_done:
@@ -66,7 +58,9 @@ func _build_world() -> void:
 	shaft.light_energy = 5.6
 	shaft.spot_range = 10.0
 	shaft.spot_angle = 30.0
-	shaft.shadow_enabled = true
+	# Mobile rule: the moon is the single real-time shadow caster in this shot.
+	# The shaft still provides cold depth separation without a second shadow map.
+	shaft.shadow_enabled = false
 	add_child(shaft)
 
 	var ember := OmniLight3D.new()
@@ -157,13 +151,43 @@ func _build_shadow_and_sword() -> void:
 	add_child(sword_prop)
 
 func _build_motes() -> void:
-	for i in range(26):
-		var mote := _sphere(0.012+0.003*(i%3),Color(0.21,0.27,0.39),true)
-		mote.position = Vector3(-5.4+float((i*37)%105)/10.0,0.45+float((i*19)%31)/10.0,-3.45+float((i*29)%60)/10.0)
-		mote.set_meta("base_y",mote.position.y)
-		mote.set_meta("phase",float(i)*0.71)
-		add_child(mote)
-		motes.append(mote)
+	# One GPU emitter replaces dozens of script-updated scene nodes. The motes are
+	# atmosphere only, so they should cost almost no CPU time on the iPhone target.
+	var particles := GPUParticles3D.new()
+	particles.name = "AmbientMotes"
+	particles.amount = 28
+	particles.lifetime = 5.4
+	particles.preprocess = 5.4
+	particles.randomness = 0.72
+	particles.position = Vector3(0.0,1.55,-1.10)
+	particles.visibility_aabb = AABB(Vector3(-6.2,-1.4,-4.2),Vector3(12.4,4.8,8.4))
+
+	var process := ParticleProcessMaterial.new()
+	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	process.emission_box_extents = Vector3(5.4,1.55,2.9)
+	process.direction = Vector3(0.18,0.45,-0.08)
+	process.spread = 78.0
+	process.gravity = Vector3(0.0,0.012,0.0)
+	process.initial_velocity_min = 0.015
+	process.initial_velocity_max = 0.070
+	process.scale_min = 0.42
+	process.scale_max = 1.05
+	process.color = Color(0.20,0.25,0.34,0.30)
+	particles.process_material = process
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.030,0.030)
+	var mote_mat := StandardMaterial3D.new()
+	mote_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mote_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mote_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mote_mat.albedo_color = Color(0.20,0.25,0.34,0.30)
+	mote_mat.emission_enabled = true
+	mote_mat.emission = Color(0.075,0.095,0.14)
+	mote_mat.emission_energy_multiplier = 0.36
+	quad.material = mote_mat
+	particles.draw_pass_1 = quad
+	add_child(particles)
 
 func _build_overlay() -> void:
 	overlay = CanvasLayer.new()
@@ -318,25 +342,52 @@ void fragment() {
 	mat.shader = shader
 	return mat
 
-func _stone_material(base_color: Color) -> ShaderMaterial:
+func _stone_material() -> ShaderMaterial:
+	if stone_material_shared != null:
+		return stone_material_shared
+
+	# Shared shader + per-instance base color: all wall/rubble boxes reuse one
+	# material while still keeping controlled tonal variation. The extra masks
+	# add damp staining, fine cracks and restrained moss without extra textures.
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
-uniform vec4 base_color : source_color = vec4(0.08,0.085,0.095,1.0);
+render_mode diffuse_burley, specular_schlick_ggx;
+instance uniform vec4 base_color : source_color = vec4(0.08,0.085,0.095,1.0);
+
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
 void fragment() {
-	float grain = 0.5+0.5*sin(UV.x*79.0+sin(UV.y*57.0)*2.2);
-	float damp = 0.5+0.5*sin(UV.y*13.0+UV.x*7.0);
-	vec3 col = base_color.rgb*mix(0.72,1.10,grain*0.44);
-	col *= mix(0.79,1.02,damp*0.34);
+	vec2 uv = UV;
+	float grain_a = 0.5 + 0.5 * sin(uv.x * 83.0 + sin(uv.y * 61.0) * 2.1);
+	float grain_b = 0.5 + 0.5 * sin(uv.y * 137.0 + uv.x * 29.0);
+	float speck = hash21(floor(uv * vec2(26.0, 31.0)));
+
+	float crack_a = abs(sin(uv.x * 22.0 + sin(uv.y * 9.0) * 1.7));
+	float crack_b = abs(sin(uv.y * 17.0 + sin(uv.x * 13.0) * 1.3));
+	float crack = 1.0 - smoothstep(0.025, 0.085, min(crack_a, crack_b));
+
+	float damp = smoothstep(0.42, 0.88, 0.58 * grain_b + 0.42 * speck);
+	float moss_noise = 0.5 + 0.5 * sin(uv.x * 19.0 - uv.y * 23.0 + grain_a * 2.2);
+	float moss = smoothstep(0.78, 0.94, moss_noise) * (0.35 + 0.65 * damp);
+
+	vec3 col = base_color.rgb * mix(0.72, 1.10, grain_a * 0.44);
+	col *= mix(0.84, 0.98, damp);
+	col *= mix(1.0, 0.55, crack * 0.50);
+	col = mix(col, vec3(0.030,0.055,0.036), moss * 0.30);
+
 	ALBEDO = col;
-	ROUGHNESS = 0.95;
+	ROUGHNESS = clamp(0.88 + damp * 0.09 + crack * 0.03 - speck * 0.035, 0.82, 1.0);
 	METALLIC = 0.0;
 }
 """
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	mat.set_shader_parameter("base_color",base_color)
-	return mat
+	stone_material_shared = ShaderMaterial.new()
+	stone_material_shared.shader = shader
+	return stone_material_shared
 
 func _build_grave_markers() -> void:
 	for i in range(6):
@@ -398,8 +449,9 @@ func _box_node(size: Vector3,color: Color) -> MeshInstance3D:
 	var n := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	mesh.material = _stone_material(color)
+	mesh.material = _stone_material()
 	n.mesh = mesh
+	n.set_instance_shader_parameter("base_color",color)
 	return n
 
 func _add_box(pos: Vector3,size: Vector3,color: Color) -> void:
