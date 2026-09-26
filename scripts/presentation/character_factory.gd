@@ -345,27 +345,58 @@ static func _add_hound_undead_details(root: Node3D) -> void:
 			mesh.height = 0.060
 			mesh.radial_segments = 10
 			mesh.rings = 5
-			mesh.material = _mat(Color(0.72,0.10,0.025),0.42,0.0,true)
+			var eye_mat := _mat(Color(0.64,0.085,0.018),0.46,0.0,true)
+			# The eyes must read as undead from the combat camera without becoming
+			# neon beacons that overpower the Hound silhouette.
+			eye_mat.emission_energy_multiplier = 0.72
+			mesh.material = eye_mat
 			eye.mesh = mesh
 			eye.position = Vector3(0.075*side,0.055,-0.225)
 			head_socket.add_child(eye)
 
 	if skeleton.find_bone("Torso2") >= 0:
 		var torso_socket := BoneAttachment3D.new()
-		torso_socket.name = "UndeadWound"
+		torso_socket.name = "UndeadTorsoIdentity"
 		torso_socket.bone_name = "Torso2"
 		skeleton.add_child(torso_socket)
-		var wound := MeshInstance3D.new()
-		var wound_mesh := SphereMesh.new()
-		wound_mesh.radius = 0.12
-		wound_mesh.height = 0.24
-		wound_mesh.radial_segments = 12
-		wound_mesh.rings = 6
-		wound_mesh.material = _mat(Color(0.16,0.025,0.018),0.86,0.0)
-		wound.mesh = wound_mesh
-		wound.position = Vector3(0.18,0.02,-0.15)
-		wound.scale = Vector3(1.5,0.28,0.8)
-		torso_socket.add_child(wound)
+
+		# Two recessed dark flesh wounds break the healthy-wolf read. They stay
+		# opaque and low-poly so the silhouette remains clean on mobile.
+		for wound_data in [
+			[Vector3(0.17,0.015,-0.15),Vector3(1.45,0.22,0.78),-9.0],
+			[Vector3(-0.14,-0.055,0.11),Vector3(1.10,0.18,0.62),12.0]
+		]:
+			var wound := MeshInstance3D.new()
+			var wound_mesh := SphereMesh.new()
+			wound_mesh.radius = 0.105
+			wound_mesh.height = 0.21
+			wound_mesh.radial_segments = 10
+			wound_mesh.rings = 5
+			wound_mesh.material = _mat(Color(0.115,0.020,0.014),0.93,0.0)
+			wound.mesh = wound_mesh
+			wound.position = wound_data[0]
+			wound.scale = wound_data[1]
+			wound.rotation_degrees.z = wound_data[2]
+			torso_socket.add_child(wound)
+
+		# A few exposed ribs are enough to communicate emaciation from the authored
+		# 3/4 camera. Do not build a full skeleton cage: six tiny opaque pieces are
+		# cheaper and read better than dense geometry at phone size.
+		var rib_material := _mat(Color(0.34,0.31,0.235),0.91,0.0)
+		for side in [-1.0,1.0]:
+			for index in range(3):
+				var rib := MeshInstance3D.new()
+				var rib_mesh := CylinderMesh.new()
+				rib_mesh.top_radius = 0.014
+				rib_mesh.bottom_radius = 0.018
+				rib_mesh.height = 0.24 - 0.022*index
+				rib_mesh.radial_segments = 7
+				rib_mesh.material = rib_material
+				rib.mesh = rib_mesh
+				rib.position = Vector3(0.13*side,-0.035+0.055*index,-0.075+0.038*index)
+				rib.rotation_degrees = Vector3(82.0,12.0*side,side*(24.0-5.0*index))
+				rib.scale = Vector3(1.0,1.0,0.84)
+				torso_socket.add_child(rib)
 
 static func _prepare_sword(root: Node3D) -> void:
 	root.scale = Vector3(0.92,0.92,0.92)
