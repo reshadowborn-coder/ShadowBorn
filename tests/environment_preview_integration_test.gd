@@ -49,6 +49,23 @@ func _check_stage_preview_assets(stage: Node,label: String,min_grave_markers: in
 	var grave_count := _count_preview_assets(stage,EnvironmentAssetLibrary.GRAVE_MARKER_HERO)
 	failures += _expect(grave_count >= min_grave_markers,"%s uses at least %d original grave markers (found %d)" % [label,min_grave_markers,grave_count])
 
+	if label == "Awakening":
+		var shadow := stage.find_child("AwakeningShadow",true,false) as Node3D
+		var slab := stage.find_child("ProductionPreviewAwakeningSlab",true,false) as Node3D
+		failures += _expect(shadow != null,"Awakening has stable Shadow root for corpse-clearance regression")
+		failures += _expect(slab != null,"Awakening has the authored slab under the corpse")
+		if shadow != null:
+			var wall_clearance := shadow.global_position.z - AwakeningStageScript.DEBUG_CORPSE_WALL_FRONT_Z
+			failures += _expect(
+				wall_clearance >= AwakeningStageScript.DEBUG_MIN_CORPSE_WALL_CLEARANCE - 0.001,
+				"Awakening corpse root keeps >= %.2fm clearance from wall front (found %.3fm)" % [AwakeningStageScript.DEBUG_MIN_CORPSE_WALL_CLEARANCE,wall_clearance]
+			)
+		if shadow != null and slab != null:
+			failures += _expect(
+				absf(shadow.global_position.z-slab.global_position.z) <= 0.20,
+				"Awakening corpse remains staged over the slab instead of against masonry"
+			)
+
 	if label == "Battle":
 		var wall_count := _count_preview_assets(stage,EnvironmentAssetLibrary.WALL_FRAGMENT_HERO)
 		var rubble_count := _count_preview_assets(stage,EnvironmentAssetLibrary.RUBBLE_CLUSTER_HERO)
