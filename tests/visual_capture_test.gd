@@ -40,8 +40,29 @@ func _run() -> void:
 	battle.queue_free()
 	await process_frame
 
+	await _capture_shadow_skill("shadow_basic",OUT_DIR+"/shadow_a1.png",0.18)
+	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
+
 	print("Shadowborn visual capture: PASS")
 	quit(0)
+
+func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
+	var battle := BattleStageScript.new()
+	root.add_child(battle)
+	await process_frame
+	battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await create_timer(0.20).timeout
+	battle.play_windup("shadow","hound",skill_id)
+	await create_timer(delay).timeout
+	await _capture(path)
+	battle.queue_free()
+	await process_frame
 
 func _capture_corpse_pose_sheet() -> void:
 	var stage := Node3D.new()
