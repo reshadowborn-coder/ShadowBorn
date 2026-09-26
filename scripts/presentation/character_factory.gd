@@ -33,6 +33,16 @@ static func create_shadow(with_sword: bool = true) -> Node3D:
 	if VisualPolicy.is_acceptance_mode():
 		return _build_missing_production_asset("Shadow",FINAL_SHADOW)
 
+	var preview_model := _load_scene(VisualPolicy.SHADOW_PREVIEW_SCENE)
+	if preview_model != null:
+		preview_model.name = "ShadowProductionPreview"
+		VisualPolicy.tag_visual_tier(preview_model,"production_preview",VisualPolicy.SHADOW_PREVIEW_SCENE)
+		preview_model.set_meta("shadowborn_visible_tier","production_preview_original")
+		preview_model.set_meta("shadowborn_preview_contract","vendor_rig_hidden_by_preview_scene")
+		if with_sword:
+			attach_sword(preview_model)
+		return preview_model
+
 	VisualPolicy.report_debug_fallback("Shadow",FINAL_SHADOW,DEV_SHADOW)
 	var dev_model := _load_scene(DEV_SHADOW)
 	if dev_model != null:
@@ -264,14 +274,28 @@ static func animation_names(root: Node) -> PackedStringArray:
 	return player.get_animation_list()
 
 static func _prepare_dev_shadow(root: Node3D) -> void:
-	# The vendor asset is now only an animation/skeleton carrier. Its visible
-	# geometry is deliberately hidden so screenshot review evaluates Shadowborn's
-	# original silhouette work rather than a recolored third-party humanoid.
-	_hide_meshes(root)
-	_add_shadow_production_preview(root)
+	# Emergency debug fallback only. The normal non-acceptance path now uses
+	# shadow_preview.tscn, where vendor geometry is hidden and only the rig/animations
+	# remain as temporary carriers.
+	var backpack := root.find_child("Backpack",true,false)
+	if backpack is Node3D:
+		(backpack as Node3D).visible = false
+
+	var body := root.find_child("Adventurer_Body",true,false) as MeshInstance3D
+	var legs := root.find_child("Adventurer_Legs",true,false) as MeshInstance3D
+	var feet := root.find_child("Adventurer_Feet",true,false) as MeshInstance3D
+	var head := root.find_child("Adventurer_Head",true,false) as MeshInstance3D
+	var shadow_mat := _shadow_material()
+	if body:
+		body.material_override = shadow_mat
+	if legs:
+		legs.material_override = shadow_mat
+	if feet:
+		feet.material_override = _mat(Color(0.008,0.010,0.016),0.94,0.0)
+	if head:
+		head.material_override = _mat(Color(0.002,0.003,0.006),1.0,0.0)
+	_add_shadow_hood_and_eyes(root)
 	_add_shadow_mist(root)
-	root.set_meta("shadowborn_visible_tier","production_preview_original")
-	root.set_meta("shadowborn_preview_contract","vendor_rig_hidden_original_visible_shell")
 	_enable_shadows(root)
 
 static func _hide_meshes(node: Node) -> void:
