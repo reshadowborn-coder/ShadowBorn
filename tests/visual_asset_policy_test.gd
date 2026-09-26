@@ -43,29 +43,21 @@ func _check_path_contract() -> int:
 func _check_shadow_preview_contract() -> int:
 	if ResourceLoader.exists(Policy.SHADOW_SCENE):
 		return 0
+	var failures := 0
+	failures += _expect(ResourceLoader.exists(Policy.SHADOW_PREVIEW_SCENE),"Shadow production-preview scene exists outside the vendor namespace")
+	failures += _expect(not ("/vendor/" in Policy.SHADOW_PREVIEW_SCENE),"Shadow production-preview path is project-owned")
 	var shadow := Factory.create_shadow(false)
 	if shadow == null:
 		push_error("Shadow preview contract: factory returned null")
-		return 1
-	var failures := 0
-	failures += _expect(str(shadow.get_meta("shadowborn_visible_tier","")) == "production_preview_original","Shadow fallback exposes original production-preview visible tier")
-	failures += _expect(str(shadow.get_meta("shadowborn_preview_contract","")) == "vendor_rig_hidden_original_visible_shell","Shadow fallback keeps vendor rig as hidden carrier only")
-	failures += _expect(shadow.find_child("ShadowPreviewMarker",true,false) != null,"Shadow production-preview marker exists on the rig")
-	var vendor_body := shadow.find_child("Adventurer_Body",true,false) as MeshInstance3D
-	if vendor_body != null:
-		failures += _expect(not vendor_body.visible,"Vendor Shadow body mesh stays hidden in production-preview screenshots")
-	var preview_count := _count_preview_meshes(shadow)
-	failures += _expect(preview_count >= 14,"Shadow production-preview shell contains enough original rig-driven silhouette pieces")
+		return failures+1
+	failures += _expect(str(shadow.get_meta("shadowborn_visual_tier","")) == "production_preview","Shadow factory exposes production-preview provenance while final GLB is missing")
+	failures += _expect(str(shadow.get_meta("shadowborn_visual_source","")) == Policy.SHADOW_PREVIEW_SCENE,"Shadow production-preview source is explicit")
+	failures += _expect(str(shadow.get_meta("shadowborn_visible_tier","")) == "production_preview_original","Shadow preview declares original visible geometry")
+	failures += _expect(str(shadow.get_meta("shadowborn_preview_contract","")) == "vendor_rig_hidden_by_preview_scene","Shadow preview declares temporary hidden rig-carrier contract")
+	failures += _expect(shadow.find_child("AnimationCarrier",true,false) != null,"Shadow preview retains temporary animation carrier")
+	failures += _expect(shadow.find_child("HeadTop",true,false) != null,"Shadow preview exposes authored HeadTop UI anchor")
 	shadow.free()
 	return failures
-
-func _count_preview_meshes(node: Node) -> int:
-	var count := 0
-	if node is MeshInstance3D and str(node.get_meta("shadowborn_visual_tier","")) == "production_preview_original":
-		count += 1
-	for child in node.get_children():
-		count += _count_preview_meshes(child)
-	return count
 
 func _expect(condition: bool,label: String) -> int:
 	if condition:
@@ -85,6 +77,8 @@ func _check_factory_provenance(label: String,production_path: String,builder: Ca
 	var ok := true
 	if production_exists:
 		ok = tier == "production" and source == production_path
+	elif label == "Shadow" and ResourceLoader.exists(Policy.SHADOW_PREVIEW_SCENE):
+		ok = tier == "production_preview" and source == Policy.SHADOW_PREVIEW_SCENE
 	else:
 		ok = tier in ["debug_vendor","debug_emergency"] and source != production_path
 	if not ok:
