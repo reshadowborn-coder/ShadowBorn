@@ -498,13 +498,17 @@ void fragment() {
 	float stone_mask = smoothstep(0.035, 0.095, edge);
 	float rnd = fract(sin(dot(cell, vec2(12.9898,78.233))) * 43758.5453);
 	float grain = 0.5 + 0.5 * sin((UV.x * 97.0) + sin(UV.y * 73.0) * 1.7);
+	float damp_field = 0.5 + 0.5 * sin(UV.x*6.5 - UV.y*5.0 + sin(UV.y*2.8)*1.5);
+	float wet = smoothstep(0.67,0.91,damp_field+0.12*rnd)*stone_mask;
 	vec3 a = vec3(0.038,0.041,0.045);
 	vec3 b = vec3(0.090,0.084,0.074);
 	vec3 stone = mix(a,b,rnd*0.72);
 	stone *= mix(0.78,1.06,grain*0.35);
+	stone *= mix(1.0,0.73,wet);
 	vec3 mortar = vec3(0.018,0.021,0.022);
 	ALBEDO = mix(mortar,stone,stone_mask);
-	ROUGHNESS = mix(1.0,0.88,stone_mask);
+	ROUGHNESS = mix(1.0,mix(0.88,0.44,wet),stone_mask);
+	SPECULAR = mix(0.24,0.60,wet);
 	METALLIC = 0.0;
 }
 """
