@@ -265,8 +265,6 @@ func _spawn_actor(unit: Dictionary) -> void:
 	var model := CharacterFactory.create_shadow(true) if id=="shadow" else CharacterFactory.create_hound()
 	if id=="shadow":
 		model.scale = Vector3(1.05,1.05,1.05)
-		# Quaternius humanoid uses the opposite local forward axis from Godot look_at().
-		model.rotation_degrees.y = 180.0
 	else:
 		# First enemy must read as a waist-high undead dog, not a human-sized wolf.
 		model.scale = Vector3(0.62,0.62,0.62)
@@ -282,12 +280,10 @@ func _spawn_actor(unit: Dictionary) -> void:
 		fallback_idle_ids[id] = true
 		set_process(true)
 
-	# Root -Z points at the opponent; the humanoid's local 180° correction above
-	# makes both actors visually face each other.
-	var opponent := ENEMY_HOME if id=="shadow" else PLAYER_HOME
-	root.look_at(opponent,Vector3.UP)
-	root.rotation_degrees.x = 0
-	root.rotation_degrees.z = 0
+	# Face the opponent from the imported model's actual visual forward axis.
+	# The dev humanoid and dev hound do not share the same local forward axis, so
+	# applying one root look_at() rule made the combat screenshot read back-to-back.
+	_face_actor_at_opponent(root,model,id)
 
 	var label := Label3D.new()
 	label.position = Vector3(0,2.55,0) if id=="shadow" else Vector3(0,1.15,0)
@@ -295,6 +291,20 @@ func _spawn_actor(unit: Dictionary) -> void:
 	label.outline_size = 9
 	root.add_child(label)
 	actor_labels[id] = label
+
+func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
+	var opponent := ENEMY_HOME if id=="shadow" else PLAYER_HOME
+	root.look_at(opponent,Vector3.UP)
+	root.rotation_degrees.x = 0.0
+	root.rotation_degrees.z = 0.0
+
+	# Quaternius Adventurer is authored opposite Godot's -Z convention.
+	# Keep that correction on the visual only; the hound uses the root facing as-is.
+	if id == "shadow":
+		model.rotation_degrees.y = 180.0
+	else:
+		model.rotation_degrees.y = 0.0
+
 
 func _update_label(unit: Dictionary) -> void:
 	var id := str(unit["id"])
