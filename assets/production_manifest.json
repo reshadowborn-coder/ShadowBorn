@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "project": "Shadowborn",
-  "scope": "ACT0_TEMPLE_VERTICAL_SLICE",
-  "status": "research_candidates",
+  "scope": "CHECKPOINT_01_AWAKENING_GRAVE_HOUND",
+  "status": "production_rebuild_planning",
   "rules": {
     "user_canon_overrides_research": true,
     "camera_first_approval_required": true,
@@ -17,7 +17,12 @@
       "candidate": "Poly Haven Cobblestone 01",
       "source": "https://polyhaven.com/a/cobblestone_01",
       "license": "CC0",
-      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "maps": [
+        "diffuse",
+        "normal_gl",
+        "roughness",
+        "ao_or_arm"
+      ],
       "runtime_resolution_candidate": "2K",
       "status": "candidate_not_integrated",
       "acceptance": [
@@ -32,7 +37,12 @@
       "candidate": "Poly Haven Stone Pathway 02",
       "source": "https://polyhaven.com/a/stone_pathway_02",
       "license": "CC0",
-      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "maps": [
+        "diffuse",
+        "normal_gl",
+        "roughness",
+        "ao_or_arm"
+      ],
       "runtime_resolution_candidate": "1K-2K",
       "status": "candidate_not_integrated",
       "acceptance": [
@@ -46,7 +56,12 @@
       "candidate": "Poly Haven Medieval Blocks 05",
       "source": "https://polyhaven.com/a/medieval_blocks_05",
       "license": "CC0",
-      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "maps": [
+        "diffuse",
+        "normal_gl",
+        "roughness",
+        "ao_or_arm"
+      ],
       "runtime_resolution_candidate": "2K",
       "status": "candidate_not_integrated",
       "acceptance": [
@@ -61,7 +76,12 @@
       "candidate": "Poly Haven Medieval Blocks 03",
       "source": "https://polyhaven.com/a/medieval_blocks_03",
       "license": "CC0",
-      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "maps": [
+        "diffuse",
+        "normal_gl",
+        "roughness",
+        "ao_or_arm"
+      ],
       "runtime_resolution_candidate": "1K-2K",
       "status": "candidate_not_integrated"
     },
@@ -71,7 +91,12 @@
       "candidate": "Poly Haven Forest Leaves 02",
       "source": "https://polyhaven.com/a/forest_leaves_02",
       "license": "CC0",
-      "maps": ["diffuse", "normal_gl", "roughness", "ao_or_arm"],
+      "maps": [
+        "diffuse",
+        "normal_gl",
+        "roughness",
+        "ao_or_arm"
+      ],
       "runtime_resolution_candidate": "1K",
       "status": "candidate_not_integrated",
       "acceptance": [
@@ -85,25 +110,49 @@
       "id": "ENV_GRAVE_HERO_PROP",
       "needed": true,
       "status": "missing",
-      "requirements": ["non-box silhouette", "chipped edges", "original funerary motif", "LOD-capable"]
+      "requirements": [
+        "non-box silhouette",
+        "chipped edges",
+        "original funerary motif",
+        "LOD-capable"
+      ]
     },
     {
       "id": "ENV_BROKEN_ARCH",
       "needed": true,
       "status": "missing",
-      "requirements": ["asymmetric damage", "camera framing role", "original silhouette", "LOD-capable"]
+      "requirements": [
+        "asymmetric damage",
+        "camera framing role",
+        "original silhouette",
+        "LOD-capable"
+      ]
     },
     {
       "id": "ENV_WALL_RUBBLE_KIT",
       "needed": true,
       "status": "missing",
-      "requirements": ["3-5 reusable pieces", "shared material", "size hierarchy", "camera-safe"]
+      "requirements": [
+        "3-5 reusable pieces",
+        "shared material",
+        "size hierarchy",
+        "camera-safe"
+      ]
     },
     {
       "id": "TEMPLE_EXTERIOR_KIT",
-      "needed": true,
-      "status": "missing",
-      "requirements": ["wall", "pillar_or_buttress", "arch", "round_window", "roof_tile", "stair", "rubble"]
+      "needed": false,
+      "status": "deferred_until_checkpoint01_acceptance",
+      "requirements": [
+        "wall",
+        "pillar_or_buttress",
+        "arch",
+        "round_window",
+        "roof_tile",
+        "stair",
+        "rubble"
+      ],
+      "deferred": true
     }
   ],
   "character_replacements": [
@@ -118,7 +167,8 @@
         "mobile-readable eyes",
         "humanoid retarget-compatible rig",
         "weapon socket validation"
-      ]
+      ],
+      "production_path": "res://assets/characters/shadow/shadow.glb"
     },
     {
       "id": "CHAR_GRAVE_HOUND_PRODUCTION",
@@ -131,7 +181,8 @@
         "quadruped rig",
         "idle_attack_hit_death clips",
         "camera-verified forward axis"
-      ]
+      ],
+      "production_path": "res://assets/characters/grave_hound/grave_hound.glb"
     }
   ],
   "animation_pipeline": {
@@ -148,11 +199,58 @@
         "hit_heavy",
         "death",
         "victory"
-      ]
+      ],
+      "temporary_library_role": "debug_reference_only",
+      "production_brief": "docs/art/ANIMATION_REBUILD_BRIEF.md"
     },
     "hound": {
       "strategy": "dedicated_quadruped_rig_and_clips",
-      "do_not_force_humanoid_profile": true
+      "do_not_force_humanoid_profile": true,
+      "production_brief": "docs/art/ANIMATION_REBUILD_BRIEF.md"
     }
+  },
+  "deferred_scope": [
+    "Temple hub production",
+    "sewer production",
+    "second encounter",
+    "broader Act 1 environment art"
+  ],
+  "checkpoint_01_required_assets": {
+    "shadow": {
+      "path": "res://assets/characters/shadow/shadow.glb",
+      "brief": "docs/art/SHADOW_PRODUCTION_BRIEF.md",
+      "status": "missing"
+    },
+    "grave_hound": {
+      "path": "res://assets/characters/grave_hound/grave_hound.glb",
+      "brief": "docs/art/GRAVE_HOUND_PRODUCTION_BRIEF.md",
+      "status": "missing"
+    },
+    "shadow_sword": {
+      "path": "res://assets/weapons/shadow_sword/shadow_sword.glb",
+      "status": "missing"
+    },
+    "awakening_environment": {
+      "path": "res://assets/environments/checkpoint01/awakening_environment.tscn",
+      "brief": "docs/art/CHECKPOINT01_ENVIRONMENT_BRIEF.md",
+      "required_nodes": [
+        "AwakeningCamera",
+        "ShadowSpawn",
+        "SwordSpawn"
+      ],
+      "status": "missing"
+    },
+    "grave_hound_arena": {
+      "path": "res://assets/environments/checkpoint01/grave_hound_arena.tscn",
+      "brief": "docs/art/CHECKPOINT01_ENVIRONMENT_BRIEF.md",
+      "required_nodes": [
+        "BattleCamera",
+        "PlayerHome",
+        "EnemyHome",
+        "CameraTarget"
+      ],
+      "status": "missing"
+    },
+    "animation_brief": "docs/art/ANIMATION_REBUILD_BRIEF.md"
   }
 }
