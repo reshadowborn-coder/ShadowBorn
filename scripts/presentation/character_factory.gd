@@ -264,29 +264,210 @@ static func animation_names(root: Node) -> PackedStringArray:
 	return player.get_animation_list()
 
 static func _prepare_dev_shadow(root: Node3D) -> void:
-	var backpack := root.find_child("Backpack",true,false)
-	if backpack is Node3D:
-		(backpack as Node3D).visible = false
-
-	var body := root.find_child("Adventurer_Body",true,false) as MeshInstance3D
-	var legs := root.find_child("Adventurer_Legs",true,false) as MeshInstance3D
-	var feet := root.find_child("Adventurer_Feet",true,false) as MeshInstance3D
-	var head := root.find_child("Adventurer_Head",true,false) as MeshInstance3D
-
-	var shadow_mat := _shadow_material()
-	if body:
-		body.material_override = shadow_mat
-	if legs:
-		legs.material_override = shadow_mat
-	if feet:
-		feet.material_override = _mat(Color(0.008,0.010,0.016),0.94,0.0)
-	if head:
-		# No human face: the imported head becomes a light-absorbing void.
-		head.material_override = _mat(Color(0.002,0.003,0.006),1.0,0.0)
-
-	_add_shadow_hood_and_eyes(root)
+	# The vendor asset is now only an animation/skeleton carrier. Its visible
+	# geometry is deliberately hidden so screenshot review evaluates Shadowborn's
+	# original silhouette work rather than a recolored third-party humanoid.
+	_hide_meshes(root)
+	_add_shadow_production_preview(root)
 	_add_shadow_mist(root)
+	root.set_meta("shadowborn_visible_tier","production_preview_original")
+	root.set_meta("shadowborn_preview_contract","vendor_rig_hidden_original_visible_shell")
 	_enable_shadows(root)
+
+static func _hide_meshes(node: Node) -> void:
+	if node is MeshInstance3D:
+		(node as MeshInstance3D).visible = false
+	for child in node.get_children():
+		_hide_meshes(child)
+
+static func _add_shadow_production_preview(root: Node3D) -> void:
+	var skeleton := _find_skeleton(root)
+	if skeleton == null:
+		return
+	if skeleton.find_child("ShadowPreviewMarker",false,false) != null:
+		return
+
+	var marker := Node3D.new()
+	marker.name = "ShadowPreviewMarker"
+	marker.set_meta("shadowborn_visual_tier","production_preview_original")
+	marker.set_meta("shadowborn_role","visible_shell_on_temporary_rig")
+	skeleton.add_child(marker)
+
+	var body_mat := _shadow_material()
+	var cloth_mat := _mat(Color(0.007,0.009,0.014),0.97,0.0)
+	var edge_mat := _mat(Color(0.018,0.022,0.032),0.90,0.0)
+	var void_mat := _mat(Color(0.0,0.0,0.002),1.0,0.0)
+	var core_mat := _mat(Color(0.055,0.16,0.42),0.48,0.0,true)
+	core_mat.emission_energy_multiplier = 0.62
+
+	# Body mass follows the existing semantic bone chain. Each piece is original
+	# runtime geometry and intentionally low-detail: the goal of this pass is to
+	# lock Shadow's readable silhouette before expensive final topology/materials.
+	_add_shadow_segment(skeleton,"Hips","Abdomen",0.205,0.74,body_mat,"PreviewPelvis")
+	_add_shadow_segment(skeleton,"Abdomen","Torso",0.225,0.72,body_mat,"PreviewAbdomen")
+	_add_shadow_segment(skeleton,"Torso","Chest",0.255,0.70,body_mat,"PreviewTorso")
+	_add_shadow_segment(skeleton,"Chest","Neck",0.285,0.68,body_mat,"PreviewChest")
+
+	for side in ["L","R"]:
+		_add_shadow_segment(skeleton,"Shoulder."+side,"UpperArm."+side,0.135,0.82,edge_mat,"PreviewShoulder"+side)
+		_add_shadow_segment(skeleton,"UpperArm."+side,"LowerArm."+side,0.105,0.78,body_mat,"PreviewUpperArm"+side)
+		_add_shadow_segment(skeleton,"LowerArm."+side,"Wrist."+side,0.085,0.74,body_mat,"PreviewLowerArm"+side)
+		_add_shadow_segment(skeleton,"UpperLeg."+side,"LowerLeg."+side,0.145,0.78,cloth_mat,"PreviewUpperLeg"+side)
+		_add_shadow_segment(skeleton,"LowerLeg."+side,"Foot."+side,0.112,0.72,cloth_mat,"PreviewLowerLeg"+side)
+		_add_shadow_hand(skeleton,"Wrist."+side,side,body_mat)
+		_add_shadow_foot(skeleton,"Foot."+side,side,cloth_mat)
+
+	# A short layered cowl gives the protagonist a deliberate shoulder/head break
+	# without turning him into a caped knight or inflating the silhouette.
+	var chest_socket := _bone_socket(skeleton,"Chest","PreviewCowlSocket")
+	if chest_socket != null:
+		var cowl := MeshInstance3D.new()
+		cowl.name = "PreviewCowl"
+		var cowl_mesh := CylinderMesh.new()
+		cowl_mesh.top_radius = 0.22
+		cowl_mesh.bottom_radius = 0.37
+		cowl_mesh.height = 0.20
+		cowl_mesh.radial_segments = 10
+		cowl_mesh.rings = 1
+		cowl_mesh.material = cloth_mat
+		cowl.mesh = cowl_mesh
+		cowl.position = Vector3(0.0,0.035,0.0)
+		cowl.scale = Vector3(1.0,1.0,0.68)
+		_tag_preview_mesh(cowl)
+		chest_socket.add_child(cowl)
+
+		var core := MeshInstance3D.new()
+		core.name = "PreviewChestCore"
+		var core_mesh := SphereMesh.new()
+		core_mesh.radius = 0.050
+		core_mesh.height = 0.100
+		core_mesh.radial_segments = 12
+		core_mesh.rings = 6
+		core_mesh.material = core_mat
+		core.mesh = core_mesh
+		core.position = Vector3(0.0,0.015,0.235)
+		core.scale = Vector3(1.18,1.0,0.34)
+		_tag_preview_mesh(core)
+		chest_socket.add_child(core)
+
+	var head_socket := _bone_socket(skeleton,"Head","PreviewHeadSocket")
+	if head_socket != null:
+		var hood := MeshInstance3D.new()
+		hood.name = "PreviewHood"
+		var hood_mesh := CapsuleMesh.new()
+		hood_mesh.radius = 0.215
+		hood_mesh.height = 0.445
+		hood_mesh.radial_segments = 14
+		hood_mesh.rings = 7
+		hood_mesh.material = cloth_mat
+		hood.mesh = hood_mesh
+		hood.position = Vector3(0.0,0.025,-0.018)
+		hood.scale = Vector3(0.92,1.03,0.88)
+		_tag_preview_mesh(hood)
+		head_socket.add_child(hood)
+
+		var face_void := MeshInstance3D.new()
+		face_void.name = "PreviewFaceVoid"
+		var void_mesh := SphereMesh.new()
+		void_mesh.radius = 0.148
+		void_mesh.height = 0.296
+		void_mesh.radial_segments = 12
+		void_mesh.rings = 6
+		void_mesh.material = void_mat
+		face_void.mesh = void_mesh
+		face_void.position = Vector3(0.0,-0.015,0.158)
+		face_void.scale = Vector3(0.76,0.94,0.28)
+		_tag_preview_mesh(face_void)
+		head_socket.add_child(face_void)
+
+		for side in [-1.0,1.0]:
+			var eye := MeshInstance3D.new()
+			eye.name = "PreviewEyeL" if side < 0.0 else "PreviewEyeR"
+			var eye_mesh := SphereMesh.new()
+			eye_mesh.radius = 0.014
+			eye_mesh.height = 0.028
+			eye_mesh.radial_segments = 8
+			eye_mesh.rings = 4
+			eye_mesh.material = core_mat
+			eye.mesh = eye_mesh
+			eye.position = Vector3(0.050*side,0.003,0.196)
+			eye.scale = Vector3(1.35,0.48,0.42)
+			_tag_preview_mesh(eye)
+			head_socket.add_child(eye)
+
+static func _add_shadow_segment(skeleton: Skeleton3D,bone_name: String,child_bone_name: String,radius: float,z_scale: float,material: Material,node_name: String) -> void:
+	var bone_idx := skeleton.find_bone(bone_name)
+	var child_idx := skeleton.find_bone(child_bone_name)
+	if bone_idx < 0 or child_idx < 0 or skeleton.get_bone_parent(child_idx) != bone_idx:
+		return
+	var end_local := skeleton.get_bone_rest(child_idx).origin
+	var length := end_local.length()
+	if length < 0.025:
+		return
+	var socket := _bone_socket(skeleton,bone_name,node_name+"Socket")
+	if socket == null:
+		return
+	var segment := MeshInstance3D.new()
+	segment.name = node_name
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius*0.88
+	mesh.bottom_radius = radius
+	mesh.height = length*0.96
+	mesh.radial_segments = 8
+	mesh.rings = 1
+	mesh.material = material
+	segment.mesh = mesh
+	segment.position = end_local*0.48
+	segment.quaternion = Quaternion(Vector3.UP,end_local.normalized())
+	segment.scale = Vector3(1.0,1.0,z_scale)
+	_tag_preview_mesh(segment)
+	socket.add_child(segment)
+
+static func _add_shadow_hand(skeleton: Skeleton3D,bone_name: String,side: String,material: Material) -> void:
+	var socket := _bone_socket(skeleton,bone_name,"PreviewHandSocket"+side)
+	if socket == null:
+		return
+	var hand := MeshInstance3D.new()
+	hand.name = "PreviewHand"+side
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.078
+	mesh.height = 0.156
+	mesh.radial_segments = 8
+	mesh.rings = 4
+	mesh.material = material
+	hand.mesh = mesh
+	hand.scale = Vector3(0.78,1.05,0.62)
+	_tag_preview_mesh(hand)
+	socket.add_child(hand)
+
+static func _add_shadow_foot(skeleton: Skeleton3D,bone_name: String,side: String,material: Material) -> void:
+	var socket := _bone_socket(skeleton,bone_name,"PreviewFootSocket"+side)
+	if socket == null:
+		return
+	var foot := MeshInstance3D.new()
+	foot.name = "PreviewFoot"+side
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.17,0.12,0.33)
+	mesh.material = material
+	foot.mesh = mesh
+	foot.position = Vector3(0.0,-0.015,0.105)
+	foot.rotation_degrees.x = -4.0
+	_tag_preview_mesh(foot)
+	socket.add_child(foot)
+
+static func _bone_socket(skeleton: Skeleton3D,bone_name: String,node_name: String) -> BoneAttachment3D:
+	if skeleton.find_bone(bone_name) < 0:
+		return null
+	var socket := BoneAttachment3D.new()
+	socket.name = node_name
+	socket.bone_name = bone_name
+	skeleton.add_child(socket)
+	return socket
+
+static func _tag_preview_mesh(mesh: MeshInstance3D) -> void:
+	mesh.set_meta("shadowborn_visual_tier","production_preview_original")
+	mesh.set_meta("shadowborn_visual_source","generated://shadow_preview_v1")
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 static func _prepare_dev_hound(root: Node3D) -> void:
 	var wolf := root.find_child("Wolf",true,false) as MeshInstance3D
