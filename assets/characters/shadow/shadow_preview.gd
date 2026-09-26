@@ -322,27 +322,45 @@ func _make_back_drape_mesh() -> ArrayMesh:
 func _make_hood_mesh() -> ArrayMesh:
 	var st:=SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# Low asymmetrical ridge replaces the old single pyramid crown. The face stays
-	# recessed, but the outer read should be cloth/void rather than a metal helmet.
-	var brow_l:=Vector3(-0.150,0.115,0.170)
-	var brow_r:=Vector3(0.145,0.105,0.170)
-	var top_l:=Vector3(-0.105,0.245,-0.005)
-	var top_r:=Vector3(0.085,0.225,-0.030)
-	var back_l:=Vector3(-0.175,0.100,-0.155)
-	var back_r:=Vector3(0.170,0.085,-0.160)
-	var jaw_l:=Vector3(-0.145,-0.185,0.140)
-	var jaw_r:=Vector3(0.140,-0.180,0.140)
-	var nape_l:=Vector3(-0.115,-0.215,-0.165)
-	var nape_r:=Vector3(0.105,-0.220,-0.170)
+	st.set_smooth_group(0)
 
-	_quad(st,brow_l,top_l,top_r,brow_r)
-	_quad(st,top_l,back_l,back_r,top_r)
-	_quad(st,brow_l,jaw_l,nape_l,back_l)
-	_quad(st,brow_r,back_r,nape_r,jaw_r)
-	_quad(st,back_l,nape_l,nape_r,back_r)
-	_quad(st,jaw_l,jaw_r,nape_r,nape_l)
-	# Narrow brow band frames the void but leaves the face opening physically open.
-	_quad(st,brow_l,brow_r,Vector3(0.110,0.055,0.182),Vector3(-0.112,0.060,0.182))
+	# Rounded open hood: build several elliptical rings around the back/sides while
+	# deliberately leaving the +Z face sector empty. This keeps a real recessed
+	# void and removes the previous helmet-like pyramid crown.
+	var levels := [
+		[Vector3(0.0,-0.205,-0.015),0.155,0.135],
+		[Vector3(0.0,-0.080,-0.020),0.190,0.165],
+		[Vector3(0.0,0.070,-0.025),0.205,0.180],
+		[Vector3(-0.005,0.185,-0.035),0.170,0.145],
+		[Vector3(-0.015,0.255,-0.050),0.105,0.090]
+	]
+	var segments := 14
+	var start_angle := deg_to_rad(135.0)
+	var span := deg_to_rad(270.0)
+	var rings: Array = []
+	for level_variant in levels:
+		var level: Array = level_variant
+		var center: Vector3 = level[0]
+		var rx := float(level[1])
+		var rz := float(level[2])
+		var ring: Array[Vector3] = []
+		for i in range(segments+1):
+			var a := start_angle+span*float(i)/float(segments)
+			ring.append(center+Vector3(cos(a)*rx,0.0,sin(a)*rz))
+		rings.append(ring)
+
+	for r in range(rings.size()-1):
+		var a_ring: Array = rings[r]
+		var b_ring: Array = rings[r+1]
+		for i in range(segments):
+			_quad(st,a_ring[i],a_ring[i+1],b_ring[i+1],b_ring[i])
+
+	# Soft rear crown cap; front remains open for the void plane.
+	var top_center := Vector3(-0.02,0.285,-0.065)
+	var last_ring: Array = rings[rings.size()-1]
+	for i in range(segments):
+		_tri(st,last_ring[i],last_ring[i+1],top_center)
+
 	st.generate_normals()
 	return st.commit()
 
