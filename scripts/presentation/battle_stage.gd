@@ -408,6 +408,10 @@ func _spawn_actor(unit: Dictionary) -> void:
 	label.position = Vector3(0,SHADOW_WORLD_LABEL_HEIGHT,0) if id=="shadow" else Vector3(0,HOUND_WORLD_LABEL_HEIGHT,0)
 	label.font_size = 28
 	label.outline_size = 9
+	# Actor roots rotate to face their opponent. World-space UI must not inherit
+	# that yaw or the text becomes mirrored/back-facing from the battle camera.
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.double_sided = false
 	root.add_child(label)
 	actor_labels[id] = label
 
