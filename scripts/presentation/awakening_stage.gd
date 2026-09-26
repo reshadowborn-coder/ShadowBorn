@@ -6,6 +6,7 @@ const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd"
 signal finished
 
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
+const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
 
 var camera: Camera3D
 var shadow_root: Node3D
@@ -125,10 +126,14 @@ func _build_debug_world() -> void:
 
 func _build_crypt() -> void:
 	var floor := MeshInstance3D.new()
+	floor.name = "ProductionCobblePreviewFloor"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(13.5,10.5)
 	plane.material = _cobblestone_material()
 	floor.mesh = plane
+	if plane.material is ORMMaterial3D:
+		floor.set_meta("shadowborn_visual_tier","production_preview")
+		floor.set_meta("shadowborn_visual_source",MaterialLibrary.COBBLE_ALBEDO)
 	add_child(floor)
 
 	# The corpse wall: close, heavy and broken. It is the visual anchor of the opening shot.
@@ -453,18 +458,28 @@ void fragment() {
 func _build_grave_markers() -> void:
 	for i in range(6):
 		var root := Node3D.new()
+		root.name = "GraveMarkerCluster_%02d" % i
 		var side := -1.0 if i%2==0 else 1.0
 		root.position = Vector3(side*(4.45+0.28*(i%3)),0,-2.75+1.05*i)
 		root.rotation_degrees = Vector3(0,-13.0+7.0*i,-4.0+float((i*5)%9))
 		add_child(root)
 
+		var marker := EnvironmentAssetLibrary.create_grave_marker_hero()
+		if marker != null:
+			marker.name = "ProductionPreviewGraveMarker_%02d" % i
+			var scale_variation := 0.90 + 0.045*float(i%3)
+			marker.scale = Vector3(scale_variation,0.94+0.035*float((i+1)%3),scale_variation)
+			root.add_child(marker)
+			continue
+
+		# Debug-only fallback when the original mesh is missing.
 		var base := _box_node(Vector3(0.92,0.16,0.42),Color(0.067,0.071,0.078))
 		base.position.y = 0.08
 		root.add_child(base)
 
-		var marker := _box_node(Vector3(0.52,0.88+0.08*(i%2),0.16),Color(0.078,0.083,0.092))
-		marker.position.y = 0.52
-		root.add_child(marker)
+		var fallback_marker := _box_node(Vector3(0.52,0.88+0.08*(i%2),0.16),Color(0.078,0.083,0.092))
+		fallback_marker.position.y = 0.52
+		root.add_child(fallback_marker)
 
 		var cap := _box_node(Vector3(0.62,0.14,0.20),Color(0.085,0.089,0.097))
 		cap.position.y = 0.98+0.04*(i%2)
