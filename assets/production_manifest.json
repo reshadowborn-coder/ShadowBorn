@@ -2,13 +2,14 @@
   "schema_version": 1,
   "project": "Shadowborn",
   "scope": "CHECKPOINT_01_AWAKENING_GRAVE_HOUND",
-  "status": "production_rebuild_planning",
+  "status": "production_preview_integration_in_progress",
   "rules": {
     "user_canon_overrides_research": true,
     "camera_first_approval_required": true,
     "physical_ios_profile_required_for_perf_claims": true,
     "runtime_source_resolution_policy": "start_1k_2k_then_profile",
-    "no_8k_runtime_by_default": true
+    "no_8k_runtime_by_default": true,
+    "production_preview_does_not_equal_acceptance": true
   },
   "material_families": [
     {
@@ -24,7 +25,7 @@
         "ao_or_arm"
       ],
       "runtime_resolution_candidate": "2K",
-      "status": "maps_integrated_scene_use_pending",
+      "status": "runtime_preview_integrated_not_user_accepted",
       "acceptance": [
         "path remains readable at phone size",
         "wetness uses roughness/specular not mirror reflection",
@@ -35,6 +36,10 @@
         "assets/production/materials/cemetery_wet_cobble/cobblestone_01_nor_gl_2k.png",
         "assets/production/materials/cemetery_wet_cobble/cobblestone_01_arm_2k.png",
         "assets/production/materials/cemetery_wet_cobble/SOURCE.json"
+      ],
+      "runtime_preview_targets": [
+        "Awakening debug environment floor",
+        "Grave Hound battle debug environment floor"
       ]
     },
     {
@@ -115,12 +120,17 @@
     {
       "id": "ENV_GRAVE_HERO_PROP",
       "needed": true,
-      "status": "missing",
+      "status": "original_mesh_runtime_preview_integrated_needs_uv_bevel_lod_acceptance",
       "requirements": [
         "non-box silhouette",
         "chipped edges",
         "original funerary motif",
         "LOD-capable"
+      ],
+      "runtime_path": "res://assets/environments/checkpoint01/grave_marker_hero.obj",
+      "runtime_preview_targets": [
+        "Awakening grave-marker clusters",
+        "Grave Hound battle edge dressing"
       ]
     },
     {
