@@ -1,6 +1,7 @@
 extends SceneTree
 
 const AwakeningStageScript = preload("res://scripts/presentation/awakening_stage.gd")
+const BattleStageScript = preload("res://scripts/presentation/battle_stage.gd")
 
 func _init() -> void:
 	call_deferred("_run")
@@ -22,6 +23,16 @@ func _run() -> void:
 	failures += _expect(int(box_stats["unique_shader_materials"]) <= 1,"cemetery stone boxes share one shader material")
 
 	stage.queue_free()
+	await process_frame
+
+	var battle_stage := BattleStageScript.new()
+	root.add_child(battle_stage)
+	await process_frame
+	failures += _expect(_count_shadowed_lights(battle_stage) <= 1,"battle keeps one real-time shadow-casting light")
+	var battle_box_stats := _box_material_stats(battle_stage)
+	failures += _expect(int(battle_box_stats["box_count"]) >= 10,"battle arena contains reusable stone box geometry")
+	failures += _expect(int(battle_box_stats["unique_shader_materials"]) <= 1,"battle stone boxes share one shader material")
+	battle_stage.queue_free()
 	await process_frame
 
 	if failures == 0:
