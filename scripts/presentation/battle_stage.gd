@@ -4,6 +4,7 @@ extends Node3D
 const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
 
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
+const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
 
 const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
 const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
@@ -245,10 +246,14 @@ func _build_debug_environment() -> void:
 
 	# Broad battle platform, composed for a diagonal camera like the supplied RAID references.
 	var floor := MeshInstance3D.new()
+	floor.name = "ProductionCobblePreviewFloor"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(16.5,11.5)
 	plane.material = _cobblestone_material()
 	floor.mesh = plane
+	if plane.material is ORMMaterial3D:
+		floor.set_meta("shadowborn_visual_tier","production_preview")
+		floor.set_meta("shadowborn_visual_source",MaterialLibrary.COBBLE_ALBEDO)
 	add_child(floor)
 
 	# Raised broken edges leave the central combat lane open.
@@ -287,6 +292,7 @@ func _build_debug_environment() -> void:
 	_build_brazier(Vector3(4.25,0,-2.75))
 	_build_brazier(Vector3(-5.0,0,-3.55))
 	_build_autumn_leaves()
+	_build_preview_grave_markers()
 
 	# Camera: rear-left of player, elevated, aimed diagonally across the field.
 	battle_camera = Camera3D.new()
@@ -295,6 +301,25 @@ func _build_debug_environment() -> void:
 	battle_camera.position = camera_home
 	add_child(battle_camera)
 	battle_camera.look_at(camera_target,Vector3.UP)
+
+func _build_preview_grave_markers() -> void:
+	var placements := [
+		[Vector3(-5.65,0.0,-2.35),Vector3(0.0,-18.0,-5.0),0.92],
+		[Vector3(-5.95,0.0,2.15),Vector3(0.0,11.0,4.0),0.86],
+		[Vector3(5.55,0.0,-3.10),Vector3(0.0,24.0,-3.0),0.96],
+		[Vector3(5.95,0.0,2.70),Vector3(0.0,-14.0,5.0),0.88]
+	]
+	for i in range(placements.size()):
+		var marker := EnvironmentAssetLibrary.create_grave_marker_hero()
+		if marker == null:
+			return
+		marker.name = "ProductionPreviewGraveMarker_%02d" % i
+		var data: Array = placements[i]
+		marker.position = data[0]
+		marker.rotation_degrees = data[1]
+		var s := float(data[2])
+		marker.scale = Vector3(s,s,s)
+		add_child(marker)
 
 func _spawn_actor(unit: Dictionary) -> void:
 	var id := str(unit["id"])
