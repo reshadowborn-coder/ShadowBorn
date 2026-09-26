@@ -313,7 +313,7 @@ func _play_sequence() -> void:
 	await get_tree().create_timer(0.58).timeout
 	if skipping: return
 
-	subtitle.text = "Something returns."
+	subtitle.text = ""
 	var wake_cam := create_tween()
 	wake_cam.set_parallel(true)
 	wake_cam.tween_property(camera,"position",Vector3(-0.10,1.62,3.55),0.42).set_trans(Tween.TRANS_SINE)
@@ -346,7 +346,7 @@ func _play_sequence() -> void:
 	await get_tree().create_timer(0.18).timeout
 	if skipping: return
 
-	subtitle.text = "A blade remembers its hand."
+	subtitle.text = ""
 	CharacterFactory.play_pickup(shadow_visual,1.05)
 	# Frame hand + weapon + hood together. The previous low sword-only aim cropped
 	# Shadow's head during the pickup screenshot and made orientation hard to read.
