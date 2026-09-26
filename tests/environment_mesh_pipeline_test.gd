@@ -10,6 +10,7 @@ func _init() -> void:
 func _run() -> void:
 	var failures := 0
 	failures += _expect(EnvironmentAssetLibrary.has_grave_marker_hero(),"authored hero grave mesh exists")
+	failures += _expect(ResourceLoader.exists(EnvironmentAssetLibrary.BROKEN_ARCH_HERO),"authored broken arch mesh exists")
 
 	var mesh := load(EnvironmentAssetLibrary.GRAVE_MARKER_HERO) as Mesh
 	failures += _expect(mesh != null,"authored hero grave imports as Mesh")
@@ -17,6 +18,12 @@ func _run() -> void:
 		var size := mesh.get_aabb().size
 		failures += _expect(size.x >= 0.70 and size.y >= 1.35 and size.z >= 0.30,"hero grave has non-trivial camera-readable volume")
 		failures += _expect(mesh.get_surface_count() >= 1,"hero grave contains renderable surface")
+
+	var arch_mesh := load(EnvironmentAssetLibrary.BROKEN_ARCH_HERO) as Mesh
+	failures += _expect(arch_mesh != null,"broken arch imports as Mesh")
+	if arch_mesh != null:
+		var arch_size := arch_mesh.get_aabb().size
+		failures += _expect(arch_size.x >= 2.2 and arch_size.y >= 2.5 and arch_size.z >= 0.40,"broken arch has camera-readable architectural volume")
 
 	var grave_a := EnvironmentAssetLibrary.create_grave_marker_hero()
 	var grave_b := EnvironmentAssetLibrary.create_grave_marker_hero()
@@ -41,6 +48,7 @@ func _run() -> void:
 	root.add_child(battle)
 	await process_frame
 	failures += _expect(_count_prefix(battle,"ProductionPreviewGraveMarker_") >= 4,"battle edges use authored grave silhouettes")
+	failures += _expect(battle.find_child("ProductionPreviewBrokenArch",true,false) != null,"battle landmark uses authored broken arch")
 	battle.queue_free()
 	await process_frame
 
