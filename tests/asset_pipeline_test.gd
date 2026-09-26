@@ -42,22 +42,46 @@ func _check_hound_identity() -> int:
 	if hound == null:
 		push_error("Hound identity failed to instantiate")
 		return 1
-	var torso_identity := hound.find_child("UndeadTorsoIdentity",true,false)
-	var head_identity := hound.find_child("UndeadHeadFX",true,false)
+	var tier := str(hound.get_meta("shadowborn_visual_tier",""))
 	var failures := 0
-	if torso_identity == null:
-		push_error("Hound undead torso identity missing")
+
+	if tier == "production_preview":
+		# The main non-acceptance path now hides vendor geometry and builds the
+		# original Shadowborn visible shell in _ready(). Exercise that authored
+		# preview contract instead of protecting the retired debug overlays.
+		hound.call("_ready")
+		failures += _expect(hound.find_child("GraveHoundSkinnedBodyV1",true,false) != null,"Hound production preview exposes original skinned body")
+		failures += _expect(hound.find_child("HoundSkull",true,false) != null,"Hound production preview exposes authored skull identity")
+		failures += _expect(hound.find_child("HoundMuzzle",true,false) != null,"Hound production preview exposes authored muzzle identity")
+		failures += _expect(hound.find_child("ExposedRibsSocket",true,false) != null,"Hound production preview keeps exposed-rib undead language")
+		failures += _expect(hound.find_child("HoundWoundsSocket",true,false) != null,"Hound production preview keeps wound undead language")
+	elif tier == "debug_vendor":
+		var torso_identity := hound.find_child("UndeadTorsoIdentity",true,false)
+		var head_identity := hound.find_child("UndeadHeadFX",true,false)
+		if torso_identity == null:
+			push_error("Hound debug undead torso identity missing")
+			failures += 1
+		elif torso_identity.get_child_count() < 8:
+			push_error("Hound debug undead torso identity lost wound/rib dressing")
+			failures += 1
+		if head_identity == null or head_identity.get_child_count() < 2:
+			push_error("Hound debug undead eye identity missing")
+			failures += 1
+	else:
+		push_error("Unexpected Hound visual tier in asset pipeline test: %s" % tier)
 		failures += 1
-	elif torso_identity.get_child_count() < 8:
-		push_error("Hound undead torso identity lost wound/rib dressing")
-		failures += 1
-	if head_identity == null or head_identity.get_child_count() < 2:
-		push_error("Hound undead eye identity missing")
-		failures += 1
+
 	hound.free()
 	if failures == 0:
-		print("PASS: Hound DEBUG undead dressing exists")
+		print("PASS: Hound identity contract (%s)" % tier)
 	return failures
+
+func _expect(condition: bool,label: String) -> int:
+	if condition:
+		print("PASS: "+label)
+		return 0
+	push_error("FAIL: "+label)
+	return 1
 
 func _check_resource(path: String,label: String) -> int:
 	if not ResourceLoader.exists(path):
