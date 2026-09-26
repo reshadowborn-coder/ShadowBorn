@@ -35,7 +35,7 @@ render_mode diffuse_burley, specular_schlick_ggx, cull_disabled;
 void fragment() {
 	float facing = clamp(dot(normalize(NORMAL),normalize(VIEW)),0.0,1.0);
 	float rim = pow(1.0-facing,2.4);
-	ALBEDO = vec3(0.055,0.068,0.056);
+	ALBEDO = vec3(0.072,0.082,0.067);
 	ROUGHNESS = 0.96;
 	METALLIC = 0.0;
 	EMISSION = vec3(0.045,0.070,0.055)*rim*0.10;
@@ -78,22 +78,22 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	_append_skinned_chain(st,skeleton,
 		["Back","Torso","Torso2","Torso3","Neck1","Neck2","Neck3","Head"],
 		[0.24,0.215,0.255,0.285,0.175,0.135,0.105,0.070],
-		[0.175,0.150,0.195,0.225,0.140,0.105,0.085,0.060],10)
+		[0.175,0.150,0.195,0.225,0.140,0.105,0.085,0.060],14)
 
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Torso2","FrontShoulder.%s" % side,"FrontUpperLeg.%s" % side,"FrontLowerLeg.%s" % side],
 			[0.145,0.125,0.095,0.060],
-			[0.115,0.100,0.075,0.050],8)
+			[0.115,0.100,0.075,0.050],10)
 		_append_skinned_chain(st,skeleton,
 			["Back","BackShoulder.%s" % side,"BackLeg.%s" % side,"BackUpperLeg.%s" % side,"BackLowerLeg.%s" % side],
 			[0.145,0.135,0.120,0.090,0.058],
-			[0.115,0.105,0.095,0.070,0.048],8)
+			[0.115,0.105,0.095,0.070,0.048],10)
 
 	_append_skinned_chain(st,skeleton,
 		["Back","Tail1","Tail2","Tail3","Tail4","Tail5","Tail6","Tail7","Tail8"],
 		[0.080,0.075,0.068,0.060,0.052,0.044,0.036,0.028,0.018],
-		[0.065,0.060,0.054,0.048,0.041,0.035,0.028,0.022,0.014],7)
+		[0.065,0.060,0.054,0.048,0.041,0.035,0.028,0.022,0.014],8)
 
 	st.generate_normals()
 	var mesh := st.commit()
@@ -123,8 +123,8 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	var skull_mesh := SphereMesh.new()
 	skull_mesh.radius = 0.205
 	skull_mesh.height = 0.38
-	skull_mesh.radial_segments = 12
-	skull_mesh.rings = 6
+	skull_mesh.radial_segments = 18
+	skull_mesh.rings = 9
 	skull_mesh.material = _flesh_material
 	skull.mesh = skull_mesh
 	skull.position = Vector3(0.0,0.06,0.0)
@@ -145,8 +145,8 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	var nose_mesh := SphereMesh.new()
 	nose_mesh.radius = 0.070
 	nose_mesh.height = 0.12
-	nose_mesh.radial_segments = 8
-	nose_mesh.rings = 4
+	nose_mesh.radial_segments = 12
+	nose_mesh.rings = 6
 	nose_mesh.material = _void_material
 	nose.mesh = nose_mesh
 	nose.position = Vector3(0.0,0.43,0.0)
@@ -212,25 +212,23 @@ func _attach_wounds(skeleton: Skeleton3D) -> void:
 func _make_muzzle_mesh() -> ArrayMesh:
 	var st:=SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var back_y := -0.02
-	var front_y := 0.25
-	var bx := 0.13
-	var bz := 0.11
-	var fx := 0.085
-	var fz := 0.070
-	var b0:=Vector3(-bx,back_y,-bz)
-	var b1:=Vector3(bx,back_y,-bz)
-	var b2:=Vector3(bx,back_y,bz)
-	var b3:=Vector3(-bx,back_y,bz)
-	var f0:=Vector3(-fx,front_y,-fz)
-	var f1:=Vector3(fx,front_y,-fz)
-	var f2:=Vector3(fx,front_y,fz)
-	var f3:=Vector3(-fx,front_y,fz)
-	_quad(st,b0,b1,f1,f0)
-	_quad(st,b1,b2,f2,f1)
-	_quad(st,b2,b3,f3,f2)
-	_quad(st,b3,b0,f0,f3)
-	_quad(st,f0,f1,f2,f3)
+	st.set_smooth_group(0)
+	var sides := 12
+	var back_y := -0.025
+	var front_y := 0.245
+	var back_rx := 0.125
+	var back_rz := 0.105
+	var front_rx := 0.078
+	var front_rz := 0.062
+	for i in range(sides):
+		var a0 := TAU*float(i)/float(sides)
+		var a1 := TAU*float(i+1)/float(sides)
+		var b0 := Vector3(cos(a0)*back_rx,back_y,sin(a0)*back_rz)
+		var b1 := Vector3(cos(a1)*back_rx,back_y,sin(a1)*back_rz)
+		var f0 := Vector3(cos(a0)*front_rx,front_y,sin(a0)*front_rz)
+		var f1 := Vector3(cos(a1)*front_rx,front_y,sin(a1)*front_rz)
+		_quad(st,b0,b1,f1,f0)
+		_tri(st,Vector3(0.0,front_y,0.0),f0,f1)
 	st.generate_normals()
 	return st.commit()
 
