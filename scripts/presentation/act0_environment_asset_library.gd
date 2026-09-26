@@ -6,6 +6,7 @@ const BROKEN_ARCH_HERO := "res://assets/environments/checkpoint01/broken_arch_he
 const AWAKENING_SLAB_HERO := "res://assets/environments/checkpoint01/awakening_slab_hero.obj"
 const WALL_FRAGMENT_HERO := "res://assets/environments/checkpoint01/wall_fragment_hero.obj"
 const RUBBLE_CLUSTER_HERO := "res://assets/environments/checkpoint01/rubble_cluster_hero.obj"
+const BOUNDARY_WALL_RUIN_HERO := "res://assets/environments/checkpoint01/boundary_wall_ruin_hero.obj"
 
 static var _grave_material: ShaderMaterial
 
@@ -70,11 +71,17 @@ static func has_wall_fragment_hero() -> bool:
 static func has_rubble_cluster_hero() -> bool:
 	return ResourceLoader.exists(RUBBLE_CLUSTER_HERO)
 
+static func has_boundary_wall_ruin_hero() -> bool:
+	return ResourceLoader.exists(BOUNDARY_WALL_RUIN_HERO)
+
 static func create_wall_fragment_hero() -> MeshInstance3D:
 	return _create_stone_preview_mesh(WALL_FRAGMENT_HERO,"WallFragmentHero",Color(0.070,0.073,0.080,1.0))
 
 static func create_rubble_cluster_hero() -> MeshInstance3D:
 	return _create_stone_preview_mesh(RUBBLE_CLUSTER_HERO,"RubbleClusterHero",Color(0.082,0.080,0.076,1.0))
+
+static func create_boundary_wall_ruin_hero() -> MeshInstance3D:
+	return _create_stone_preview_mesh(BOUNDARY_WALL_RUIN_HERO,"BoundaryWallRuinHero",Color(0.072,0.073,0.076,1.0))
 
 static func _create_stone_preview_mesh(path: String,node_name: String,tint: Color) -> MeshInstance3D:
 	if not ResourceLoader.exists(path):
