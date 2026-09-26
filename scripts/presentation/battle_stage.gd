@@ -275,19 +275,16 @@ func _build_debug_environment() -> void:
 		cap.position=Vector3(x,3.70,-5.20)
 		add_child(cap)
 
-	# A broken circular motif / gate is centered behind enemies.
-	var gate := MeshInstance3D.new()
-	var ring := TorusMesh.new()
-	ring.inner_radius = 1.15
-	ring.outer_radius = 1.48
-	ring.rings = 20
-	ring.ring_segments = 30
-	ring.material = _mat(Color(0.095,0.10,0.11),0.91,0.0)
-	gate.mesh = ring
-	gate.position = Vector3(2.8,2.65,-5.02)
-	gate.rotation_degrees.x = 90
-	gate.scale.y = 1.12
-	add_child(gate)
+	# Authored broken arch replaces the old TorusMesh landmark. Its real opening
+	# and asymmetric damage produce a funerary silhouette without adding clutter
+	# to the combat plane.
+	var gate := EnvironmentAssetLibrary.create_broken_arch_hero()
+	if gate != null:
+		gate.name = "ProductionPreviewBrokenArch"
+		gate.position = Vector3(2.65,0.02,-4.88)
+		gate.rotation_degrees.y = -4.0
+		gate.scale = Vector3(1.10,1.10,1.10)
+		add_child(gate)
 
 	_build_brazier(Vector3(4.25,0,-2.75))
 	_build_brazier(Vector3(-5.0,0,-3.55))
