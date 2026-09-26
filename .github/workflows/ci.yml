@@ -52,3 +52,6 @@ jobs:
       - name: Presentation orientation
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/presentation_orientation_test.gd
+      - name: Weapon proportion probe
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/weapon_proportion_probe_test.gd

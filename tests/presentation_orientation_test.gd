@@ -74,7 +74,13 @@ func _check_hound_visual_forward(stage: Node) -> int:
 		push_error("Hound model missing")
 		return 1
 	# User-verified import correction: 0° showed the model's back in the battle shot.
-	return _expect(absf(wrapf(model.rotation_degrees.y,0.0,360.0)-180.0) < 0.5,"Grave Hound dev mesh keeps camera-verified 180 degree facing correction")
+	var failures := _expect(absf(wrapf(model.rotation_degrees.y,0.0,360.0)-180.0) < 0.5,"Grave Hound dev mesh keeps camera-verified 180 degree facing correction")
+	var labels: Dictionary = stage.get("actor_labels")
+	var hound_label := labels.get("hound") as Label3D
+	failures += _expect(hound_label != null,"Grave Hound world health label exists")
+	if hound_label != null:
+		failures += _expect(hound_label.position.y >= 1.45,"Grave Hound world health label keeps user-requested head clearance")
+	return failures
 
 func _expect(condition: bool,label: String) -> int:
 	if condition:

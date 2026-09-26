@@ -10,6 +10,13 @@ const FINAL_SWORD := VisualPolicy.SWORD_SCENE
 const DEV_SHADOW := VisualPolicy.DEV_SHADOW_SCENE
 const DEV_HOUND := VisualPolicy.DEV_HOUND_SCENE
 const DEV_SWORD := VisualPolicy.DEV_SWORD_SCENE
+# User-tested debug correction. The vendor sword raw long axis is ~1.369 units
+# against ~2.053 units of Shadow height. 0.75 brings the visible starter weapon
+# to ~50% of body height instead of the previous ~61% after the 0.92 scale.
+# Production sword must replace this with an authored Grip marker + socket contract.
+const DEV_SWORD_PRESENTATION_SCALE := 0.75
+const DEV_SWORD_WRIST_OFFSET := Vector3.ZERO
+const DEV_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
 
 const META_ANIMATION_PLAYER_PATH := &"_shadowborn_animation_player_path"
 const META_SKELETON_PATH := &"_shadowborn_skeleton_path"
@@ -96,8 +103,10 @@ static func attach_sword(root: Node3D) -> void:
 
 		var sword := create_sword_prop()
 		sword.name = "ShadowbornWeapon"
-		sword.position = Vector3(0.0,0.08,0.0)
-		sword.rotation_degrees = Vector3(0.0,0.0,180.0)
+		var tier := str(sword.get_meta("shadowborn_visual_tier",""))
+		if tier == "debug_vendor":
+			sword.position = DEV_SWORD_WRIST_OFFSET
+			sword.rotation_degrees = DEV_SWORD_WRIST_ROTATION
 		socket.add_child(sword)
 		return
 
@@ -459,7 +468,7 @@ static func _add_hound_undead_details(root: Node3D) -> void:
 				torso_socket.add_child(rib)
 
 static func _prepare_sword(root: Node3D) -> void:
-	root.scale = Vector3(0.92,0.92,0.92)
+	root.scale = Vector3.ONE*DEV_SWORD_PRESENTATION_SCALE
 	_apply_rust_to_meshes(root)
 	_enable_shadows(root)
 

@@ -10,6 +10,8 @@ const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
 const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
 const CAMERA_HOME := Vector3(-6.25,4.55,8.10)
 const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)
+const SHADOW_WORLD_LABEL_HEIGHT := 2.55
+const HOUND_WORLD_LABEL_HEIGHT := 1.48
 
 var actor_nodes: Dictionary = {}
 var actor_home: Dictionary = {}
@@ -356,7 +358,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 	_face_actor_at_opponent(root,model,id)
 
 	var label := Label3D.new()
-	label.position = Vector3(0,2.55,0) if id=="shadow" else Vector3(0,1.15,0)
+	label.position = Vector3(0,SHADOW_WORLD_LABEL_HEIGHT,0) if id=="shadow" else Vector3(0,HOUND_WORLD_LABEL_HEIGHT,0)
 	label.font_size = 28
 	label.outline_size = 9
 	root.add_child(label)
