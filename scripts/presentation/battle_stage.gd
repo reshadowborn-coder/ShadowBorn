@@ -299,12 +299,13 @@ func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
 	root.rotation_degrees.x = 0.0
 	root.rotation_degrees.z = 0.0
 
-	# Quaternius Adventurer is authored opposite Godot's -Z convention.
-	# Keep that correction on the visual only; the hound uses the root facing as-is.
+	# Camera-verified dev-asset corrections. Root -Z still owns gameplay facing;
+	# these yaws only correct the imported meshes so their visible chest/head face
+	# the opponent. The previous hound yaw of 0° visibly showed its back in battle.
 	if id == "shadow":
 		model.rotation_degrees.y = 180.0
 	else:
-		model.rotation_degrees.y = 0.0
+		model.rotation_degrees.y = 180.0
 
 
 func _update_label(unit: Dictionary) -> void:
