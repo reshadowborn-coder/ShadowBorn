@@ -29,8 +29,10 @@ func _ready() -> void:
 	set_meta("shadowborn_preview_animation_carrier","temporary_vendor_rig_hidden")
 
 func _prepare_materials() -> void:
-	_body_material = _shadow_surface(Color(0.008,0.011,0.020),Color(0.030,0.060,0.125),0.10,0.94)
-	_cloth_material = _shadow_surface(Color(0.014,0.018,0.030),Color(0.040,0.072,0.140),0.12,0.98)
+	# Raise broad value separation slightly so the character reads against the
+	# cemetery without becoming a glowing silhouette. Rim remains secondary.
+	_body_material = _shadow_surface(Color(0.014,0.018,0.030),Color(0.045,0.082,0.160),0.15,0.94)
+	_cloth_material = _shadow_surface(Color(0.020,0.025,0.041),Color(0.055,0.098,0.185),0.17,0.98)
 
 	_void_material = StandardMaterial3D.new()
 	_void_material.albedo_color = Color(0.0004,0.0008,0.0025)
@@ -102,6 +104,8 @@ func _build_original_silhouette(skeleton: Skeleton3D) -> void:
 	_attach_mesh(skeleton,"Head","ShadowHood",_make_hood_mesh(),Vector3(0.0,0.045,0.0),Vector3.ZERO,_cloth_material)
 	_attach_mesh(skeleton,"Head","ShadowFaceVoid",_make_face_void_mesh(),Vector3(0.0,0.035,0.0),Vector3.ZERO,_void_material)
 	_attach_mesh(skeleton,"Head","ShadowHoodTail",_make_hood_tail_mesh(),Vector3(0.0,0.06,-0.03),Vector3.ZERO,_cloth_material)
+	_attach_mesh(skeleton,"Head","ShadowEyeL",_make_diamond_mesh(0.028,0.008),Vector3(-0.045,0.006,0.191),Vector3.ZERO,_accent_material)
+	_attach_mesh(skeleton,"Head","ShadowEyeR",_make_diamond_mesh(0.028,0.008),Vector3(0.045,0.006,0.191),Vector3.ZERO,_accent_material)
 
 	for side in ["L","R"]:
 		_attach_segment(skeleton,"UpperArm.%s" % side,"ShadowUpperArm_%s" % side,0.235,0.078,0.068,0.072,0.060,-0.025,_body_material)
@@ -158,10 +162,10 @@ func _make_cowl_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var p := [
-		Vector3(-0.39,0.07,0.10),Vector3(0.38,0.06,0.10),
-		Vector3(0.31,-0.10,0.16),Vector3(-0.34,-0.09,0.16),
-		Vector3(-0.36,0.05,-0.13),Vector3(0.34,0.04,-0.14),
-		Vector3(0.27,-0.12,-0.17),Vector3(-0.30,-0.11,-0.17)
+		Vector3(-0.34,0.07,0.10),Vector3(0.33,0.06,0.10),
+		Vector3(0.27,-0.10,0.16),Vector3(-0.29,-0.09,0.16),
+		Vector3(-0.31,0.05,-0.13),Vector3(0.29,0.04,-0.14),
+		Vector3(0.23,-0.12,-0.17),Vector3(-0.26,-0.11,-0.17)
 	]
 	_quad(st,p[0],p[1],p[2],p[3])
 	_quad(st,p[5],p[4],p[7],p[6])
