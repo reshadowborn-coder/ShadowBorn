@@ -15,6 +15,9 @@ var sequence_done := false
 var skipping := false
 var stone_material_shared: ShaderMaterial
 
+const SWORD_GROUND_HILT := Vector3(-1.18,0.10,-2.20)
+const SWORD_GROUND_BLADE_DIR := Vector3(0.72,0.0,-0.69)
+
 func _ready() -> void:
 	_build_world()
 	_build_shadow_and_sword()
@@ -146,9 +149,19 @@ func _build_shadow_and_sword() -> void:
 	CharacterFactory.pose_seated_corpse(shadow_visual)
 
 	sword_prop = CharacterFactory.create_sword_prop()
-	sword_prop.position = Vector3(-0.85,0.10,-1.95)
-	sword_prop.rotation_degrees = Vector3(88,-18,26)
+	# Sword mesh origin sits near the hilt and its local +Y runs along the blade.
+	# Keep the hilt close to Shadow's right-side reach and point the blade away
+	# from both the body and the camera so the pickup cannot read backwards.
+	sword_prop.position = SWORD_GROUND_HILT
+	sword_prop.transform = Transform3D(_sword_ground_basis(SWORD_GROUND_BLADE_DIR),sword_prop.position)
 	add_child(sword_prop)
+
+func _sword_ground_basis(blade_direction: Vector3) -> Basis:
+	var y_axis := blade_direction.normalized()
+	var z_axis := Vector3.UP
+	var x_axis := y_axis.cross(z_axis).normalized()
+	z_axis = x_axis.cross(y_axis).normalized()
+	return Basis(x_axis,y_axis,z_axis)
 
 func _build_motes() -> void:
 	# One GPU emitter replaces dozens of script-updated scene nodes. The motes are
@@ -280,12 +293,12 @@ func _play_sequence() -> void:
 
 	subtitle.text = "A blade remembers its hand."
 	CharacterFactory.play_pickup(shadow_visual,1.05)
+	# The world sword stays physically planted until hand contact. Moving and
+	# rotating the prop toward the actor made the old shot look like Shadow was
+	# grabbing the blade backwards from the camera.
 	var pickup := create_tween()
-	pickup.set_parallel(true)
-	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.44),0.62).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	pickup.tween_property(sword_prop,"position",Vector3(-1.44,0.98,-2.36),0.62).set_trans(Tween.TRANS_QUAD)
-	pickup.tween_property(sword_prop,"rotation_degrees",Vector3(0,0,-10),0.62)
-	await get_tree().create_timer(0.50).timeout
+	pickup.tween_property(shadow_root,"position",Vector3(-1.54,0,-2.44),0.52).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	await get_tree().create_timer(0.46).timeout
 	CharacterFactory.attach_sword(shadow_visual)
 	sword_prop.visible = false
 	await get_tree().create_timer(0.18).timeout
