@@ -17,6 +17,7 @@ const DEV_SWORD := VisualPolicy.DEV_SWORD_SCENE
 const DEV_SWORD_PRESENTATION_SCALE := 0.75
 const DEV_SWORD_WRIST_OFFSET := Vector3.ZERO
 const DEV_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
+const PRODUCTION_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
 
 const META_ANIMATION_PLAYER_PATH := &"_shadowborn_animation_player_path"
 const META_SKELETON_PATH := &"_shadowborn_skeleton_path"
@@ -104,11 +105,23 @@ static func attach_sword(root: Node3D) -> void:
 		var sword := create_sword_prop()
 		sword.name = "ShadowbornWeapon"
 		var tier := str(sword.get_meta("shadowborn_visual_tier",""))
-		if tier == "debug_vendor":
+		if tier == "production":
+			var grip := sword.find_child("Grip",true,false) as Node3D
+			if grip == null:
+				push_error("Production Shadow Sword must provide authored Grip marker")
+			else:
+				var mount := Node3D.new()
+				mount.name = "WeaponGripMount"
+				mount.rotation_degrees = PRODUCTION_SWORD_WRIST_ROTATION
+				socket.add_child(mount)
+				sword.transform = grip.transform.affine_inverse()
+				mount.add_child(sword)
+				return
+		elif tier == "debug_vendor":
 			sword.position = DEV_SWORD_WRIST_OFFSET
 			sword.rotation_degrees = DEV_SWORD_WRIST_ROTATION
-		socket.add_child(sword)
-		return
+			socket.add_child(sword)
+			return
 
 	var fallback_socket := Node3D.new()
 	fallback_socket.name = "WeaponSocket"
