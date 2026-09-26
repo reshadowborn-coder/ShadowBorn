@@ -92,11 +92,11 @@ func _check_shadow_sword_direction(stage: Node) -> int:
 		var body_screen := camera.unproject_position(shadow_root.global_position+Vector3(0.0,1.05,0.0))
 		var grip_screen := camera.unproject_position(grip.global_position)
 		var tip_screen := camera.unproject_position(tip.global_position)
-		var hand_out := grip_screen-body_screen
 		var blade_out := tip_screen-grip_screen
-		var outward_dot := hand_out.normalized().dot(blade_out.normalized()) if hand_out.length() > 0.001 and blade_out.length() > 0.001 else -1.0
+		var grip_radius := grip_screen.distance_to(body_screen)
+		var tip_radius := tip_screen.distance_to(body_screen)
 		failures += _expect(blade_out.length() >= 24.0,"Production starter sword projects to a readable blade length in the battle camera")
-		failures += _expect(outward_dot > 0.0,"Production starter sword BladeTip continues outward from the weapon hand instead of folding across Shadow")
+		failures += _expect(tip_radius >= grip_radius+16.0,"Production starter sword BladeTip clears the projected Shadow body instead of folding back across the silhouette")
 	return failures
 
 func _check_hound_visual_forward(stage: Node) -> int:
