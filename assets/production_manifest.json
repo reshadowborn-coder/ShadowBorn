@@ -279,8 +279,27 @@
       "status": "missing"
     },
     "shadow_sword": {
-      "path": "res://assets/weapons/shadow_sword/shadow_sword.glb",
-      "status": "missing"
+      "path": "res://assets/weapons/shadow_sword/shadow_sword.tscn",
+      "status": "authored_production_preview_integrated_pending_user_screenshot",
+      "source_files": [
+        "res://assets/weapons/shadow_sword/starter_sword_blade.obj",
+        "res://assets/weapons/shadow_sword/starter_sword_iron.obj",
+        "res://assets/weapons/shadow_sword/starter_sword_grip.obj"
+      ],
+      "contract": {
+        "authored_length_m": 0.978,
+        "grip_marker": "Grip",
+        "blade_tip_marker": "BladeTip",
+        "grip_origin": "identity_at_hand_center",
+        "target_shadow_height_ratio": "0.45-0.52"
+      },
+      "acceptance": [
+        "starter sword is proportional in gameplay camera",
+        "Grip aligns to Wrist.R without corrective translation",
+        "BladeTip direction remains coherent through idle/A1/A2/pickup",
+        "materials read as worn steel / oxidized iron / dark leather",
+        "user screenshot approves silhouette before production acceptance"
+      ]
     },
     "awakening_environment": {
       "path": "res://assets/environments/checkpoint01/awakening_environment.tscn",
