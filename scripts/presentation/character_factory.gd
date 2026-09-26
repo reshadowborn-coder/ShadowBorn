@@ -17,6 +17,7 @@ const DEV_SWORD := VisualPolicy.DEV_SWORD_SCENE
 const DEV_SWORD_PRESENTATION_SCALE := 0.75
 const DEV_SWORD_WRIST_OFFSET := Vector3.ZERO
 const DEV_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
+const PRODUCTION_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
 
 const META_ANIMATION_PLAYER_PATH := &"_shadowborn_animation_player_path"
 const META_SKELETON_PATH := &"_shadowborn_skeleton_path"
