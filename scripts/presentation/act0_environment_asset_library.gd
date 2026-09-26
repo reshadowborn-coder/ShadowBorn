@@ -2,6 +2,7 @@ class_name Act0EnvironmentAssetLibrary
 extends RefCounted
 
 const GRAVE_MARKER_HERO := "res://assets/environments/checkpoint01/grave_marker_hero.obj"
+const BROKEN_ARCH_HERO := "res://assets/environments/checkpoint01/broken_arch_hero.obj"
 
 static var _grave_material: ShaderMaterial
 
@@ -24,6 +25,23 @@ static func create_grave_marker_hero() -> MeshInstance3D:
 	instance.set_meta("shadowborn_visual_source",GRAVE_MARKER_HERO)
 	instance.material_override = _grave_stone_material()
 	instance.set_instance_shader_parameter("grave_tint",Color(0.105,0.102,0.098,1.0))
+	return instance
+
+static func create_broken_arch_hero() -> MeshInstance3D:
+	if not ResourceLoader.exists(BROKEN_ARCH_HERO):
+		return null
+	var mesh := load(BROKEN_ARCH_HERO) as Mesh
+	if mesh == null:
+		push_error("Failed to load production-preview broken arch mesh: %s" % BROKEN_ARCH_HERO)
+		return null
+	var instance := MeshInstance3D.new()
+	instance.name = "BrokenArchHero"
+	instance.mesh = mesh
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	instance.set_meta("shadowborn_visual_tier","production_preview")
+	instance.set_meta("shadowborn_visual_source",BROKEN_ARCH_HERO)
+	instance.material_override = _grave_stone_material()
+	instance.set_instance_shader_parameter("grave_tint",Color(0.082,0.083,0.086,1.0))
 	return instance
 
 static func _grave_stone_material() -> ShaderMaterial:
