@@ -9,7 +9,8 @@ const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environ
 const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
 const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
 const CAMERA_HOME := Vector3(-5.05,4.00,6.55)
-const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)\nconst CAMERA_FOV := 34.0
+const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)
+const CAMERA_FOV := 34.0
 const SHADOW_WORLD_LABEL_HEIGHT := 2.55
 const HOUND_WORLD_LABEL_HEIGHT := 1.48
 
