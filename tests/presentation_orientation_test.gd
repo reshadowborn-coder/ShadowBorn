@@ -28,6 +28,7 @@ func _run() -> void:
 	})
 	await process_frame
 	failures += _check_hound_visual_forward(battle)
+	failures += _check_shadow_sword_direction(battle)
 	battle.queue_free()
 	await process_frame
 
@@ -57,6 +58,29 @@ func _check_sword_pickup_staging(stage: Node) -> int:
 	failures += _expect(blade_dir.dot(camera_to_hilt) > 0.25,"rusty sword blade points away from the camera")
 	failures += _expect(hilt_distance < tip_distance,"rusty sword hilt is closer to Shadow than blade tip")
 	failures += _expect(absf(blade_dir.y) < 0.08,"rusty sword lies flat before pickup")
+	return failures
+
+func _check_shadow_sword_direction(stage: Node) -> int:
+	var actors: Dictionary = stage.get("actor_nodes")
+	var shadow_root := actors.get("shadow") as Node3D
+	var hound_root := actors.get("hound") as Node3D
+	if shadow_root == null or hound_root == null:
+		push_error("Sword direction regression: battle actors missing")
+		return 1
+	var sword := shadow_root.find_child("ShadowbornWeapon",true,false) as Node3D
+	if sword == null:
+		push_error("Sword direction regression: ShadowbornWeapon missing")
+		return 1
+	var grip := sword.find_child("Grip",true,false) as Node3D
+	var tip := sword.find_child("BladeTip",true,false) as Node3D
+	if grip == null or tip == null:
+		push_error("Sword direction regression: Grip/BladeTip markers missing")
+		return 1
+	var blade_dir := (tip.global_position-grip.global_position).normalized()
+	var opponent_dir := (hound_root.global_position-grip.global_position).normalized()
+	var failures := 0
+	failures += _expect(CharacterFactory.PRODUCTION_SWORD_WRIST_ROTATION.is_equal_approx(Vector3(0.0,0.0,-90.0)),"Production starter sword keeps camera-verified -90 degree Wrist.R mount")
+	failures += _expect(blade_dir.dot(opponent_dir) > 0.35,"Production starter sword BladeTip leaves the hand generally toward the opponent")
 	return failures
 
 func _check_hound_visual_forward(stage: Node) -> int:
