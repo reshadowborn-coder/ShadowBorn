@@ -36,10 +36,10 @@ func _run() -> void:
 	await process_frame
 
 	if failures == 0:
-		print("Shadowborn presentation budget: PASS")
+		print("Shadowborn DEBUG presentation performance budget: PASS (not a visual-quality gate)")
 		quit(0)
 	else:
-		push_error("Shadowborn presentation budget: %d failure(s)" % failures)
+		push_error("Shadowborn DEBUG presentation performance budget: %d failure(s)" % failures)
 		quit(1)
 
 func _count_shadowed_lights(node: Node) -> int:
