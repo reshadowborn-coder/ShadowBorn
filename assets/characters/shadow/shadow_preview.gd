@@ -31,8 +31,8 @@ func _ready() -> void:
 func _prepare_materials() -> void:
 	# Raise broad value separation slightly so the character reads against the
 	# cemetery without becoming a glowing silhouette. Rim remains secondary.
-	_body_material = _shadow_surface(Color(0.014,0.018,0.030),Color(0.045,0.082,0.160),0.15,0.94)
-	_cloth_material = _shadow_surface(Color(0.020,0.025,0.041),Color(0.055,0.098,0.185),0.17,0.98)
+	_body_material = _shadow_surface(Color(0.020,0.024,0.036),Color(0.045,0.082,0.160),0.14,0.94)
+	_cloth_material = _shadow_surface(Color(0.026,0.031,0.048),Color(0.055,0.098,0.185),0.16,0.98)
 
 	_void_material = StandardMaterial3D.new()
 	_void_material.albedo_color = Color(0.0004,0.0008,0.0025)
@@ -125,16 +125,16 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	_append_skinned_chain(st,skeleton,
 		["Hips","Torso","Chest","Neck"],
 		[0.18,0.205,0.225,0.095],
-		[0.12,0.14,0.150,0.080],10)
+		[0.12,0.14,0.150,0.080],14)
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Chest","UpperArm.%s" % side,"LowerArm.%s" % side,"Wrist.%s" % side],
 			[0.125,0.085,0.064,0.043],
-			[0.095,0.070,0.052,0.038],9)
+			[0.095,0.070,0.052,0.038],12)
 		_append_skinned_chain(st,skeleton,
 			["Hips","UpperLeg.%s" % side,"LowerLeg.%s" % side,"Foot.%s" % side],
 			[0.125,0.105,0.075,0.050],
-			[0.098,0.080,0.060,0.042],9)
+			[0.098,0.080,0.060,0.042],12)
 
 	st.generate_normals()
 	var mesh := st.commit()
@@ -288,10 +288,10 @@ func _make_cowl_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var p := [
-		Vector3(-0.27,0.065,0.095),Vector3(0.25,0.055,0.095),
-		Vector3(0.20,-0.115,0.145),Vector3(-0.235,-0.145,0.150),
-		Vector3(-0.25,0.045,-0.125),Vector3(0.23,0.035,-0.130),
-		Vector3(0.18,-0.145,-0.155),Vector3(-0.22,-0.185,-0.160)
+		Vector3(-0.235,0.055,0.090),Vector3(0.220,0.050,0.090),
+		Vector3(0.180,-0.105,0.130),Vector3(-0.205,-0.125,0.135),
+		Vector3(-0.220,0.040,-0.115),Vector3(0.205,0.035,-0.120),
+		Vector3(0.160,-0.125,-0.140),Vector3(-0.195,-0.150,-0.145)
 	]
 	_quad(st,p[0],p[1],p[2],p[3])
 	_quad(st,p[5],p[4],p[7],p[6])
@@ -327,13 +327,13 @@ func _make_hood_mesh() -> ArrayMesh:
 	# deliberately leaving the +Z face sector empty. This keeps a real recessed
 	# void and removes the previous helmet-like pyramid crown.
 	var levels := [
-		[Vector3(0.0,-0.205,-0.015),0.155,0.135],
-		[Vector3(0.0,-0.080,-0.020),0.190,0.165],
-		[Vector3(0.0,0.070,-0.025),0.205,0.180],
-		[Vector3(-0.005,0.185,-0.035),0.170,0.145],
-		[Vector3(-0.015,0.255,-0.050),0.105,0.090]
+		[Vector3(0.0,-0.175,-0.010),0.145,0.125],
+		[Vector3(0.0,-0.060,-0.018),0.175,0.150],
+		[Vector3(0.0,0.060,-0.028),0.190,0.165],
+		[Vector3(-0.010,0.155,-0.045),0.158,0.132],
+		[Vector3(-0.020,0.215,-0.060),0.090,0.075]
 	]
-	var segments := 14
+	var segments := 18
 	var start_angle := deg_to_rad(135.0)
 	var span := deg_to_rad(270.0)
 	var rings: Array = []
@@ -355,7 +355,7 @@ func _make_hood_mesh() -> ArrayMesh:
 			_quad(st,a_ring[i],a_ring[i+1],b_ring[i+1],b_ring[i])
 
 	# Soft rear crown cap; front remains open for the void plane.
-	var top_center := Vector3(-0.02,0.285,-0.065)
+	var top_center := Vector3(-0.035,0.240,-0.080)
 	var last_ring: Array = rings[rings.size()-1]
 	for i in range(segments):
 		_tri(st,last_ring[i],last_ring[i+1],top_center)
@@ -366,10 +366,10 @@ func _make_hood_mesh() -> ArrayMesh:
 func _make_face_void_mesh() -> ArrayMesh:
 	var st:=SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var a:=Vector3(-0.118,0.070,0.188)
-	var b:=Vector3(0.118,0.070,0.188)
-	var c:=Vector3(0.100,-0.145,0.188)
-	var d:=Vector3(-0.100,-0.145,0.188)
+	var a:=Vector3(-0.105,0.060,0.184)
+	var b:=Vector3(0.105,0.060,0.184)
+	var c:=Vector3(0.088,-0.125,0.184)
+	var d:=Vector3(-0.088,-0.125,0.184)
 	_quad(st,a,b,c,d)
 	st.generate_normals()
 	return st.commit()
