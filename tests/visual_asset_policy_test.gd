@@ -7,6 +7,7 @@ func _init() -> void:
 	var failures := 0
 	failures += _check_path_contract()
 	failures += _check_shadow_preview_contract()
+	failures += _check_hound_preview_contract()
 	failures += _check_factory_provenance("Shadow",Policy.SHADOW_SCENE,func(): return Factory.create_shadow(false))
 	failures += _check_factory_provenance("Grave Hound",Policy.HOUND_SCENE,func(): return Factory.create_hound())
 	failures += _check_factory_provenance("Shadow Sword",Policy.SWORD_SCENE,func(): return Factory.create_sword_prop())
@@ -66,6 +67,25 @@ func _expect(condition: bool,label: String) -> int:
 	push_error("FAIL: "+label)
 	return 1
 
+func _check_hound_preview_contract() -> int:
+	if ResourceLoader.exists(Policy.HOUND_SCENE):
+		return 0
+	var failures := 0
+	failures += _expect(ResourceLoader.exists(Policy.HOUND_PREVIEW_SCENE),"Grave Hound production-preview scene exists outside the vendor namespace")
+	failures += _expect(not ("/vendor/" in Policy.HOUND_PREVIEW_SCENE),"Grave Hound production-preview path is project-owned")
+	var hound := Factory.create_hound()
+	if hound == null:
+		push_error("Grave Hound preview contract: factory returned null")
+		return failures+1
+	failures += _expect(str(hound.get_meta("shadowborn_visual_tier","")) == "production_preview","Grave Hound factory exposes production-preview provenance while final GLB is missing")
+	failures += _expect(str(hound.get_meta("shadowborn_visual_source","")) == Policy.HOUND_PREVIEW_SCENE,"Grave Hound production-preview source is explicit")
+	failures += _expect(str(hound.get_meta("shadowborn_visible_tier","")) == "production_preview_original","Grave Hound preview declares original visible geometry")
+	failures += _expect(str(hound.get_meta("shadowborn_preview_contract","")) == "vendor_quadruped_rig_hidden_by_preview_scene","Grave Hound preview declares temporary hidden quadruped carrier")
+	failures += _expect(hound.find_child("AnimationCarrier",true,false) != null,"Grave Hound preview retains temporary animation carrier")
+	failures += _expect(hound.find_child("HeadTop",true,false) != null,"Grave Hound preview exposes authored HeadTop anchor")
+	hound.free()
+	return failures
+
 func _check_factory_provenance(label: String,production_path: String,builder: Callable) -> int:
 	var node := builder.call() as Node3D
 	if node == null:
@@ -79,6 +99,8 @@ func _check_factory_provenance(label: String,production_path: String,builder: Ca
 		ok = tier == "production" and source == production_path
 	elif label == "Shadow" and ResourceLoader.exists(Policy.SHADOW_PREVIEW_SCENE):
 		ok = tier == "production_preview" and source == Policy.SHADOW_PREVIEW_SCENE
+	elif label == "Grave Hound" and ResourceLoader.exists(Policy.HOUND_PREVIEW_SCENE):
+		ok = tier == "production_preview" and source == Policy.HOUND_PREVIEW_SCENE
 	else:
 		ok = tier in ["debug_vendor","debug_emergency"] and source != production_path
 	if not ok:
