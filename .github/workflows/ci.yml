@@ -34,6 +34,9 @@ jobs:
       - name: Material pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/material_pipeline_test.gd
+      - name: Environment mesh pipeline
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/environment_mesh_pipeline_test.gd
       - name: Visual asset policy
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/visual_asset_policy_test.gd
