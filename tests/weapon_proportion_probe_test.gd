@@ -17,7 +17,8 @@ func _run() -> void:
 	var shadow_height: float = shadow_bounds.size.y
 	var sword_length: float = maxf(sword_bounds.size.x,maxf(sword_bounds.size.y,sword_bounds.size.z))
 	var raw_ratio: float = sword_length/maxf(shadow_height,0.0001)
-	var presented_ratio: float = sword_length*CharacterFactory.DEV_SWORD_PRESENTATION_SCALE/maxf(shadow_height,0.0001)
+	var sword_tier := str(sword.get_meta("shadowborn_visual_tier",""))
+	var presented_ratio: float = raw_ratio if sword_tier == "production" else sword_length*CharacterFactory.DEV_SWORD_PRESENTATION_SCALE/maxf(shadow_height,0.0001)
 
 	print("WEAPON_PROPORTION_PROBE shadow_bounds=",shadow_bounds)
 	print("WEAPON_PROPORTION_PROBE sword_bounds=",sword_bounds)
@@ -30,9 +31,25 @@ func _run() -> void:
 	if sword_length <= 0.2:
 		push_error("Sword imported bounds are unexpectedly small/nonexistent")
 		failures += 1
-	if presented_ratio < 0.47 or presented_ratio > 0.53:
-		push_error("Debug starter sword/body ratio escaped the 47-53%% visual target: %.4f" % presented_ratio)
+	if presented_ratio < 0.45 or presented_ratio > 0.52:
+		push_error("Starter sword/body ratio escaped the 45-52%% visual target: %.4f" % presented_ratio)
 		failures += 1
+
+	if sword_tier == "production":
+		var grip := sword.find_child("Grip",true,false) as Node3D
+		var blade_tip := sword.find_child("BladeTip",true,false) as Node3D
+		if grip == null:
+			push_error("Production starter sword is missing authored Grip marker")
+			failures += 1
+		elif grip.position.length() > 0.001:
+			push_error("Production Grip marker is not at the authored hand origin: %s" % grip.position)
+			failures += 1
+		if blade_tip == null:
+			push_error("Production starter sword is missing BladeTip marker")
+			failures += 1
+		elif blade_tip.position.y < 0.78 or blade_tip.position.y > 0.86:
+			push_error("Production BladeTip marker escaped expected authored length: %s" % blade_tip.position)
+			failures += 1
 
 	var armed_shadow: Node3D = CharacterFactory.create_shadow(true)
 	root.add_child(armed_shadow)
@@ -43,7 +60,18 @@ func _run() -> void:
 		failures += 1
 	else:
 		var tier := str(attached.get_meta("shadowborn_visual_tier",""))
-		if tier == "debug_vendor":
+		if tier == "production":
+			var mount := attached.get_parent() as Node3D
+			if mount == null or mount.name != "WeaponGripMount":
+				push_error("Production sword is not attached through WeaponGripMount")
+				failures += 1
+			elif not mount.rotation_degrees.is_equal_approx(CharacterFactory.PRODUCTION_SWORD_WRIST_ROTATION):
+				push_error("Production sword mount rotation drifted: %s" % mount.rotation_degrees)
+				failures += 1
+			if attached.position.length() > 0.001:
+				push_error("Production sword root is not aligned to authored Grip: %s" % attached.position)
+				failures += 1
+		elif tier == "debug_vendor":
 			if attached.position.length() > 0.001:
 				push_error("Debug sword grip root is offset from Wrist.R: %s" % attached.position)
 				failures += 1
