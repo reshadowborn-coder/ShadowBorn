@@ -95,7 +95,6 @@ func _build_original_silhouette(skeleton: Skeleton3D) -> void:
 
 	# Identity layers: short cowl, asymmetric rear drape and split hip cloth.
 	_attach_mesh(skeleton,"Chest","ShadowCowl",_make_cowl_mesh(),Vector3(0.0,0.01,0.0),Vector3.ZERO,_cloth_material)
-	_attach_mesh(skeleton,"Chest","ShadowBackDrape",_make_back_drape_mesh(),Vector3(0.0,-0.02,-0.04),Vector3.ZERO,_cloth_material)
 	_attach_mesh(skeleton,"Hips","ShadowTabardBack",_make_tabard_mesh(-1.0),Vector3(0.0,0.05,0.0),Vector3.ZERO,_cloth_material)
 	_attach_mesh(skeleton,"Hips","ShadowTabardFront",_make_tabard_mesh(1.0),Vector3(0.0,0.04,0.0),Vector3.ZERO,_cloth_material)
 
