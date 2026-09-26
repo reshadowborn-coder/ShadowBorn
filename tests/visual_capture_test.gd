@@ -51,35 +51,6 @@ func _run() -> void:
 	quit(0)
 
 
-func _capture_battle_camera_study() -> void:
-	var candidates := [
-		["cam_a_closer",Vector3(-5.05,4.00,6.55),34.0],
-		["cam_b_raid",Vector3(-4.55,3.65,6.10),32.0],
-		["cam_c_low_close",Vector3(-4.70,3.35,5.85),35.0]
-	]
-	for candidate in candidates:
-		var battle := BattleStageScript.new()
-		root.add_child(battle)
-		await process_frame
-		battle.apply_state({
-			"speed":1.0,
-			"units":[
-				{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
-				{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
-			]
-		})
-		await create_timer(0.20).timeout
-		var camera := battle.get("battle_camera") as Camera3D
-		var target: Vector3 = battle.get("camera_target")
-		if camera != null:
-			camera.position = candidate[1]
-			camera.fov = float(candidate[2])
-			camera.look_at(target,Vector3.UP)
-			await process_frame
-			await _capture(OUT_DIR+"/"+str(candidate[0])+".png")
-		battle.queue_free()
-		await process_frame
-
 func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 	var battle := BattleStageScript.new()
 	root.add_child(battle)
