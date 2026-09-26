@@ -19,6 +19,7 @@ var presentation_speed := 1.0
 # only allocate lightweight MeshInstance3D nodes and tweens on impact.
 var vfx_meshes: Dictionary = {}
 var vfx_materials: Dictionary = {}
+var stone_material_shared: ShaderMaterial
 
 func _ready() -> void:
 	_prepare_vfx_resources()
@@ -510,25 +511,45 @@ void fragment() {
 	mat.shader = shader
 	return mat
 
-func _stone_material(base_color: Color) -> ShaderMaterial:
+func _stone_material() -> ShaderMaterial:
+	if stone_material_shared != null:
+		return stone_material_shared
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
-uniform vec4 base_color : source_color = vec4(0.08,0.085,0.095,1.0);
+render_mode diffuse_burley, specular_schlick_ggx;
+instance uniform vec4 base_color : source_color = vec4(0.08,0.085,0.095,1.0);
+
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34,456.21));
+	p += dot(p,p+45.32);
+	return fract(p.x*p.y);
+}
+
 void fragment() {
-	float grain = 0.5 + 0.5 * sin(UV.x*83.0 + sin(UV.y*61.0)*2.4);
-	float stain = 0.5 + 0.5 * sin(UV.y*17.0 + UV.x*9.0);
-	vec3 col = base_color.rgb * mix(0.72,1.10,grain*0.45);
-	col *= mix(0.80,1.02,stain*0.32);
+	vec2 uv = UV;
+	float grain = 0.5 + 0.5 * sin(uv.x*83.0 + sin(uv.y*61.0)*2.1);
+	float secondary = 0.5 + 0.5 * sin(uv.y*131.0 + uv.x*23.0);
+	float speck = hash21(floor(uv*vec2(24.0,29.0)));
+	float damp = smoothstep(0.48,0.90,secondary*0.62+speck*0.38);
+	float crack_a = abs(sin(uv.x*21.0+sin(uv.y*8.0)*1.6));
+	float crack_b = abs(sin(uv.y*16.0+sin(uv.x*11.0)*1.2));
+	float crack = 1.0-smoothstep(0.026,0.086,min(crack_a,crack_b));
+	float moss_noise = 0.5+0.5*sin(uv.x*18.0-uv.y*25.0+grain*2.0);
+	float moss = smoothstep(0.80,0.95,moss_noise)*(0.28+0.72*damp);
+
+	vec3 col = base_color.rgb*mix(0.73,1.09,grain*0.43);
+	col *= mix(0.84,0.99,damp);
+	col *= mix(1.0,0.56,crack*0.48);
+	col = mix(col,vec3(0.030,0.052,0.035),moss*0.26);
 	ALBEDO = col;
-	ROUGHNESS = 0.94;
+	ROUGHNESS = clamp(0.87+damp*0.10+crack*0.03-speck*0.03,0.82,1.0);
 	METALLIC = 0.0;
 }
 """
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	mat.set_shader_parameter("base_color",base_color)
-	return mat
+	stone_material_shared = ShaderMaterial.new()
+	stone_material_shared.shader = shader
+	return stone_material_shared
 
 func _build_autumn_leaves() -> void:
 	var palettes := [
@@ -570,8 +591,9 @@ func _box_node(size: Vector3,color: Color) -> MeshInstance3D:
 	var n := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	mesh.material = _stone_material(color)
+	mesh.material = _stone_material()
 	n.mesh = mesh
+	n.set_instance_shader_parameter("base_color",color)
 	return n
 
 func _add_box(pos: Vector3,size: Vector3,color: Color) -> void:
