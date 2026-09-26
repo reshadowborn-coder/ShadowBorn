@@ -14,6 +14,7 @@ func _run() -> void:
 	failures += _expect(EnvironmentAssetLibrary.has_grave_marker_hero(),"original grave marker mesh is available")
 	failures += _expect(EnvironmentAssetLibrary.has_wall_fragment_hero(),"authored wall fragment mesh is available")
 	failures += _expect(EnvironmentAssetLibrary.has_rubble_cluster_hero(),"authored rubble cluster mesh is available")
+	failures += _expect(EnvironmentAssetLibrary.has_boundary_wall_ruin_hero(),"authored boundary wall ruin mesh is available")
 
 	var awakening := AwakeningStageScript.new()
 	root.add_child(awakening)
@@ -51,9 +52,12 @@ func _check_stage_preview_assets(stage: Node,label: String,min_grave_markers: in
 	if label == "Battle":
 		var wall_count := _count_preview_assets(stage,EnvironmentAssetLibrary.WALL_FRAGMENT_HERO)
 		var rubble_count := _count_preview_assets(stage,EnvironmentAssetLibrary.RUBBLE_CLUSTER_HERO)
+		var boundary_count := _count_preview_assets(stage,EnvironmentAssetLibrary.BOUNDARY_WALL_RUIN_HERO)
 		failures += _expect(wall_count >= 3,"Battle uses authored wall fragments instead of one flat background BoxMesh (found %d)" % wall_count)
 		failures += _expect(rubble_count >= 3,"Battle uses authored rubble clusters at the wall base (found %d)" % rubble_count)
+		failures += _expect(boundary_count >= 8,"Battle side borders use authored boundary ruins instead of repeated BoxMesh slabs (found %d)" % boundary_count)
 		failures += _expect(stage.find_child("ProductionPreviewWallFragment_00",true,false) != null,"Battle wall preview has stable named geometry for screenshot regression")
+		failures += _expect(stage.find_child("ProductionPreviewBoundaryRuin_00",true,false) != null,"Battle boundary preview has stable named geometry for screenshot regression")
 	return failures
 
 func _count_preview_assets(node: Node,source_path: String) -> int:

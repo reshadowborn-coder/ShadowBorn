@@ -181,13 +181,15 @@
       ],
       "runtime_paths": [
         "res://assets/environments/checkpoint01/wall_fragment_hero.obj",
-        "res://assets/environments/checkpoint01/rubble_cluster_hero.obj"
+        "res://assets/environments/checkpoint01/rubble_cluster_hero.obj",
+        "res://assets/environments/checkpoint01/boundary_wall_ruin_hero.obj"
       ],
       "runtime_preview_targets": [
         "Grave Hound battle rear masonry silhouette",
-        "Grave Hound battle wall-base rubble"
+        "Grave Hound battle wall-base rubble",
+        "Grave Hound battle side boundary masonry"
       ],
-      "acceptance_note": "Replaces the former giant flat background BoxMesh in the debug preview. Still requires gameplay screenshot/user review and final PBR wall material before production acceptance."
+      "acceptance_note": "Rear flat wall and repeated side-border BoxMesh slabs are now replaced in the debug preview by authored masonry wall/rubble/boundary modules. Still requires gameplay screenshot/user review and final PBR wall material before production acceptance."
     },
     {
       "id": "TEMPLE_EXTERIOR_KIT",
