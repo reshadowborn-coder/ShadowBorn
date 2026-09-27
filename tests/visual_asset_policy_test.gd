@@ -3,6 +3,7 @@ extends SceneTree
 const Policy = preload("res://scripts/presentation/visual_asset_policy.gd")
 const Factory = preload("res://scripts/presentation/character_factory.gd")
 const ShadowPreview = preload("res://assets/characters/shadow/shadow_preview.gd")
+const HoundPreview = preload("res://assets/characters/grave_hound/grave_hound_preview.gd")
 
 func _init() -> void:
 	var failures := 0
@@ -78,6 +79,8 @@ func _check_hound_preview_contract() -> int:
 	var failures := 0
 	failures += _expect(ResourceLoader.exists(Policy.HOUND_PREVIEW_SCENE),"Grave Hound production-preview scene exists outside the vendor namespace")
 	failures += _expect(not ("/vendor/" in Policy.HOUND_PREVIEW_SCENE),"Grave Hound production-preview path is project-owned")
+	failures += _expect(ResourceLoader.exists(HoundPreview.AUTHORED_HEAD_MESH),"Grave Hound authored head mesh exists")
+	failures += _expect(not ("/vendor/" in HoundPreview.AUTHORED_HEAD_MESH),"Grave Hound authored head is project-owned, not vendor geometry")
 	var hound := Factory.create_hound()
 	if hound == null:
 		push_error("Grave Hound preview contract: factory returned null")
