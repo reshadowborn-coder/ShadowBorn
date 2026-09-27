@@ -116,7 +116,11 @@ func _check_hound_visual_forward(stage: Node) -> int:
 		push_error("Hound model missing")
 		return 1
 	# User-verified import correction: 0° showed the model's back in the battle shot.
-	return _expect(absf(wrapf(model.rotation_degrees.y,0.0,360.0)-180.0) < 0.5,"Grave Hound dev mesh keeps camera-verified 180 degree facing correction")
+	var failures := 0
+	failures += _expect(absf(wrapf(model.rotation_degrees.y,0.0,360.0)-180.0) < 0.5,"Grave Hound dev mesh keeps camera-verified 180 degree facing correction")
+	failures += _expect(model.scale.y >= 0.60,"Grave Hound keeps waist-high vertical scale")
+	failures += _expect(model.scale.z <= model.scale.x*0.82,"Grave Hound preview compresses imported forward length to avoid stretched silhouette")
+	return failures
 
 func _check_world_healthplates(stage: Node) -> int:
 	var actors: Dictionary = stage.get("actor_nodes")
