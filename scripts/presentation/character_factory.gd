@@ -226,7 +226,7 @@ static func play_named_animation(root: Node,candidates: Array[String],speed: flo
 		return false
 	for candidate in candidates:
 		if player.has_animation(candidate):
-			player.play(candidate,blend,speed,false)
+			player.play(candidate,_presentation_blend_time(blend,speed),speed,false)
 			return true
 	return false
 
@@ -236,9 +236,15 @@ static func play_backwards_named(root: Node,candidates: Array[String],speed: flo
 		return false
 	for candidate in candidates:
 		if player.has_animation(candidate):
-			player.play(candidate,blend,-absf(speed),true)
+			player.play(candidate,_presentation_blend_time(blend,-absf(speed)),-absf(speed),true)
 			return true
 	return false
+
+static func _presentation_blend_time(authored_blend: float,playback_speed: float) -> float:
+	# AnimationPlayer custom_speed changes clip playback but not custom_blend decay.
+	# Keep the transition at the same fraction of authored motion at 1x/2x.
+	var effective_speed := maxf(absf(playback_speed),0.001)
+	return authored_blend/effective_speed
 
 static func set_animation_pose_fraction(root: Node,candidates: Array[String],fraction: float) -> bool:
 	var player := _find_animation_player(root)
@@ -258,7 +264,7 @@ static func play_backwards_from_fraction(root: Node,candidates: Array[String],fr
 		return false
 	for candidate in candidates:
 		if player.has_animation(candidate):
-			player.play(candidate,blend,-absf(speed),true)
+			player.play(candidate,_presentation_blend_time(blend,-absf(speed)),-absf(speed),true)
 			player.seek(player.current_animation_length*clampf(fraction,0.0,1.0),true)
 			return true
 	return false
