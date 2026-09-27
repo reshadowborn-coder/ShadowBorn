@@ -12,6 +12,11 @@ func _init() -> void:
 		return
 
 	failures += _expect(str(manifest.get("scope","")) == "CHECKPOINT_01_AWAKENING_GRAVE_HOUND","manifest scope matches current checkpoint")
+	var handoff: Dictionary = manifest.get("character_asset_handoff",{})
+	failures += _expect(str(handoff.get("engine_baseline","")) == "Godot 4.7.2","character handoff pins current Godot baseline")
+	failures += _expect(str(handoff.get("format","")) == "glTF 2.0 / GLB","character handoff uses glTF/GLB")
+	failures += _expect("OpenGL" in str(handoff.get("normal_map_contract","")),"character handoff locks OpenGL tangent-space normals")
+	failures += _expect((handoff.get("validation",[]) as Array).size() >= 5,"character handoff has executable import validation gates")
 	var required: Dictionary = manifest.get("checkpoint_01_required_assets",{})
 
 	failures += _expect(_asset_path(required,"shadow") == Policy.SHADOW_SCENE,"Shadow path matches VisualAssetPolicy")

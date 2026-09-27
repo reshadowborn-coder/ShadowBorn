@@ -51,6 +51,15 @@ Each material must differ through roughness, surface response and construction l
 - feet remain stable enough for planted contact in A1/A2;
 - hood/cloth secondary motion may be baked or lightweight, but it never owns gameplay timing.
 
+## DCC / GLB handoff contract
+
+- author/export baseline: Blender 5.2.2 LTS → glTF 2.0 / GLB → Godot 4.7.2;
+- tangent-space normal maps use the OpenGL (+Y) convention and are treated as non-color data in the DCC;
+- runtime geometry budgets are taken from the imported Godot mesh, not Blender face count alone, because glTF export can split vertices at UV seams and flat-shaded edges;
+- verify rest pose, scale and visual forward axis in Godot before accepting any animation;
+- export semantic actions as isolated clips; if actions do not key every pose bone, reset pose bones between actions to prevent state leaking across clips;
+- automatic LOD is not mandatory for Shadow at this fixed battle distance: use it only if the imported asset shows measurable benefit without damaging hood/weapon silhouette.
+
 ## Required animation support
 
 The production model must support the semantic set in `docs/art/ANIMATION_REBUILD_BRIEF.md`.

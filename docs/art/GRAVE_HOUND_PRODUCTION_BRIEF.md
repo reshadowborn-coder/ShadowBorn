@@ -59,6 +59,15 @@ Minimum functional chain:
 
 The rig must support readable real canine gait timing before undead stylization.
 
+## DCC / GLB handoff contract
+
+- author/export baseline: Blender 5.2.2 LTS → glTF 2.0 / GLB → Godot 4.7.2;
+- tangent-space normal maps use the OpenGL (+Y) convention and are treated as non-color data in the DCC;
+- imported Godot mesh statistics are authoritative for runtime geometry/material budgets; Blender face count alone is not accepted;
+- verify rest pose, body scale and canine visual forward axis in Godot before reviewing idle/bite/rush;
+- export idle, locomotion, bite, rush/rend, hit and death as isolated actions; reset pose bones between actions when not all channels are keyed;
+- only generate/use LODs when fixed side-camera captures show no loss of jaw/paw/shoulder readability and profiling shows a benefit.
+
 ## Required animation support
 
 Checkpoint 01 minimum:
