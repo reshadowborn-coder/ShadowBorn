@@ -8,6 +8,7 @@ extends Node3D
 const PREVIEW_SOURCE := "generated://shadowborn/shadow_preview_v2"
 const CARRIER_NAME := "AnimationCarrier"
 const AUTHORED_HOOD_MESH := "res://assets/characters/shadow/shadow_hood_preview.obj"
+const AUTHORED_COWL_MESH := "res://assets/characters/shadow/shadow_cowl_preview.obj"
 
 var _body_material: ShaderMaterial
 var _cloth_material: ShaderMaterial
@@ -29,6 +30,7 @@ func _ready() -> void:
 	set_meta("shadowborn_preview_visible_geometry","original_shadowborn")
 	set_meta("shadowborn_preview_animation_carrier","temporary_vendor_rig_hidden")
 	set_meta("shadowborn_preview_hood_source",AUTHORED_HOOD_MESH)
+	set_meta("shadowborn_preview_cowl_source",AUTHORED_COWL_MESH)
 
 func _prepare_materials() -> void:
 	# Raise broad value separation slightly so the character reads against the
@@ -95,8 +97,12 @@ func _build_original_silhouette(skeleton: Skeleton3D) -> void:
 	# shoulders, elbows, hips and knees deform instead of opening hard seams.
 	_build_skinned_body(skeleton)
 
-	# Identity layers: short cowl, asymmetric rear drape and split hip cloth.
-	_attach_mesh(skeleton,"Chest","ShadowCowl",_make_cowl_mesh(),Vector3(0.0,0.01,0.0),Vector3.ZERO,_cloth_material)
+	# Identity layers: authored cowl + temporary split hip cloth.
+	var authored_cowl := load(AUTHORED_COWL_MESH) as Mesh
+	if authored_cowl == null:
+		push_error("Shadow preview: authored cowl mesh missing: %s" % AUTHORED_COWL_MESH)
+	else:
+		_attach_mesh(skeleton,"Chest","ShadowCowl",authored_cowl,Vector3(0.0,0.01,0.0),Vector3.ZERO,_cloth_material,AUTHORED_COWL_MESH)
 	_attach_mesh(skeleton,"Hips","ShadowTabardBack",_make_tabard_mesh(-1.0),Vector3(0.0,0.05,0.0),Vector3.ZERO,_cloth_material)
 	_attach_mesh(skeleton,"Hips","ShadowTabardFront",_make_tabard_mesh(1.0),Vector3(0.0,0.04,0.0),Vector3.ZERO,_cloth_material)
 
@@ -288,23 +294,6 @@ func _make_frustum_mesh(length: float,rx0: float,rz0: float,rx1: float,rz1: floa
 		_tri(st,p0,q1,p1)
 		_tri(st,Vector3(0,start_y,0),p1,p0)
 		_tri(st,Vector3(0,start_y+length,0),q0,q1)
-	st.generate_normals()
-	return st.commit()
-
-func _make_cowl_mesh() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var p := [
-		Vector3(-0.235,0.055,0.090),Vector3(0.220,0.050,0.090),
-		Vector3(0.180,-0.105,0.130),Vector3(-0.205,-0.125,0.135),
-		Vector3(-0.220,0.040,-0.115),Vector3(0.205,0.035,-0.120),
-		Vector3(0.160,-0.125,-0.140),Vector3(-0.195,-0.150,-0.145)
-	]
-	_quad(st,p[0],p[1],p[2],p[3])
-	_quad(st,p[5],p[4],p[7],p[6])
-	_quad(st,p[4],p[0],p[3],p[7])
-	_quad(st,p[1],p[5],p[6],p[2])
-	_quad(st,p[3],p[2],p[6],p[7])
 	st.generate_normals()
 	return st.commit()
 
