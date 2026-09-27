@@ -121,14 +121,14 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	var skull := MeshInstance3D.new()
 	skull.name = "HoundSkull"
 	var skull_mesh := SphereMesh.new()
-	skull_mesh.radius = 0.205
-	skull_mesh.height = 0.38
+	skull_mesh.radius = 0.225
+	skull_mesh.height = 0.40
 	skull_mesh.radial_segments = 18
 	skull_mesh.rings = 9
 	skull_mesh.material = _flesh_material
 	skull.mesh = skull_mesh
 	skull.position = Vector3(0.0,0.06,0.0)
-	skull.scale = Vector3(0.78,1.18,0.76)
+	skull.scale = Vector3(0.84,1.20,0.82)
 	_tag_preview(skull)
 	head_socket.add_child(skull)
 
@@ -136,7 +136,8 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	muzzle.name = "HoundMuzzle"
 	muzzle.mesh = _make_muzzle_mesh()
 	muzzle.material_override = _flesh_material
-	muzzle.position = Vector3(0.0,0.235,0.0)
+	muzzle.position = Vector3(0.0,0.225,0.0)
+	muzzle.scale = Vector3(1.10,1.03,1.10)
 	_tag_preview(muzzle)
 	head_socket.add_child(muzzle)
 
