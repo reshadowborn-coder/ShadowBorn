@@ -291,7 +291,7 @@
         "grip_marker": "Grip",
         "blade_tip_marker": "BladeTip",
         "grip_origin": "identity_at_hand_center",
-        "target_shadow_height_ratio": "0.45-0.52 on Godot 4.7 baseline"
+        "target_shadow_height_ratio": "0.42-0.50 safety envelope on Godot 4.7 baseline; gameplay-camera acceptance authoritative"
       },
       "acceptance": [
         "starter sword is proportional in gameplay camera",
