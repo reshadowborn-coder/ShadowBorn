@@ -1,0 +1,58 @@
+# Shadowborn original authored hood preview v1
+# Identity-critical opaque hood geometry for the temporary production-preview rig.
+# Coordinates are local to the Head BoneAttachment3D. +Z is the face opening.
+o ShadowHoodPreviewV1
+s off
+
+v -0.205 0.115 0.165
+v  0.195 0.125 0.165
+v -0.175 -0.205 0.145
+v  0.165 -0.195 0.150
+v -0.205 0.120 -0.165
+v  0.200 0.120 -0.170
+v -0.145 -0.215 -0.185
+v  0.150 -0.205 -0.185
+v -0.065 0.310 -0.010
+v  0.045 0.305 -0.020
+v -0.130 0.065 0.215
+v  0.128 0.070 0.218
+v -0.105 -0.135 0.205
+v  0.103 -0.130 0.208
+v -0.095 -0.015 -0.170
+v  0.105 -0.005 -0.175
+v  0.045 -0.255 -0.300
+v -0.055 -0.290 -0.270
+v -0.165 0.185 0.055
+v  0.150 0.190 0.050
+
+# crown and upper shell
+f 1 9 19
+f 1 19 11
+f 19 9 10 20
+f 19 20 12 11
+f 20 10 2
+f 20 2 12
+f 9 5 19
+f 19 5 1
+f 10 20 6
+f 20 2 6
+f 5 6 10 9
+
+# side walls and nape
+f 1 5 7 3
+f 6 2 4 8
+f 5 6 8 7
+f 3 7 8 4
+
+# face rim: deliberately no polygon over the opening
+f 1 11 13 3
+f 12 2 4 14
+f 1 2 12 11
+f 3 13 14 4
+
+# integrated asymmetric rear cloth tail
+f 7 8 16 15
+f 15 16 17
+f 15 17 18
+f 18 17 16
+f 18 16 15
