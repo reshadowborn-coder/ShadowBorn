@@ -76,7 +76,8 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_smooth_group(0)
 
-	# Tucked abdomen -> larger diseased chest -> thin neck/head connection.
+	# Camera-reviewed anatomy: strong shoulder/chest mass, tucked abdomen, balanced limbs.
+	# The corpse tail is intentionally truncated at Tail4 to avoid the previous whip/insect read.
 	_append_skinned_chain(st,skeleton,
 		["Back","Torso","Torso2","Torso3","Neck1","Neck2","Neck3","Head"],
 		[0.255,0.235,0.305,0.330,0.195,0.150,0.120,0.082],
@@ -85,17 +86,17 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Torso2","FrontShoulder.%s" % side,"FrontUpperLeg.%s" % side,"FrontLowerLeg.%s" % side],
-			[0.175,0.158,0.116,0.078],
-			[0.136,0.120,0.090,0.062],10)
+			[0.180,0.165,0.125,0.090],
+			[0.140,0.125,0.096,0.070],10)
 		_append_skinned_chain(st,skeleton,
 			["Back","BackShoulder.%s" % side,"BackLeg.%s" % side,"BackUpperLeg.%s" % side,"BackLowerLeg.%s" % side],
-			[0.165,0.155,0.135,0.105,0.070],
-			[0.130,0.118,0.105,0.082,0.058],10)
+			[0.170,0.160,0.142,0.115,0.085],
+			[0.134,0.122,0.110,0.088,0.066],10)
 
 	_append_skinned_chain(st,skeleton,
-		["Back","Tail1","Tail2","Tail3","Tail4","Tail5","Tail6","Tail7","Tail8"],
-		[0.080,0.075,0.068,0.060,0.052,0.044,0.036,0.028,0.018],
-		[0.065,0.060,0.054,0.048,0.041,0.035,0.028,0.022,0.014],8)
+		["Back","Tail1","Tail2","Tail3","Tail4"],
+		[0.085,0.080,0.070,0.058,0.042],
+		[0.068,0.063,0.055,0.045,0.032],8)
 
 	st.generate_normals()
 	var mesh := st.commit()
@@ -111,6 +112,7 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	visual.set_meta("shadowborn_visual_tier","production_preview")
 	visual.set_meta("shadowborn_visual_source",PREVIEW_SOURCE)
 	visual.set_meta("shadowborn_deformation_contract","continuous_quadruped_skin")
+	visual.set_meta("shadowborn_tail_contract","damaged_truncated_tail4")
 	skeleton.add_child(visual)
 	visual.skeleton = visual.get_path_to(skeleton)
 	visual.skin = skeleton.create_skin_from_rest_transforms()
