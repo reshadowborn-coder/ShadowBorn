@@ -28,6 +28,7 @@ func _run() -> void:
 	})
 	await process_frame
 	failures += _check_hound_visual_forward(battle)
+	failures += _check_world_healthplates(battle)
 	failures += _check_shadow_sword_direction(battle)
 	failures += _check_side_on_battle_composition(battle)
 	battle.queue_free()
@@ -115,20 +116,51 @@ func _check_hound_visual_forward(stage: Node) -> int:
 		push_error("Hound model missing")
 		return 1
 	# User-verified import correction: 0° showed the model's back in the battle shot.
-	var failures := _expect(absf(wrapf(model.rotation_degrees.y,0.0,360.0)-180.0) < 0.5,"Grave Hound dev mesh keeps camera-verified 180 degree facing correction")
-	var labels: Dictionary = stage.get("actor_labels")
-	var hound_label := labels.get("hound") as Label3D
-	failures += _expect(hound_label != null,"Grave Hound world health label exists")
-	if hound_label != null:
-		failures += _expect(hound_label.position.y >= 1.45,"Grave Hound world health label keeps user-requested head clearance")
-		failures += _expect(hound_label.billboard == BaseMaterial3D.BILLBOARD_ENABLED,"Grave Hound world health label always faces the battle camera")
-		failures += _expect(not hound_label.double_sided,"Grave Hound world health label cannot render mirrored from its back face")
+	return _expect(absf(wrapf(model.rotation_degrees.y,0.0,360.0)-180.0) < 0.5,"Grave Hound dev mesh keeps camera-verified 180 degree facing correction")
 
-	var shadow_label := labels.get("shadow") as Label3D
-	failures += _expect(shadow_label != null,"Shadow world health label exists")
-	if shadow_label != null:
-		failures += _expect(shadow_label.billboard == BaseMaterial3D.BILLBOARD_ENABLED,"Shadow world health label always faces the battle camera")
-		failures += _expect(not shadow_label.double_sided,"Shadow world health label cannot render mirrored from its back face")
+func _check_world_healthplates(stage: Node) -> int:
+	var actors: Dictionary = stage.get("actor_nodes")
+	var roots: Dictionary = stage.get("actor_health_roots")
+	var fills: Dictionary = stage.get("actor_health_fills")
+	var camera := stage.get("battle_camera") as Camera3D
+	var hound_actor := actors.get("hound") as Node3D
+	var hound_tracker := roots.get("hound") as Node3D
+	var shadow_tracker := roots.get("shadow") as Node3D
+	var hound_fill := fills.get("hound") as MeshInstance3D
+	var shadow_fill := fills.get("shadow") as MeshInstance3D
+	if camera == null or hound_actor == null or hound_tracker == null or shadow_tracker == null or hound_fill == null or shadow_fill == null:
+		push_error("World healthplate regression: required nodes missing")
+		return 1
+
+	var failures := 0
+	var hound_anchor := hound_tracker.get_node_or_null("HealthPlateAnchor") as Node3D
+	var shadow_anchor := shadow_tracker.get_node_or_null("HealthPlateAnchor") as Node3D
+	failures += _expect(hound_anchor != null and hound_anchor.position.y >= 1.60,"Grave Hound healthplate clears the head in the side camera")
+	failures += _expect(shadow_anchor != null and shadow_anchor.position.y >= 2.45,"Shadow healthplate clears the hood and sword silhouette")
+
+	var follow := hound_actor.get_node_or_null("HealthPlateFollow") as RemoteTransform3D
+	failures += _expect(follow != null,"Grave Hound healthplate has a transform follower")
+	if follow != null:
+		failures += _expect(follow.update_position,"healthplate follows actor translation")
+		failures += _expect(not follow.update_rotation,"healthplate does not inherit actor-facing yaw")
+		failures += _expect(not follow.update_scale,"healthplate does not inherit character scale")
+		failures += _expect(follow.use_global_coordinates,"healthplate follower uses global actor translation")
+
+	if hound_anchor != null:
+		var hound_actor_screen := camera.unproject_position(hound_actor.global_position)
+		var hound_bar_screen := camera.unproject_position(hound_tracker.global_position+hound_anchor.position)
+		failures += _expect(hound_bar_screen.y < hound_actor_screen.y-45.0,"Grave Hound healthplate projects visibly above the body")
+
+	stage.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":40,"max_hp":80}
+		]
+	})
+	failures += _expect(absf(hound_fill.scale.x-0.5) < 0.01,"world healthplate fill tracks HP ratio")
+	failures += _expect(hound_fill.position.x < -0.20,"world healthplate depletes from right to left instead of center")
+	failures += _expect(absf(shadow_fill.scale.x-1.0) < 0.01,"full-health Shadow plate remains full width")
 	return failures
 
 func _expect(condition: bool,label: String) -> int:
