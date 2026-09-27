@@ -29,6 +29,7 @@ func _run() -> void:
 	await process_frame
 	failures += _check_hound_visual_forward(battle)
 	failures += _check_shadow_sword_direction(battle)
+	failures += _check_side_on_battle_composition(battle)
 	battle.queue_free()
 	await process_frame
 
@@ -136,3 +137,35 @@ func _expect(condition: bool,label: String) -> int:
 		return 0
 	push_error("FAIL: "+label)
 	return 1
+
+
+func _check_side_on_battle_composition(stage: Node) -> int:
+	var camera := stage.get("battle_camera") as Camera3D
+	var actors: Dictionary = stage.get("actor_nodes")
+	var shadow := actors.get("shadow") as Node3D
+	var hound := actors.get("hound") as Node3D
+	if camera == null or shadow == null or hound == null:
+		push_error("Side-on composition regression: camera/actors missing")
+		return 1
+
+	var viewport_size := camera.get_viewport().get_visible_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		push_error("Side-on composition regression: invalid viewport size")
+		return 1
+
+	var shadow_screen := camera.unproject_position(shadow.global_position)
+	var hound_screen := camera.unproject_position(hound.global_position)
+	var horizontal_gap := hound_screen.x-shadow_screen.x
+	var baseline_gap := absf(hound_screen.y-shadow_screen.y)
+	var shadow_distance := camera.global_position.distance_to(shadow.global_position)
+	var hound_distance := camera.global_position.distance_to(hound.global_position)
+	var depth_ratio := maxf(shadow_distance,hound_distance)/maxf(0.001,minf(shadow_distance,hound_distance))
+
+	var failures := 0
+	failures += _expect(shadow_screen.x < hound_screen.x,"side-on battle keeps Shadow left of the enemy")
+	failures += _expect(horizontal_gap >= viewport_size.x*0.35,"side-on battle reserves a readable attack lane between actors")
+	failures += _expect(baseline_gap <= viewport_size.y*0.08,"side-on battle keeps actor foot baselines nearly horizontal")
+	failures += _expect(shadow_screen.y >= viewport_size.y*0.52 and shadow_screen.y <= viewport_size.y*0.82,"Shadow feet stay in the lower battle band")
+	failures += _expect(hound_screen.y >= viewport_size.y*0.52 and hound_screen.y <= viewport_size.y*0.82,"Grave Hound feet stay in the lower battle band")
+	failures += _expect(depth_ratio <= 1.15,"side-on battle keeps combatants at comparable camera depth and apparent scale")
+	return failures

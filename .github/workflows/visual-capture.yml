@@ -8,6 +8,12 @@ on:
       - "scripts/presentation/**"
       - "tests/visual_capture_test.gd"
       - ".github/workflows/visual-capture.yml"
+  pull_request:
+    paths:
+      - "assets/**"
+      - "scripts/presentation/**"
+      - "tests/visual_capture_test.gd"
+      - ".github/workflows/visual-capture.yml"
   workflow_dispatch:
 
 jobs:
