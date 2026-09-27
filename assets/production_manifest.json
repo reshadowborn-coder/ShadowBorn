@@ -141,8 +141,8 @@
         "runtime_role": "foreground_midground_camera_frame"
       },
       "research_sources": [
-        "https://docs.godotengine.org/en/4.4/tutorials/3d/mesh_lod.html",
-        "https://docs.godotengine.org/en/4.4/tutorials/assets_pipeline/importing_3d_scenes/advanced_import_settings.html",
+        "https://docs.godotengine.org/en/4.7/tutorials/3d/mesh_lod.html",
+        "https://docs.godotengine.org/en/4.7/tutorials/assets_pipeline/importing_3d_scenes/advanced_import_settings.html",
         "https://kenney.nl/assets/graveyard-kit",
         "https://polyhaven.com/a/modular_fort_01"
       ]
@@ -323,5 +323,38 @@
       "status": "missing"
     },
     "animation_brief": "docs/art/ANIMATION_REBUILD_BRIEF.md"
+  },
+  "character_asset_handoff": {
+    "dcc_baseline": "Blender 5.2.2 LTS",
+    "engine_baseline": "Godot 4.7.2",
+    "format": "glTF 2.0 / GLB",
+    "normal_map_contract": "tangent-space OpenGL (+Y); source texture treated as non-color data",
+    "runtime_geometry_budget_source": "measure imported Godot mesh vertices/surfaces/material slots; do not approve from Blender face count alone",
+    "animation_export_contract": "export actions as isolated clips; reset pose bones between actions when channels are not fully keyed",
+    "lod_policy": "judge automatic LOD by actual fixed gameplay-camera screen coverage; hero actors may keep LOD0 if lower LOD has no measured benefit",
+    "validation": [
+      "import into Godot 4.7.2 and inspect rest pose, forward axis and scale before animation review",
+      "capture side-on phone-size idle/A1/A2 or idle/bite/rush silhouettes",
+      "inspect imported vertex/surface/material counts after glTF vertex splits",
+      "verify tangent-space normal response and roughness in engine, not only Blender",
+      "profile material/texture cost on iPhone 13 Pro before locking runtime budgets"
+    ],
+    "sources": [
+      {
+        "name": "Blender 5.2 LTS glTF 2.0 manual",
+        "url": "https://docs.blender.org/manual/en/5.2/addons/scene_gltf2.html",
+        "license": "Blender documentation / CC-BY-SA"
+      },
+      {
+        "name": "Godot 4.7 rendering architecture",
+        "url": "https://docs.godotengine.org/en/4.7/engine_details/architecture/internal_rendering_architecture.html",
+        "license": "Godot documentation / CC-BY 3.0"
+      },
+      {
+        "name": "Godot 4.7 feature list",
+        "url": "https://docs.godotengine.org/en/4.7/about/list_of_features.html",
+        "license": "Godot documentation / CC-BY 3.0"
+      }
+    ]
   }
 }
