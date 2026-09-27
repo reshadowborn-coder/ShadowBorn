@@ -388,5 +388,50 @@
         "identity_rule": "final visible Shadow identity must be original Shadowborn work"
       }
     ]
+  },
+  "animation_import_contract": {
+    "engine_baseline": "Godot 4.7.2",
+    "dcc_baseline": "Blender 5.2.2 LTS",
+    "bake_fps_candidate": 30,
+    "bake_fps_rule": "match DCC baseline first; raise only if fast-motion curve fidelity shows a measured import mismatch",
+    "trim_static_ends": true,
+    "remove_immutable_tracks": true,
+    "always_sample_policy": "OFF by default; enable only when Blender/glTF interpolation mismatch is visually or numerically demonstrated",
+    "shadow_retarget": {
+      "profile": "SkeletonProfileHumanoid + BoneMap",
+      "requirement": "bone names and Bone Rest mapping both require validation; successful import alone is not acceptance",
+      "shared_animation_library": "allowed only after retarget parity test"
+    },
+    "grave_hound_retarget": {
+      "profile": "dedicated quadruped rig; no humanoid profile",
+      "shared_animation_library": "not assumed"
+    },
+    "semantic_capture": {
+      "diagnostic_pose_fractions": [
+        0.15,
+        0.5,
+        0.85
+      ],
+      "diagnostic_only": true,
+      "contact_rule": "semantic contact is authored/calibrated separately; never assume 50% clip time equals gameplay hit",
+      "required_hound_clips": [
+        "HND_IDLE_LOW_01",
+        "HND_BITE_01",
+        "HND_RUSH_REND_01",
+        "HND_HIT_01",
+        "HND_DEATH_01"
+      ],
+      "required_shadow_clips": [
+        "SHD_IDLE_COMBAT_01",
+        "SHD_A1_SWORD_01",
+        "SHD_A2_LUNGE_01",
+        "SHD_HIT_LIGHT_01",
+        "SHD_DEATH_01"
+      ]
+    },
+    "sources": [
+      "https://docs.godotengine.org/en/4.7/tutorials/assets_pipeline/importing_3d_scenes/import_configuration.html",
+      "https://docs.godotengine.org/en/4.7/tutorials/assets_pipeline/retargeting_3d_skeletons.html"
+    ]
   }
 }
