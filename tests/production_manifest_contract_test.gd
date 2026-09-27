@@ -25,6 +25,18 @@ func _init() -> void:
 		failures += _expect(metric in audit_metrics,"character audit includes required metric %s" % metric)
 	var candidate_routes: Array = import_audit.get("candidate_basemesh_routes",[])
 	failures += _expect(candidate_routes.size() >= 2,"character audit keeps original and neutral-substrate routes comparable")
+
+	var animation_import: Dictionary = manifest.get("animation_import_contract",{})
+	failures += _expect(str(animation_import.get("engine_baseline","")) == "Godot 4.7.2","animation import contract pins current Godot baseline")
+	failures += _expect(int(animation_import.get("bake_fps_candidate",0)) == 30,"animation import starts from 30 FPS bake candidate")
+	failures += _expect(bool(animation_import.get("trim_static_ends",false)),"animation import trims static animation ends")
+	failures += _expect(bool(animation_import.get("remove_immutable_tracks",false)),"animation import removes immutable tracks")
+	var semantic_capture: Dictionary = animation_import.get("semantic_capture",{})
+	failures += _expect(bool(semantic_capture.get("diagnostic_only",false)),"pose-fraction captures are explicitly diagnostic only")
+	failures += _expect((semantic_capture.get("diagnostic_pose_fractions",[]) as Array).size() == 3,"semantic diagnostic capture has three pose fractions")
+	failures += _expect("HND_BITE_01" in (semantic_capture.get("required_hound_clips",[]) as Array),"Hound production contract requires dedicated Bite clip")
+	failures += _expect("SHD_A2_LUNGE_01" in (semantic_capture.get("required_shadow_clips",[]) as Array),"Shadow production contract requires dedicated A2 clip")
+
 	var required: Dictionary = manifest.get("checkpoint_01_required_assets",{})
 
 	failures += _expect(_asset_path(required,"shadow") == Policy.SHADOW_SCENE,"Shadow path matches VisualAssetPolicy")
