@@ -4,6 +4,7 @@ const AwakeningStageScript = preload("res://scripts/presentation/awakening_stage
 const BattleStageScript = preload("res://scripts/presentation/battle_stage.gd")
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
 const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
+const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
 
 func _init() -> void:
 	call_deferred("_run")
@@ -44,7 +45,11 @@ func _check_stage_preview_assets(stage: Node,label: String,min_grave_markers: in
 	if floor != null and floor.mesh is PlaneMesh:
 		var material := (floor.mesh as PlaneMesh).material
 		failures += _expect(material is ORMMaterial3D,"%s floor uses production ORMMaterial3D" % label)
-		failures += _expect(str(floor.get_meta("shadowborn_visual_tier","")) == "production_preview","%s floor is tagged production_preview" % label)
+		var floor_tier := str(floor.get_meta("shadowborn_visual_tier",""))
+		if label == "Battle" and ResourceLoader.exists(VisualPolicy.BATTLE_ENVIRONMENT):
+			failures += _expect(floor_tier == "production","Battle floor is tagged production when the authored arena scene exists")
+		else:
+			failures += _expect(floor_tier == "production_preview","%s fallback floor is tagged production_preview" % label)
 
 	var grave_count := _count_preview_assets(stage,EnvironmentAssetLibrary.GRAVE_MARKER_HERO)
 	failures += _expect(grave_count >= min_grave_markers,"%s uses at least %d original grave markers (found %d)" % [label,min_grave_markers,grave_count])
