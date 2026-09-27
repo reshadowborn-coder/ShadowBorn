@@ -59,6 +59,14 @@ Minimum functional chain:
 
 The rig must support readable real canine gait timing before undead stylization.
 
+### Rig authoring route
+
+- Blender 5.2 Rigify **Wolf** meta-rig is the preferred first production rig-authoring candidate.
+- Use its quadruped/paw structure as a control and deformation framework only; it is not a visible asset source.
+- Final Grave Hound mesh, proportions, wounds, skull, materials and animation poses remain original Shadowborn content.
+- Export deformation bones/required hierarchy to GLB; do not ship Rigify control widgets or editor-only UI objects.
+- Validate the exported Godot Skeleton3D bone hierarchy and all paw contacts before animation polish.
+
 ## DCC / GLB handoff contract
 
 - author/export baseline: Blender 5.2.2 LTS → glTF 2.0 / GLB → Godot 4.7.2;
