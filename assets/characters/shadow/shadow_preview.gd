@@ -7,6 +7,7 @@ extends Node3D
 
 const PREVIEW_SOURCE := "generated://shadowborn/shadow_preview_v2"
 const CARRIER_NAME := "AnimationCarrier"
+const AUTHORED_HOOD_MESH := "res://assets/characters/shadow/shadow_hood_preview.obj"
 
 var _body_material: ShaderMaterial
 var _cloth_material: ShaderMaterial
@@ -27,6 +28,7 @@ func _ready() -> void:
 	_build_original_silhouette(skeleton)
 	set_meta("shadowborn_preview_visible_geometry","original_shadowborn")
 	set_meta("shadowborn_preview_animation_carrier","temporary_vendor_rig_hidden")
+	set_meta("shadowborn_preview_hood_source",AUTHORED_HOOD_MESH)
 
 func _prepare_materials() -> void:
 	# Raise broad value separation slightly so the character reads against the
@@ -98,10 +100,15 @@ func _build_original_silhouette(skeleton: Skeleton3D) -> void:
 	_attach_mesh(skeleton,"Hips","ShadowTabardBack",_make_tabard_mesh(-1.0),Vector3(0.0,0.05,0.0),Vector3.ZERO,_cloth_material)
 	_attach_mesh(skeleton,"Hips","ShadowTabardFront",_make_tabard_mesh(1.0),Vector3(0.0,0.04,0.0),Vector3.ZERO,_cloth_material)
 
-	# Faceted hood with an actual face opening rather than a spherical helmet.
-	_attach_mesh(skeleton,"Head","ShadowHood",_make_hood_mesh(),Vector3(0.0,0.045,0.0),Vector3.ZERO,_cloth_material)
+	# Identity-critical hood is now a real authored asset rather than runtime SurfaceTool geometry.
+	# It remains a rigid Head attachment for this bounded preview; the final Shadow GLB will own
+	# the fully skinned garment. The opening is real negative space over the face void.
+	var authored_hood := load(AUTHORED_HOOD_MESH) as Mesh
+	if authored_hood == null:
+		push_error("Shadow preview: authored hood mesh missing: %s" % AUTHORED_HOOD_MESH)
+	else:
+		_attach_mesh(skeleton,"Head","ShadowHood",authored_hood,Vector3(0.0,0.045,0.0),Vector3.ZERO,_cloth_material,AUTHORED_HOOD_MESH)
 	_attach_mesh(skeleton,"Head","ShadowFaceVoid",_make_face_void_mesh(),Vector3(0.0,0.035,0.0),Vector3.ZERO,_void_material)
-	_attach_mesh(skeleton,"Head","ShadowHoodTail",_make_hood_tail_mesh(),Vector3(0.0,0.06,-0.03),Vector3.ZERO,_cloth_material)
 	_attach_mesh(skeleton,"Head","ShadowEyeL",_make_diamond_mesh(0.028,0.008),Vector3(-0.045,0.006,0.191),Vector3.ZERO,_accent_material)
 	_attach_mesh(skeleton,"Head","ShadowEyeR",_make_diamond_mesh(0.028,0.008),Vector3(0.045,0.006,0.191),Vector3.ZERO,_accent_material)
 
@@ -247,7 +254,7 @@ func _skin_vertex(st: SurfaceTool,position: Vector3,record: Dictionary) -> void:
 func _attach_segment(skeleton: Skeleton3D,bone_name: String,node_name: String,length: float,rx0: float,rz0: float,rx1: float,rz1: float,start_y: float,material: Material) -> void:
 	_attach_mesh(skeleton,bone_name,node_name,_make_frustum_mesh(length,rx0,rz0,rx1,rz1,start_y),Vector3.ZERO,Vector3.ZERO,material)
 
-func _attach_mesh(skeleton: Skeleton3D,bone_name: String,node_name: String,mesh: ArrayMesh,position: Vector3,rotation_deg: Vector3,material: Material) -> void:
+func _attach_mesh(skeleton: Skeleton3D,bone_name: String,node_name: String,mesh: Mesh,position: Vector3,rotation_deg: Vector3,material: Material,source: String = PREVIEW_SOURCE) -> void:
 	if skeleton.find_bone(bone_name) < 0:
 		push_warning("Shadow preview: missing expected bone %s" % bone_name)
 		return
@@ -263,7 +270,7 @@ func _attach_mesh(skeleton: Skeleton3D,bone_name: String,node_name: String,mesh:
 	visual.material_override = material
 	visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	visual.set_meta("shadowborn_visual_tier","production_preview")
-	visual.set_meta("shadowborn_visual_source",PREVIEW_SOURCE)
+	visual.set_meta("shadowborn_visual_source",source)
 	socket.add_child(visual)
 
 func _make_frustum_mesh(length: float,rx0: float,rz0: float,rx1: float,rz1: float,start_y: float) -> ArrayMesh:
@@ -318,51 +325,6 @@ func _make_back_drape_mesh() -> ArrayMesh:
 	st.generate_normals()
 	return st.commit()
 
-func _make_hood_mesh() -> ArrayMesh:
-	var st:=SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_smooth_group(0)
-
-	# Rounded open hood: build several elliptical rings around the back/sides while
-	# deliberately leaving the +Z face sector empty. This keeps a real recessed
-	# void and removes the previous helmet-like pyramid crown.
-	var levels := [
-		[Vector3(0.0,-0.175,-0.010),0.145,0.125],
-		[Vector3(0.0,-0.060,-0.018),0.175,0.150],
-		[Vector3(0.0,0.060,-0.028),0.190,0.165],
-		[Vector3(-0.010,0.155,-0.045),0.158,0.132],
-		[Vector3(-0.020,0.215,-0.060),0.090,0.075]
-	]
-	var segments := 18
-	var start_angle := deg_to_rad(135.0)
-	var span := deg_to_rad(270.0)
-	var rings: Array = []
-	for level_variant in levels:
-		var level: Array = level_variant
-		var center: Vector3 = level[0]
-		var rx := float(level[1])
-		var rz := float(level[2])
-		var ring: Array[Vector3] = []
-		for i in range(segments+1):
-			var a := start_angle+span*float(i)/float(segments)
-			ring.append(center+Vector3(cos(a)*rx,0.0,sin(a)*rz))
-		rings.append(ring)
-
-	for r in range(rings.size()-1):
-		var a_ring: Array = rings[r]
-		var b_ring: Array = rings[r+1]
-		for i in range(segments):
-			_quad(st,a_ring[i],a_ring[i+1],b_ring[i+1],b_ring[i])
-
-	# Soft rear crown cap; front remains open for the void plane.
-	var top_center := Vector3(-0.035,0.240,-0.080)
-	var last_ring: Array = rings[rings.size()-1]
-	for i in range(segments):
-		_tri(st,last_ring[i],last_ring[i+1],top_center)
-
-	st.generate_normals()
-	return st.commit()
-
 func _make_face_void_mesh() -> ArrayMesh:
 	var st:=SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -371,23 +333,6 @@ func _make_face_void_mesh() -> ArrayMesh:
 	var c:=Vector3(0.088,-0.125,0.184)
 	var d:=Vector3(-0.088,-0.125,0.184)
 	_quad(st,a,b,c,d)
-	st.generate_normals()
-	return st.commit()
-
-func _make_hood_tail_mesh() -> ArrayMesh:
-	var st:=SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var a:=Vector3(-0.11,0.17,-0.14)
-	var b:=Vector3(0.11,0.17,-0.14)
-	var c:=Vector3(0.06,-0.05,-0.26)
-	var d:=Vector3(-0.07,-0.08,-0.27)
-	var tip:=Vector3(-0.025,-0.23,-0.22)
-	_tri(st,a,b,c)
-	_tri(st,a,c,d)
-	_tri(st,d,c,tip)
-	_tri(st,c,b,a)
-	_tri(st,d,c,a)
-	_tri(st,tip,c,d)
 	st.generate_normals()
 	return st.commit()
 
