@@ -44,6 +44,14 @@ func _run() -> void:
 	battle.queue_free()
 	await process_frame
 
+	# Pose-fraction captures are diagnostic, not semantic timing. They let us compare
+	# silhouette evolution independent of tween timing and expose generic/reused clips
+	# that a single "hero frame" can hide. Production contact still comes from the
+	# authored semantic contract, never from assuming 50% of the clip is the hit.
+	await _capture_hound_bite_pose(0.15,OUT_DIR+"/hound_bite_pose_15.png")
+	await _capture_hound_bite_pose(0.50,OUT_DIR+"/hound_bite_pose_50.png")
+	await _capture_hound_bite_pose(0.85,OUT_DIR+"/hound_bite_pose_85.png")
+
 	await _capture_shadow_skill("shadow_basic",OUT_DIR+"/shadow_a1.png",0.18)
 	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
 	# Highlighted weapon and rotation-sweep captures are intentionally no longer
@@ -52,6 +60,34 @@ func _run() -> void:
 	print("Shadowborn visual capture: PASS")
 	quit(0)
 
+
+func _capture_hound_bite_pose(fraction: float,path: String) -> void:
+	var battle := BattleStageScript.new()
+	root.add_child(battle)
+	await process_frame
+	battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await create_timer(0.20).timeout
+	var actors: Dictionary = battle.get("actor_nodes")
+	var hound_root := actors.get("hound") as Node3D
+	if hound_root == null:
+		push_error("Hound pose capture: actor missing")
+		quit(1)
+		return
+	var sampled := CharacterFactory.set_animation_pose_fraction(hound_root,["HND_BITE_01","Attack"],fraction)
+	if not sampled:
+		push_error("Hound pose capture: no Bite/Attack clip available")
+		quit(1)
+		return
+	await create_timer(0.05).timeout
+	await _capture(path)
+	battle.queue_free()
+	await process_frame
 
 func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 	var battle := BattleStageScript.new()
