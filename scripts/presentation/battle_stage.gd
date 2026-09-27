@@ -431,8 +431,8 @@ func _build_world_healthplate(actor_root: Node3D,id: String) -> void:
 	# rotate toward their opponent. It also avoids per-frame script tracking.
 	var tracker := Node3D.new()
 	tracker.name = "%sHealthPlateTracker" % id.capitalize()
-	tracker.global_position = actor_root.global_position
 	add_child(tracker)
+	tracker.global_position = actor_root.global_position
 	actor_health_roots[id] = tracker
 
 	var follow := RemoteTransform3D.new()
