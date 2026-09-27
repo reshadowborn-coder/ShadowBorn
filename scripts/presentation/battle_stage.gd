@@ -95,10 +95,12 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 			basic_move.tween_property(attacker,"position",home+direction*0.88,0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	else:
 		CharacterFactory.play_hound_attack(attacker,presentation_speed)
+		# Camera-reviewed canine bite: coil through the hindquarters, then spring.
+		# The old 1.28 m flat crawl exaggerated the imported forelegs and read insect-like.
 		var hound_move := create_tween()
 		hound_move.set_speed_scale(presentation_speed)
-		hound_move.tween_property(attacker,"position",home-direction*0.10,0.09)
-		hound_move.tween_property(attacker,"position",home+direction*1.28,0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		hound_move.tween_property(attacker,"position",home-direction*0.08+Vector3(0,-0.045,0),0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		hound_move.tween_property(attacker,"position",home+direction*0.98+Vector3(0,0.075,0),0.23).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: int,effect: String) -> void:
 	if not actor_nodes.has(target_id):
