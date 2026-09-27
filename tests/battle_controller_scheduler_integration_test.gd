@@ -33,15 +33,16 @@ func _run_first_three(auto_mode: bool) -> Array[String]:
 	battle.set_auto(auto_mode)
 
 	var trace: Array[String] = []
-	var manual_shadow_turn := 0
+	var manual_state := {"shadow_turn":0}
 	battle.action_windup.connect(func(attacker_id: String,_target_id: String,skill_id: String):
 		if trace.size() < 3:
 			trace.append("%s:%s" % [attacker_id,skill_id])
 	)
 	if not auto_mode:
 		battle.actor_ready.connect(func(_actor_id: String):
-			var skill_index := 1 if manual_shadow_turn == 0 else 0
-			manual_shadow_turn += 1
+			var shadow_turn := int(manual_state["shadow_turn"])
+			var skill_index := 1 if shadow_turn == 0 else 0
+			manual_state["shadow_turn"] = shadow_turn+1
 			battle.call_deferred("request_player_skill",skill_index)
 		)
 
@@ -50,6 +51,7 @@ func _run_first_three(auto_mode: bool) -> Array[String]:
 	while trace.size() < 3 and Time.get_ticks_usec() < deadline_usec:
 		await create_timer(0.025).timeout
 
+	print("LIVE_TRACE mode=%s trace=%s" % ["AUTO" if auto_mode else "MANUAL",trace])
 	battle.running = false
 	battle.turn_loop_generation += 1
 	battle.queue_free()
