@@ -215,16 +215,17 @@ func _build_environment() -> void:
 	_build_debug_environment()
 
 func _build_debug_environment() -> void:
+	# Run 66 camera review: preserve dark mood while lifting mid-value architecture and actor separation.
 	var world := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.004,0.006,0.010)
+	env.background_color = Color(0.008,0.011,0.018)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.095,0.115,0.15)
-	env.ambient_light_energy = 0.46
+	env.ambient_light_color = Color(0.135,0.160,0.215)
+	env.ambient_light_energy = 0.68
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.045,0.058,0.075)
-	env.fog_light_energy = 0.44
+	env.fog_light_color = Color(0.055,0.070,0.095)
+	env.fog_light_energy = 0.52
 	env.fog_density = 0.022
 	world.environment = env
 	add_child(world)
@@ -232,14 +233,14 @@ func _build_debug_environment() -> void:
 	var moon := DirectionalLight3D.new()
 	moon.rotation_degrees = Vector3(-48,-34,0)
 	moon.light_color = Color(0.54,0.66,0.96)
-	moon.light_energy = 0.88
+	moon.light_energy = 1.02
 	moon.shadow_enabled = true
 	add_child(moon)
 
 	var player_rim := OmniLight3D.new()
 	player_rim.position = Vector3(-3.7,2.5,0.5)
 	player_rim.light_color = Color(0.28,0.40,0.86)
-	player_rim.light_energy = 3.0
+	player_rim.light_energy = 3.25
 	player_rim.omni_range = 5.0
 	add_child(player_rim)
 
