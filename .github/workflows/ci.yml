@@ -31,6 +31,9 @@ jobs:
       - name: Deterministic turn scheduler
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/battle_turn_scheduler_test.gd
+      - name: Live scheduler integration
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/battle_controller_scheduler_integration_test.gd
       - name: Asset pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
