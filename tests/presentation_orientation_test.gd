@@ -144,6 +144,7 @@ func _check_world_healthplates(stage: Node) -> int:
 		failures += _expect(follow.update_position,"healthplate follows actor translation")
 		failures += _expect(not follow.update_rotation,"healthplate does not inherit actor-facing yaw")
 		failures += _expect(not follow.update_scale,"healthplate does not inherit character scale")
+		failures += _expect(follow.use_global_coordinates,"healthplate follower uses global actor translation")
 
 	if hound_anchor != null:
 		var hound_actor_screen := camera.unproject_position(hound_actor.global_position)
