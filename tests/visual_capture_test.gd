@@ -39,8 +39,12 @@ func _run() -> void:
 	await create_timer(0.20).timeout
 	await _capture(OUT_DIR+"/grave_hound_battle.png")
 	battle.play_windup("hound","shadow","hound_bite")
-	await create_timer(0.18).timeout
-	await _capture(OUT_DIR+"/grave_hound_attack.png")
+	await create_timer(0.08).timeout
+	await _capture(OUT_DIR+"/grave_hound_attack_coil.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/grave_hound_attack_launch.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/grave_hound_attack_contact.png")
 	battle.queue_free()
 	await process_frame
 
