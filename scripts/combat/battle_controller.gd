@@ -12,6 +12,7 @@ signal battle_finished(victory: bool)
 const PLAYER_TEAM := "player"
 const ENEMY_TEAM := "enemy"
 const PLAYER_ID := "shadow"
+const TurnScheduler = preload("res://scripts/combat/battle_turn_scheduler.gd")
 
 var units: Array[Dictionary] = []
 var auto_enabled := false
@@ -20,9 +21,13 @@ var waiting_for_player := false
 var action_busy := false
 var active_actor_index := -1
 var running := false
+var turn_scheduler := TurnScheduler.new()
+var turn_loop_generation := 0
 
 func start_battle() -> void:
 	units = [_make_shadow(), _make_hound()]
+	turn_loop_generation += 1
+	_initialize_turn_scheduler()
 	running = true
 	action_busy = true
 	waiting_for_player = false
@@ -30,7 +35,10 @@ func start_battle() -> void:
 	battle_message.emit("FIRST ENCOUNTER")
 	_emit_state()
 	await get_tree().create_timer(0.9).timeout
+	if not running:
+		return
 	action_busy = false
+	call_deferred("_schedule_next_turn")
 
 func set_auto(value: bool) -> void:
 	auto_enabled = value
@@ -55,7 +63,7 @@ func request_player_skill(skill_index: int) -> void:
 	action_busy = true
 	_execute_action(active_actor_index,skill_index)
 
-func _process(delta: float) -> void:
+func _schedule_next_turn() -> void:
 	if not running or action_busy or waiting_for_player:
 		return
 	if BattleRules.living_count(units,ENEMY_TEAM) == 0:
@@ -65,29 +73,60 @@ func _process(delta: float) -> void:
 		_finish_battle(false)
 		return
 
+	var event: Dictionary = turn_scheduler.next_event()
+	if event.is_empty():
+		return
+	_sync_units_from_scheduler()
+	_emit_state()
+
+	# The semantic winner is already fixed by the scheduler. This wait is presentation
+	# pacing only, so render cadence and x1/x2 cannot change who owns the next turn.
+	action_busy = true
+	var generation := turn_loop_generation
+	var wait_seconds := float(event.get("wait_seconds_1x",0.0))
+	await _wait_presentation_time(wait_seconds,generation)
+	if not running or generation != turn_loop_generation:
+		return
+
+	var actor_id := str(event.get("actor_id",""))
+	var index := _unit_index_for_id(actor_id)
+	if index < 0 or int(units[index].get("hp",0)) <= 0:
+		action_busy = false
+		call_deferred("_schedule_next_turn")
+		return
+
+	action_busy = false
+	_begin_turn(index)
+
+func _wait_presentation_time(seconds_1x: float,generation: int) -> void:
+	var remaining := maxf(0.0,seconds_1x)
+	while remaining > 0.0001 and running and generation == turn_loop_generation:
+		var slice := minf(0.05,remaining/maxf(1.0,battle_speed))
+		var before := Time.get_ticks_usec()
+		await get_tree().create_timer(slice).timeout
+		var elapsed := float(Time.get_ticks_usec()-before)/1000000.0
+		remaining = maxf(0.0,remaining-elapsed*battle_speed)
+
+func _initialize_turn_scheduler() -> void:
+	turn_scheduler.reset()
 	for unit in units:
-		if int(unit.get("hp",0)) <= 0:
-			continue
-		unit["meter"] = minf(160.0,float(unit.get("meter",0.0))+float(unit.get("speed",0.0))*delta*1.10*battle_speed)
+		var id := StringName(str(unit.get("id","")))
+		var speed_value := maxi(1,int(round(float(unit.get("speed",1.0)))))
+		var initial_meter_bp := clampi(int(round(float(unit.get("meter",0.0))*100.0)),0,TurnScheduler.MAX_GAUGE)
+		turn_scheduler.add_actor(id,speed_value,initial_meter_bp)
+	_sync_units_from_scheduler()
 
-	var ready := _find_ready_actor()
-	if ready >= 0:
-		_begin_turn(ready)
-	elif Engine.get_process_frames() % 6 == 0:
-		_emit_state()
+func _sync_units_from_scheduler() -> void:
+	for unit in units:
+		var id := StringName(str(unit.get("id","")))
+		if turn_scheduler.has_actor(id):
+			unit["meter"] = float(turn_scheduler.gauge_bp(id))/100.0
 
-func _find_ready_actor() -> int:
-	var chosen := -1
-	var best := 99.999
+func _unit_index_for_id(actor_id: String) -> int:
 	for i in range(units.size()):
-		var unit: Dictionary = units[i]
-		if int(unit.get("hp",0)) <= 0:
-			continue
-		var meter := float(unit.get("meter",0.0))
-		if meter >= 100.0 and meter > best:
-			best = meter
-			chosen = i
-	return chosen
+		if str(units[i].get("id","")) == actor_id:
+			return i
+	return -1
 
 func _begin_turn(index: int) -> void:
 	if action_busy:
@@ -95,7 +134,6 @@ func _begin_turn(index: int) -> void:
 	action_busy = true
 	active_actor_index = index
 	var actor: Dictionary = units[index]
-	actor["meter"] = maxf(0.0,float(actor.get("meter",100.0))-100.0)
 	_tick_cooldowns(actor)
 
 	var skipped := BattleRules.consume_control(actor.get("statuses",{}))
@@ -135,7 +173,8 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 	var actual := BattleRules.apply_damage(target,damage)
 	var effect := ""
 	if str(skill.get("effect","")) == "turn_cut" and int(target["hp"]) > 0:
-		target["meter"] = maxf(0.0,float(target.get("meter",0.0))-30.0)
+		turn_scheduler.adjust_gauge_bp(StringName(str(target["id"])),-3000)
+		_sync_units_from_scheduler()
 		effect = "TURN METER -30"
 
 	if skill_index > 0:
@@ -148,6 +187,8 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 	await get_tree().create_timer(float(skill["recover"])/battle_speed).timeout
 
 	if int(target["hp"]) <= 0:
+		turn_scheduler.set_alive(StringName(str(target["id"])),false)
+		_sync_units_from_scheduler()
 		actor_died.emit(str(target["id"]))
 		await get_tree().create_timer(0.55/battle_speed).timeout
 	_finish_turn()
@@ -156,12 +197,15 @@ func _finish_turn() -> void:
 	active_actor_index = -1
 	waiting_for_player = false
 	action_busy = false
+	_sync_units_from_scheduler()
 	_emit_state()
+	call_deferred("_schedule_next_turn")
 
 func _finish_battle(victory: bool) -> void:
 	if not running:
 		return
 	running = false
+	turn_loop_generation += 1
 	action_busy = true
 	waiting_for_player = false
 	_emit_state()
