@@ -6,11 +6,11 @@ const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd"
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
 const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
 
-const PLAYER_HOME := Vector3(-2.85,0.0,1.55)
-const ENEMY_HOME := Vector3(2.65,0.0,-1.20)
-const CAMERA_HOME := Vector3(-5.05,4.00,6.55)
-const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)
-const CAMERA_FOV := 34.0
+const PLAYER_HOME := Vector3(-2.80,0.0,0.30)
+const ENEMY_HOME := Vector3(2.80,0.0,-0.30)
+const CAMERA_HOME := Vector3(0.0,2.40,9.0)
+const CAMERA_TARGET := Vector3(0.0,1.0,0.0)
+const CAMERA_FOV := 38.0
 const SHADOW_WORLD_LABEL_HEIGHT := 2.55
 const HOUND_WORLD_LABEL_HEIGHT := 1.48
 
@@ -247,7 +247,7 @@ func _build_debug_environment() -> void:
 	enemy_fire.omni_range = 4.8
 	add_child(enemy_fire)
 
-	# Broad battle platform, composed for a diagonal camera like the supplied RAID references.
+	# Broad battle platform, composed for the fixed side-on hero-RPG battle camera.
 	var floor := MeshInstance3D.new()
 	floor.name = "ProductionCobblePreviewFloor"
 	var plane := PlaneMesh.new()
@@ -285,7 +285,7 @@ func _build_debug_environment() -> void:
 	_build_autumn_leaves()
 	_build_preview_grave_markers()
 
-	# Camera: rear-left of player, elevated, aimed diagonally across the field.
+	# Camera: side-on, slightly elevated, with player/enemy kept at comparable depth and baseline.
 	battle_camera = Camera3D.new()
 	battle_camera.current = true
 	battle_camera.fov = CAMERA_FOV
