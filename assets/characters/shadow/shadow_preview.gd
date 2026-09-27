@@ -132,22 +132,24 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_smooth_group(0)
 
-	# Body proportions are intentionally narrow/weak. Each branch begins inside a
+	# Camera review showed the previous body read as stick-thin at battle distance.
+	# Keep Shadow weakened and lean, but restore enough torso/limb mass for a human silhouette.
+	# Each branch begins inside a
 	# larger mass (Chest or Hips) so the disconnected topology overlaps invisibly
 	# while skin weights keep the visible silhouette continuous during motion.
 	_append_skinned_chain(st,skeleton,
 		["Hips","Torso","Chest","Neck"],
-		[0.18,0.205,0.225,0.095],
-		[0.12,0.14,0.150,0.080],14)
+		[0.19,0.215,0.235,0.105],
+		[0.13,0.15,0.165,0.090],14)
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Chest","UpperArm.%s" % side,"LowerArm.%s" % side,"Wrist.%s" % side],
-			[0.125,0.085,0.064,0.043],
-			[0.095,0.070,0.052,0.038],12)
+			[0.140,0.095,0.073,0.050],
+			[0.105,0.078,0.060,0.044],12)
 		_append_skinned_chain(st,skeleton,
 			["Hips","UpperLeg.%s" % side,"LowerLeg.%s" % side,"Foot.%s" % side],
-			[0.125,0.105,0.075,0.050],
-			[0.098,0.080,0.060,0.042],12)
+			[0.140,0.120,0.087,0.055],
+			[0.105,0.088,0.068,0.045],12)
 
 	st.generate_normals()
 	var mesh := st.commit()
