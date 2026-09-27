@@ -2,6 +2,7 @@ extends SceneTree
 
 const Policy = preload("res://scripts/presentation/visual_asset_policy.gd")
 const Factory = preload("res://scripts/presentation/character_factory.gd")
+const ShadowPreview = preload("res://assets/characters/shadow/shadow_preview.gd")
 
 func _init() -> void:
 	var failures := 0
@@ -47,6 +48,8 @@ func _check_shadow_preview_contract() -> int:
 	var failures := 0
 	failures += _expect(ResourceLoader.exists(Policy.SHADOW_PREVIEW_SCENE),"Shadow production-preview scene exists outside the vendor namespace")
 	failures += _expect(not ("/vendor/" in Policy.SHADOW_PREVIEW_SCENE),"Shadow production-preview path is project-owned")
+	failures += _expect(ResourceLoader.exists(ShadowPreview.AUTHORED_HOOD_MESH),"Shadow preview authored hood mesh exists")
+	failures += _expect(not ("/vendor/" in ShadowPreview.AUTHORED_HOOD_MESH),"Shadow preview hood is project-owned, not vendor geometry")
 	var shadow := Factory.create_shadow(false)
 	if shadow == null:
 		push_error("Shadow preview contract: factory returned null")
