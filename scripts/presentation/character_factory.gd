@@ -210,9 +210,10 @@ static func play_hound_idle(root: Node3D,speed: float = 1.0) -> bool:
 
 static func play_hound_attack(root: Node3D,speed: float = 1.0) -> bool:
 	# Production always prefers the dedicated HND_BITE_01 clip. Until that lands,
-	# use a quadruped locomotion carrier if available rather than the vendor Attack
-	# pose whose mid/late frames visibly over-extend the forelimbs in phone captures.
-	return play_named_animation(root,["HND_BITE_01","Run","Attack"],speed,0.08)
+	# preserve a stable low-head canine silhouette during the authored root-lunge.
+	# The vendor Attack remains diagnostic-only because its mid/late frames visibly
+	# over-extend the forelimbs in the shipping side camera.
+	return play_named_animation(root,["HND_BITE_01","Idle_2_HeadLow","Idle_2","Attack"],speed,0.08)
 
 static func play_hound_hit(root: Node3D,speed: float = 1.0) -> bool:
 	return play_named_animation(root,["Idle_HitReact1","Idle_HitReact2"],speed,0.06)
