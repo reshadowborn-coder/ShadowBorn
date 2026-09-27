@@ -51,6 +51,13 @@ Each material must differ through roughness, surface response and construction l
 - feet remain stable enough for planted contact in A1/A2;
 - hood/cloth secondary motion may be baked or lightweight, but it never owns gameplay timing.
 
+### Rig authoring route
+
+- Blender 5.2 Rigify Human is the preferred rig-authoring baseline for an original Shadow mesh.
+- A neutral MPFB/MakeHuman body may be evaluated only as an internal topology/anatomy substrate; it must not survive as recognizable final identity.
+- Godot retarget acceptance requires BoneMap **and Bone Rest** parity, not matching bone names alone.
+- Export only deformation/required hierarchy and semantic actions to GLB; editor control widgets are not runtime content.
+
 ## DCC / GLB handoff contract
 
 - author/export baseline: Blender 5.2.2 LTS → glTF 2.0 / GLB → Godot 4.7.2;
