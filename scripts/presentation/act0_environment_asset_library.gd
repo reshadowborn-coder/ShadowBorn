@@ -28,7 +28,7 @@ static func create_grave_marker_hero() -> MeshInstance3D:
 	instance.set_meta("shadowborn_visual_tier","production_preview")
 	instance.set_meta("shadowborn_visual_source",GRAVE_MARKER_HERO)
 	instance.material_override = _grave_stone_material()
-	instance.set_instance_shader_parameter("grave_tint",Color(0.105,0.102,0.098,1.0))
+	instance.set_instance_shader_parameter("grave_tint",Color(0.125,0.122,0.118,1.0))
 	return instance
 
 static func create_awakening_slab_hero() -> MeshInstance3D:
@@ -62,7 +62,7 @@ static func create_broken_arch_hero() -> MeshInstance3D:
 	instance.set_meta("shadowborn_visual_tier","production_preview")
 	instance.set_meta("shadowborn_visual_source",BROKEN_ARCH_HERO)
 	instance.material_override = _grave_stone_material()
-	instance.set_instance_shader_parameter("grave_tint",Color(0.082,0.083,0.086,1.0))
+	instance.set_instance_shader_parameter("grave_tint",Color(0.118,0.121,0.128,1.0))
 	return instance
 
 static func has_wall_fragment_hero() -> bool:
@@ -75,13 +75,13 @@ static func has_boundary_wall_ruin_hero() -> bool:
 	return ResourceLoader.exists(BOUNDARY_WALL_RUIN_HERO)
 
 static func create_wall_fragment_hero() -> MeshInstance3D:
-	return _create_stone_preview_mesh(WALL_FRAGMENT_HERO,"WallFragmentHero",Color(0.070,0.073,0.080,1.0))
+	return _create_stone_preview_mesh(WALL_FRAGMENT_HERO,"WallFragmentHero",Color(0.103,0.108,0.120,1.0))
 
 static func create_rubble_cluster_hero() -> MeshInstance3D:
-	return _create_stone_preview_mesh(RUBBLE_CLUSTER_HERO,"RubbleClusterHero",Color(0.082,0.080,0.076,1.0))
+	return _create_stone_preview_mesh(RUBBLE_CLUSTER_HERO,"RubbleClusterHero",Color(0.100,0.098,0.094,1.0))
 
 static func create_boundary_wall_ruin_hero() -> MeshInstance3D:
-	return _create_stone_preview_mesh(BOUNDARY_WALL_RUIN_HERO,"BoundaryWallRuinHero",Color(0.072,0.073,0.076,1.0))
+	return _create_stone_preview_mesh(BOUNDARY_WALL_RUIN_HERO,"BoundaryWallRuinHero",Color(0.098,0.101,0.108,1.0))
 
 static func _create_stone_preview_mesh(path: String,node_name: String,tint: Color) -> MeshInstance3D:
 	if not ResourceLoader.exists(path):
@@ -101,6 +101,7 @@ static func _create_stone_preview_mesh(path: String,node_name: String,tint: Colo
 	return instance
 
 static func _grave_stone_material() -> ShaderMaterial:
+	# Camera review: preserve stone mid-values in the dark arena without adding more mobile lights.
 	if _grave_material != null:
 		return _grave_material
 
@@ -128,8 +129,8 @@ void fragment() {
 	float damp = smoothstep(0.72,0.10,p.y) * (0.45 + 0.55*hash31(floor(p*7.0)));
 	float moss = smoothstep(0.77,0.96,0.52*broad + 0.48*chips) * (0.25 + 0.75*damp);
 
-	vec3 col = grave_tint.rgb * mix(0.72,1.08,broad);
-	col *= mix(0.88,0.68,damp*0.55);
+	vec3 col = grave_tint.rgb * mix(0.82,1.16,broad);
+	col *= mix(0.94,0.78,damp*0.48);
 	col = mix(col,vec3(0.035,0.055,0.038),moss*0.25);
 
 	ALBEDO = col;
