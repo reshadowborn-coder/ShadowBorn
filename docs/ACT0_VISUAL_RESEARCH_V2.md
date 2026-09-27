@@ -2,17 +2,13 @@
 
 Status: ACTIVE RESEARCH / USER CANON OVERRIDES
 Applied-research baseline reset by user: ~5/100
-Scope: ACT 0 + Temple Hub vertical slice, iOS-first, iPhone 13 Pro, Godot 4.4.1 Mobile renderer.
+Scope: Checkpoint 01 (Awakening + Grave Hound) visual slice, iOS-first, iPhone 13 Pro, Godot 4.7.2 Mobile renderer. Temple/Act 1 production remains deferred until this slice passes visual acceptance.
 
 ## 0. Core finding
 
 The current visual ceiling is asset-limited, not primarily shader-limited.
 
-Current main contains only:
-- assets/branding
-- assets/vendor
-
-There are no production assets/characters or assets/environment directories in main. The playable slice is therefore built from temporary Quaternius models plus procedural PlaneMesh/BoxMesh/TorusMesh/SphereMesh/CapsuleMesh primitives and procedural materials.
+Current main now contains production-preview material/environment work and an authored starter sword, but the decisive production character assets are still missing: `shadow.glb` and `grave_hound.glb`. Preview meshes continue to use hidden Quaternius rigs as animation carriers. The visual ceiling therefore remains asset-limited despite improved blockout geometry and PBR ground material.
 
 Consequence:
 - shader polish can improve mood but cannot create convincing ruined architecture, garment silhouettes, undead anatomy, chipped stone edges, roots, rubble, grave markers, cloth folds or believable material breakup by itself;
@@ -126,19 +122,19 @@ Selection rule:
 - one primary wall family + one darker/damper variant;
 - avoid mixing many unrelated scanned materials in one small scene.
 
-## 4. Godot 4.4 art pipeline
+## 4. Godot 4.7.2 art pipeline
 
 Use imported source scenes rather than procedural replacement wherever production geometry exists.
 
 Recommended flow:
 source glTF/GLB -> Advanced Import Settings -> mesh/material/animation cleanup -> inherited scene -> Shadowborn-specific material overrides/attachments -> gameplay wrapper.
 
-Godot 4.4 supports Advanced Import Settings per object/material and automatic mesh LOD generation. Use this instead of manually duplicating distant meshes where it works.
+Godot 4.7.2 supports imported glTF/GLB scenes, Advanced Import Settings and automatic mesh LOD generation. Use imported Godot mesh statistics and final fixed-camera screen coverage as the production truth; DCC face count alone is not a runtime budget.
 
 Official references:
-https://docs.godotengine.org/en/4.4/tutorials/assets_pipeline/importing_3d_scenes/index.html
-https://docs.godotengine.org/en/4.4/tutorials/3d/mesh_lod.html
-https://docs.godotengine.org/en/4.4/tutorials/assets_pipeline/retargeting_3d_skeletons.html
+https://docs.godotengine.org/en/4.7/tutorials/assets_pipeline/importing_3d_scenes/index.html
+https://docs.godotengine.org/en/4.7/tutorials/3d/mesh_lod.html
+https://docs.godotengine.org/en/4.7/tutorials/assets_pipeline/retargeting_3d_skeletons.html
 
 ### Animation strategy
 Do not keep final animation locked to current dev character.
@@ -176,9 +172,9 @@ Keep:
 Godot explicitly warns that overlapping transparency is expensive on mobile and recommends minimizing shadow-casting lights. It also recommends reusing materials/shaders and using LOD/occlusion selectively.
 
 Official references:
-https://docs.godotengine.org/en/4.4/tutorials/performance/gpu_optimization.html
-https://docs.godotengine.org/en/4.4/tutorials/3d/mesh_lod.html
-https://docs.godotengine.org/en/4.4/tutorials/3d/resolution_scaling.html
+https://docs.godotengine.org/en/4.7/tutorials/performance/gpu_optimization.html
+https://docs.godotengine.org/en/4.7/tutorials/3d/mesh_lod.html
+https://docs.godotengine.org/en/4.7/tutorials/3d/resolution_scaling.html
 
 Research candidate, not canon:
 - test iOS MetalFX spatial/temporal scaling after real device profiling;
