@@ -9,6 +9,7 @@ const PREVIEW_SOURCE := "generated://shadowborn/shadow_preview_v2"
 const CARRIER_NAME := "AnimationCarrier"
 const AUTHORED_HOOD_MESH := "res://assets/characters/shadow/shadow_hood_preview.obj"
 const AUTHORED_COWL_MESH := "res://assets/characters/shadow/shadow_cowl_preview.obj"
+const AUTHORED_HIP_CLOTH_MESH := "res://assets/characters/shadow/shadow_hip_cloth_preview.obj"
 
 var _body_material: ShaderMaterial
 var _cloth_material: ShaderMaterial
@@ -31,6 +32,7 @@ func _ready() -> void:
 	set_meta("shadowborn_preview_animation_carrier","temporary_vendor_rig_hidden")
 	set_meta("shadowborn_preview_hood_source",AUTHORED_HOOD_MESH)
 	set_meta("shadowborn_preview_cowl_source",AUTHORED_COWL_MESH)
+	set_meta("shadowborn_preview_hip_cloth_source",AUTHORED_HIP_CLOTH_MESH)
 
 func _prepare_materials() -> void:
 	# Raise broad value separation slightly so the character reads against the
@@ -97,14 +99,18 @@ func _build_original_silhouette(skeleton: Skeleton3D) -> void:
 	# shoulders, elbows, hips and knees deform instead of opening hard seams.
 	_build_skinned_body(skeleton)
 
-	# Identity layers: authored cowl + temporary split hip cloth.
+	# Identity layers: authored cowl + authored asymmetric hip cloth.
 	var authored_cowl := load(AUTHORED_COWL_MESH) as Mesh
 	if authored_cowl == null:
 		push_error("Shadow preview: authored cowl mesh missing: %s" % AUTHORED_COWL_MESH)
 	else:
 		_attach_mesh(skeleton,"Chest","ShadowCowl",authored_cowl,Vector3(0.0,0.01,0.0),Vector3.ZERO,_cloth_material,AUTHORED_COWL_MESH)
-	_attach_mesh(skeleton,"Hips","ShadowTabardBack",_make_tabard_mesh(-1.0),Vector3(0.0,0.05,0.0),Vector3.ZERO,_cloth_material)
-	_attach_mesh(skeleton,"Hips","ShadowTabardFront",_make_tabard_mesh(1.0),Vector3(0.0,0.04,0.0),Vector3.ZERO,_cloth_material)
+
+	var authored_hip_cloth := load(AUTHORED_HIP_CLOTH_MESH) as Mesh
+	if authored_hip_cloth == null:
+		push_error("Shadow preview: authored hip cloth mesh missing: %s" % AUTHORED_HIP_CLOTH_MESH)
+	else:
+		_attach_mesh(skeleton,"Hips","ShadowHipCloth",authored_hip_cloth,Vector3(0.0,0.04,0.0),Vector3.ZERO,_cloth_material,AUTHORED_HIP_CLOTH_MESH)
 
 	# Identity-critical hood is now a real authored asset rather than runtime SurfaceTool geometry.
 	# It remains a rigid Head attachment for this bounded preview; the final Shadow GLB will own
@@ -324,24 +330,6 @@ func _make_face_void_mesh() -> ArrayMesh:
 	var c:=Vector3(0.088,-0.125,0.184)
 	var d:=Vector3(-0.088,-0.125,0.184)
 	_quad(st,a,b,c,d)
-	st.generate_normals()
-	return st.commit()
-
-func _make_tabard_mesh(front_sign: float) -> ArrayMesh:
-	var st:=SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var z:=0.13*front_sign
-	var a:=Vector3(-0.145,0.01,z)
-	var b:=Vector3(0.145,0.01,z)
-	var c:=Vector3(0.115,-0.43,z+0.018*front_sign)
-	var d:=Vector3(-0.075,-0.50,z+0.014*front_sign)
-	var e:=Vector3(-0.14,-0.35,z+0.010*front_sign)
-	_tri(st,a,b,c)
-	_tri(st,a,c,d)
-	_tri(st,a,d,e)
-	_tri(st,c,b,a)
-	_tri(st,d,c,a)
-	_tri(st,e,d,a)
 	st.generate_normals()
 	return st.commit()
 
