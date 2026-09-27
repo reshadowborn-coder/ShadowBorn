@@ -52,6 +52,27 @@ Animation never decides damage, cooldown or turn ownership. It is calibrated to 
 - Rush prep must be visually distinct from idle;
 - no mid-active homing.
 
+## Import / retarget contract
+
+- author/export baseline: Blender 5.2.2 LTS -> glTF/GLB -> Godot 4.7.2;
+- begin with a 30 FPS animation-bake baseline that matches the DCC; increase only when a fast-motion import comparison demonstrates lost curve fidelity;
+- enable trimming and immutable-track removal where they preserve the authored action;
+- keep `Always Sample` off by default because it increases imported data; enable it only when Blender/glTF interpolation differs materially from the Godot result;
+- Shadow humanoid retargeting must validate both BoneMap and Bone Rest, not bone names alone. Godot can warn about mapping problems without blocking import, so a successful import is not an acceptance signal;
+- Grave Hound stays on a dedicated quadruped rig. Do not force the humanoid profile onto it;
+- separate AnimationLibrary assets are allowed when they reduce duplication and retarget parity is proven.
+
+## Diagnostic pose-strip policy
+
+CI captures normalized pose samples at 15%, 50% and 85% for action-shape review. These three samples are deliberately **diagnostic only**:
+
+- they expose whether anticipation, commitment and recovery produce distinct silhouettes;
+- they make generic/reused attacks easier to reject;
+- they do **not** define hit timing;
+- 50% of a clip is never assumed to be semantic contact.
+
+Production contact timing is authored/calibrated explicitly against the combat resolver and then validated in the shipping camera.
+
 ## Root / warping policy
 
 Gameplay movement remains authoritative.
