@@ -28,7 +28,7 @@ static func create_grave_marker_hero() -> MeshInstance3D:
 	instance.set_meta("shadowborn_visual_tier","production_preview")
 	instance.set_meta("shadowborn_visual_source",GRAVE_MARKER_HERO)
 	instance.material_override = _grave_stone_material()
-	instance.set_instance_shader_parameter("grave_tint",Color(0.125,0.122,0.118,1.0))
+	instance.set_instance_shader_parameter("grave_tint",Color(0.140,0.137,0.132,1.0))
 	return instance
 
 static func create_awakening_slab_hero() -> MeshInstance3D:
@@ -62,7 +62,7 @@ static func create_broken_arch_hero() -> MeshInstance3D:
 	instance.set_meta("shadowborn_visual_tier","production_preview")
 	instance.set_meta("shadowborn_visual_source",BROKEN_ARCH_HERO)
 	instance.material_override = _grave_stone_material()
-	instance.set_instance_shader_parameter("grave_tint",Color(0.118,0.121,0.128,1.0))
+	instance.set_instance_shader_parameter("grave_tint",Color(0.145,0.149,0.158,1.0))
 	return instance
 
 static func has_wall_fragment_hero() -> bool:
@@ -75,13 +75,13 @@ static func has_boundary_wall_ruin_hero() -> bool:
 	return ResourceLoader.exists(BOUNDARY_WALL_RUIN_HERO)
 
 static func create_wall_fragment_hero() -> MeshInstance3D:
-	return _create_stone_preview_mesh(WALL_FRAGMENT_HERO,"WallFragmentHero",Color(0.103,0.108,0.120,1.0))
+	return _create_stone_preview_mesh(WALL_FRAGMENT_HERO,"WallFragmentHero",Color(0.128,0.134,0.148,1.0))
 
 static func create_rubble_cluster_hero() -> MeshInstance3D:
-	return _create_stone_preview_mesh(RUBBLE_CLUSTER_HERO,"RubbleClusterHero",Color(0.100,0.098,0.094,1.0))
+	return _create_stone_preview_mesh(RUBBLE_CLUSTER_HERO,"RubbleClusterHero",Color(0.115,0.112,0.107,1.0))
 
 static func create_boundary_wall_ruin_hero() -> MeshInstance3D:
-	return _create_stone_preview_mesh(BOUNDARY_WALL_RUIN_HERO,"BoundaryWallRuinHero",Color(0.098,0.101,0.108,1.0))
+	return _create_stone_preview_mesh(BOUNDARY_WALL_RUIN_HERO,"BoundaryWallRuinHero",Color(0.122,0.126,0.136,1.0))
 
 static func _create_stone_preview_mesh(path: String,node_name: String,tint: Color) -> MeshInstance3D:
 	if not ResourceLoader.exists(path):
