@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://assets/environments/checkpoint01/grave_hound_arena.gd" id="1_arena"]
+
+[node name="GraveHoundArena" type="Node3D"]
+script = ExtResource("1_arena")
+metadata/shadowborn_visual_tier = "production"
+metadata/shadowborn_visual_source = "res://assets/environments/checkpoint01/grave_hound_arena.tscn"
+
+[node name="PlayerHome" type="Marker3D" parent="."]
+position = Vector3(-2.8, 0, 0.3)
+
+[node name="EnemyHome" type="Marker3D" parent="."]
+position = Vector3(2.8, 0, -0.3)
+
+[node name="CameraTarget" type="Marker3D" parent="."]
+position = Vector3(0, 1, 0)
+
+[node name="BattleCamera" type="Camera3D" parent="."]
+position = Vector3(0, 2.4, 9)
+fov = 38.0
+current = true
