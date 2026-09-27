@@ -309,7 +309,7 @@
         "ShadowSpawn",
         "SwordSpawn"
       ],
-      "status": "missing"
+      "status": "production_scene_integrated_pending_user_visual_acceptance"
     },
     "grave_hound_arena": {
       "path": "res://assets/environments/checkpoint01/grave_hound_arena.tscn",
@@ -320,7 +320,7 @@
         "EnemyHome",
         "CameraTarget"
       ],
-      "status": "missing"
+      "status": "production_scene_integrated_pending_user_visual_acceptance"
     },
     "animation_brief": "docs/art/ANIMATION_REBUILD_BRIEF.md"
   },
