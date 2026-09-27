@@ -17,7 +17,7 @@ Scope is frozen to awakening + first battle.
 ## First battle
 - one opponent: Grave Hound;
 - no movement joystick;
-- fixed authored camera;
+- fixed side-on authored battle camera;\n- no player-controlled traversal inside the battle room;\n- player/enemy stay at comparable camera depth so neither reads as accidentally tiny/huge;
 - Shadow and enemy large enough to read;
 - A1 and A2 only;
 - speed/turn meter;
