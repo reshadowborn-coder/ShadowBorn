@@ -46,8 +46,12 @@ func _check_stage_preview_assets(stage: Node,label: String,min_grave_markers: in
 		var material := (floor.mesh as PlaneMesh).material
 		failures += _expect(material is ORMMaterial3D,"%s floor uses production ORMMaterial3D" % label)
 		var floor_tier := str(floor.get_meta("shadowborn_visual_tier",""))
-		if label == "Battle" and ResourceLoader.exists(VisualPolicy.BATTLE_ENVIRONMENT):
-			failures += _expect(floor_tier == "production","Battle floor is tagged production when the authored arena scene exists")
+		var production_environment_exists := (
+			(label == "Battle" and ResourceLoader.exists(VisualPolicy.BATTLE_ENVIRONMENT))
+			or (label == "Awakening" and ResourceLoader.exists(VisualPolicy.AWAKENING_ENVIRONMENT))
+		)
+		if production_environment_exists:
+			failures += _expect(floor_tier == "production","%s floor is tagged production when the authored environment exists" % label)
 		else:
 			failures += _expect(floor_tier == "production_preview","%s fallback floor is tagged production_preview" % label)
 
