@@ -11,12 +11,15 @@ const ENEMY_HOME := Vector3(2.80,0.0,-0.30)
 const CAMERA_HOME := Vector3(0.0,2.40,9.0)
 const CAMERA_TARGET := Vector3(0.0,1.0,0.0)
 const CAMERA_FOV := 38.0
-const SHADOW_WORLD_LABEL_HEIGHT := 2.55
-const HOUND_WORLD_LABEL_HEIGHT := 1.48
+const SHADOW_WORLD_BAR_HEIGHT := 2.52
+const HOUND_WORLD_BAR_HEIGHT := 1.66
+const WORLD_HEALTH_BAR_WIDTH := 1.34
+const WORLD_HEALTH_BAR_HEIGHT := 0.105
 
 var actor_nodes: Dictionary = {}
 var actor_home: Dictionary = {}
-var actor_labels: Dictionary = {}
+var actor_health_roots: Dictionary = {}
+var actor_health_fills: Dictionary = {}
 var actor_busy: Dictionary = {}
 var fallback_idle_ids: Dictionary = {}
 var battle_camera: Camera3D
@@ -49,7 +52,7 @@ func apply_state(snapshot: Dictionary) -> void:
 		var id := str(unit["id"])
 		if not actor_nodes.has(id):
 			_spawn_actor(unit)
-		_update_label(unit)
+		_update_world_health(unit)
 
 func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void:
 	if not actor_nodes.has(attacker_id) or not actor_nodes.has(target_id):
@@ -405,16 +408,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 	# applying one root look_at() rule made the combat screenshot read back-to-back.
 	_face_actor_at_opponent(root,model,id)
 
-	var label := Label3D.new()
-	label.position = Vector3(0,SHADOW_WORLD_LABEL_HEIGHT,0) if id=="shadow" else Vector3(0,HOUND_WORLD_LABEL_HEIGHT,0)
-	label.font_size = 24
-	label.outline_size = 9
-	# Actor roots rotate to face their opponent. World-space UI must not inherit
-	# that yaw or the text becomes mirrored/back-facing from the battle camera.
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.double_sided = false
-	root.add_child(label)
-	actor_labels[id] = label
+	_build_world_healthplate(root,id)
 
 func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
 	var opponent := enemy_home if id=="shadow" else player_home
@@ -431,16 +425,71 @@ func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
 		model.rotation_degrees.y = 180.0
 
 
-func _update_label(unit: Dictionary) -> void:
+func _build_world_healthplate(actor_root: Node3D,id: String) -> void:
+	# A dedicated presentation node follows actor translation but not actor yaw.
+	# This keeps the health bar stable and camera-facing while melee characters
+	# rotate toward their opponent. It also avoids per-frame script tracking.
+	var tracker := Node3D.new()
+	tracker.name = "%sHealthPlateTracker" % id.capitalize()
+	tracker.global_position = actor_root.global_position
+	add_child(tracker)
+	actor_health_roots[id] = tracker
+
+	var follow := RemoteTransform3D.new()
+	follow.name = "HealthPlateFollow"
+	follow.update_position = true
+	follow.update_rotation = false
+	follow.update_scale = false
+	follow.use_global_coordinates = true
+	actor_root.add_child(follow)
+	follow.remote_path = follow.get_path_to(tracker)
+	follow.force_update_cache()
+
+	var anchor := Node3D.new()
+	anchor.name = "HealthPlateAnchor"
+	anchor.position = Vector3(0,SHADOW_WORLD_BAR_HEIGHT,0) if id=="shadow" else Vector3(0,HOUND_WORLD_BAR_HEIGHT,0)
+	tracker.add_child(anchor)
+
+	var background := MeshInstance3D.new()
+	background.name = "HealthBarBackground"
+	var background_mesh := QuadMesh.new()
+	background_mesh.size = Vector2(WORLD_HEALTH_BAR_WIDTH,WORLD_HEALTH_BAR_HEIGHT)
+	background_mesh.material = _world_ui_material(Color(0.018,0.022,0.030),10)
+	background.mesh = background_mesh
+	anchor.add_child(background)
+
+	var fill := MeshInstance3D.new()
+	fill.name = "HealthBarFill"
+	var fill_mesh := QuadMesh.new()
+	fill_mesh.size = Vector2(WORLD_HEALTH_BAR_WIDTH-0.06,WORLD_HEALTH_BAR_HEIGHT-0.035)
+	fill_mesh.material = _world_ui_material(Color(0.14,0.58,0.29) if id=="shadow" else Color(0.68,0.105,0.085),11)
+	fill.mesh = fill_mesh
+	fill.position.z = -0.012
+	anchor.add_child(fill)
+	actor_health_fills[id] = fill
+
+func _world_ui_material(color: Color,priority: int) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.no_depth_test = true
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.render_priority = priority
+	return material
+
+func _update_world_health(unit: Dictionary) -> void:
 	var id := str(unit["id"])
-	if not actor_labels.has(id):
+	if not actor_health_fills.has(id):
 		return
 	var hp := int(unit["hp"])
 	var max_hp := maxi(1,int(unit["max_hp"]))
-	var ratio := clampf(float(hp)/float(max_hp),0,1)
-	var filled := int(round(ratio*10.0))
-	var label: Label3D = actor_labels[id]
-	label.text = "%s\n%s%s" % [str(unit["name"]),"█".repeat(filled),"░".repeat(10-filled)]
+	var ratio := clampf(float(hp)/float(max_hp),0.0,1.0)
+	var fill := actor_health_fills[id] as MeshInstance3D
+	fill.scale.x = maxf(0.001,ratio)
+	# Quad scaling is centered; offset the fill so depletion happens from right to
+	# left instead of shrinking toward the center.
+	fill.position.x = -0.5*(WORLD_HEALTH_BAR_WIDTH-0.06)*(1.0-ratio)
 
 func _prepare_vfx_resources() -> void:
 	var flash_mat := StandardMaterial3D.new()
