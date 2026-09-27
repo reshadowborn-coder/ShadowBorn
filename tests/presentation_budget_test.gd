@@ -19,8 +19,11 @@ func _run() -> void:
 	failures += _expect(motes is GPUParticles3D,"ambient cemetery motes use one GPU particle emitter")
 
 	var box_stats := _box_material_stats(stage)
-	failures += _expect(int(box_stats["box_count"]) >= 10,"cemetery contains reusable stone box geometry")
-	failures += _expect(int(box_stats["unique_shader_materials"]) <= 1,"cemetery stone boxes share one shader material")
+	# Production Awakening must not regress to the old BoxMesh crypt.
+	failures += _expect(int(box_stats["box_count"]) <= 2,"awakening does not regress to repeated BoxMesh blockout geometry")
+	var awakening_authored := _authored_checkpoint_mesh_stats(stage)
+	failures += _expect(int(awakening_authored["mesh_count"]) >= 18,"awakening uses the authored Checkpoint 01 funerary/masonry kit")
+	failures += _expect(int(awakening_authored["unique_override_materials"]) <= 1,"awakening authored stone meshes share one override material")
 
 	stage.queue_free()
 	await process_frame
