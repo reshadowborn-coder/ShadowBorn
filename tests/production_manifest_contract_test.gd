@@ -17,6 +17,14 @@ func _init() -> void:
 	failures += _expect(str(handoff.get("format","")) == "glTF 2.0 / GLB","character handoff uses glTF/GLB")
 	failures += _expect("OpenGL" in str(handoff.get("normal_map_contract","")),"character handoff locks OpenGL tangent-space normals")
 	failures += _expect((handoff.get("validation",[]) as Array).size() >= 5,"character handoff has executable import validation gates")
+	var import_audit: Dictionary = manifest.get("character_import_audit",{})
+	failures += _expect(str(import_audit.get("runtime_truth_source","")) == "Godot 4.7.2 imported resources","character audit uses imported Godot runtime truth")
+	failures += _expect(str(import_audit.get("implementation","")) == "res://scripts/presentation/character_asset_audit.gd","character audit implementation path is locked")
+	var audit_metrics: Array = import_audit.get("required_metrics",[])
+	for metric in ["vertex_count","surface_count","unique_material_count","bone_count_max","animation_names"]:
+		failures += _expect(metric in audit_metrics,"character audit includes required metric %s" % metric)
+	var candidate_routes: Array = import_audit.get("candidate_basemesh_routes",[])
+	failures += _expect(candidate_routes.size() >= 2,"character audit keeps original and neutral-substrate routes comparable")
 	var required: Dictionary = manifest.get("checkpoint_01_required_assets",{})
 
 	failures += _expect(_asset_path(required,"shadow") == Policy.SHADOW_SCENE,"Shadow path matches VisualAssetPolicy")
