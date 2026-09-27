@@ -31,6 +31,9 @@ jobs:
       - name: Asset pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
+      - name: Character import audit
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/character_asset_audit_test.gd
       - name: Material pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/material_pipeline_test.gd

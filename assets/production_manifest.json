@@ -356,5 +356,37 @@
         "license": "Godot documentation / CC-BY 3.0"
       }
     ]
+  },
+  "character_import_audit": {
+    "runtime_truth_source": "Godot 4.7.2 imported resources",
+    "implementation": "res://scripts/presentation/character_asset_audit.gd",
+    "documentation": "docs/art/CHARACTER_IMPORT_AUDIT.md",
+    "required_metrics": [
+      "mesh_instance_count",
+      "surface_count",
+      "vertex_count",
+      "triangle_count",
+      "unique_material_count",
+      "skeleton_count",
+      "bone_count_max",
+      "skinned_mesh_count",
+      "animation_names",
+      "visual_height_m"
+    ],
+    "decision_rule": "metrics are diagnostics; production acceptance also requires fixed-camera silhouette/deformation evidence and iPhone 13 Pro profiling",
+    "candidate_basemesh_routes": [
+      {
+        "id": "ORIGINAL_SHADOWBORN_BASE",
+        "status": "candidate",
+        "provenance": "project-authored"
+      },
+      {
+        "id": "MPFB_CC0_NEUTRAL_SUBSTRATE",
+        "status": "research_candidate_not_adopted",
+        "provenance": "MakeHuman/MPFB core graphical assets and output only; third-party assets require separate review",
+        "allowed_role": "internal body/topology/rig starting substrate only",
+        "identity_rule": "final visible Shadow identity must be original Shadowborn work"
+      }
+    ]
   }
 }
