@@ -90,6 +90,7 @@ func _build_authored_masonry() -> void:
 		wall.position = data[0]
 		wall.rotation_degrees = data[1]
 		wall.scale = data[2]
+		wall.set_instance_shader_parameter("grave_tint",Color(0.165,0.172,0.188,1.0))
 		wall.set_meta("shadowborn_visual_tier","production")
 		add_child(wall)
 
@@ -105,6 +106,7 @@ func _build_authored_masonry() -> void:
 		side.position = d[0]
 		side.rotation_degrees = d[1]
 		side.scale = d[2]
+		side.set_instance_shader_parameter("grave_tint",Color(0.128,0.134,0.148,1.0))
 		side.set_meta("shadowborn_visual_tier","production")
 		add_child(side)
 
@@ -112,9 +114,10 @@ func _build_authored_masonry() -> void:
 	var arch := EnvironmentAssetLibrary.create_broken_arch_hero()
 	if arch != null:
 		arch.name = "AwakeningBrokenFuneraryArch"
-		arch.position = Vector3(2.15,0.04,-3.42)
+		arch.position = Vector3(1.15,0.04,-3.48)
 		arch.rotation_degrees.y = -3.0
-		arch.scale = Vector3(0.94,1.05,0.94)
+		arch.scale = Vector3(1.00,1.08,1.00)
+		arch.set_instance_shader_parameter("grave_tint",Color(0.175,0.182,0.198,1.0))
 		arch.set_meta("shadowborn_visual_tier","production")
 		add_child(arch)
 
@@ -130,6 +133,7 @@ func _build_authored_masonry() -> void:
 		][i]
 		rubble.rotation_degrees.y = [-14.0,9.0,21.0][i]
 		rubble.scale = Vector3.ONE*[0.92,0.82,0.88][i]
+		rubble.set_instance_shader_parameter("grave_tint",Color(0.110,0.108,0.104,1.0))
 		rubble.set_meta("shadowborn_visual_tier","production")
 		add_child(rubble)
 
@@ -150,6 +154,7 @@ func _build_authored_masonry() -> void:
 		ruin.rotation_degrees.y = float(d[1])
 		var s := float(d[2])
 		ruin.scale = Vector3.ONE*s
+		ruin.set_instance_shader_parameter("grave_tint",Color(0.120,0.124,0.134,1.0))
 		ruin.set_meta("shadowborn_visual_tier","production")
 		add_child(ruin)
 
