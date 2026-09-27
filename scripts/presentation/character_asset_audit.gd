@@ -23,9 +23,14 @@ static func audit_scene(path: String, scene_parent: Node = null) -> Dictionary:
 	if scene_parent != null:
 		scene_parent.add_child(instance)
 	else:
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree == null:
+			instance.free()
+			report["status"] = "no_scene_tree"
+			return report
 		var holder := Node3D.new()
 		holder.name = "CharacterAssetAuditHolder"
-		Engine.get_main_loop().root.add_child(holder)
+		tree.root.add_child(holder)
 		holder.add_child(instance)
 		scene_parent = holder
 		owned_parent = true
