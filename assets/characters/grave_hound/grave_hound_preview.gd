@@ -6,6 +6,7 @@ extends Node3D
 
 const PREVIEW_SOURCE := "generated://shadowborn/grave_hound_preview_v1"
 const CARRIER_NAME := "AnimationCarrier"
+const AUTHORED_HEAD_MESH := "res://assets/characters/grave_hound/grave_hound_head_preview.obj"
 
 var _flesh_material: ShaderMaterial
 var _wound_material: StandardMaterial3D
@@ -26,6 +27,7 @@ func _ready() -> void:
 	_build_hound(skeleton)
 	set_meta("shadowborn_preview_visible_geometry","original_shadowborn")
 	set_meta("shadowborn_preview_animation_carrier","temporary_vendor_rig_hidden")
+	set_meta("shadowborn_preview_head_source",AUTHORED_HEAD_MESH)
 
 func _prepare_materials() -> void:
 	var shader := Shader.new()
@@ -77,14 +79,14 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	# Tucked abdomen -> larger diseased chest -> thin neck/head connection.
 	_append_skinned_chain(st,skeleton,
 		["Back","Torso","Torso2","Torso3","Neck1","Neck2","Neck3","Head"],
-		[0.27,0.245,0.295,0.315,0.190,0.145,0.115,0.080],
-		[0.190,0.170,0.220,0.250,0.150,0.115,0.090,0.065],14)
+		[0.255,0.235,0.305,0.330,0.195,0.150,0.120,0.082],
+		[0.182,0.165,0.228,0.258,0.154,0.118,0.092,0.066],14)
 
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Torso2","FrontShoulder.%s" % side,"FrontUpperLeg.%s" % side,"FrontLowerLeg.%s" % side],
-			[0.165,0.145,0.110,0.075],
-			[0.128,0.112,0.086,0.060],10)
+			[0.175,0.158,0.116,0.078],
+			[0.136,0.120,0.090,0.062],10)
 		_append_skinned_chain(st,skeleton,
 			["Back","BackShoulder.%s" % side,"BackLeg.%s" % side,"BackUpperLeg.%s" % side,"BackLowerLeg.%s" % side],
 			[0.165,0.155,0.135,0.105,0.070],
@@ -118,28 +120,20 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	if head_socket == null:
 		return
 
-	var skull := MeshInstance3D.new()
-	skull.name = "HoundSkull"
-	var skull_mesh := SphereMesh.new()
-	skull_mesh.radius = 0.225
-	skull_mesh.height = 0.40
-	skull_mesh.radial_segments = 18
-	skull_mesh.rings = 9
-	skull_mesh.material = _flesh_material
-	skull.mesh = skull_mesh
-	skull.position = Vector3(0.0,0.06,0.0)
-	skull.scale = Vector3(0.84,1.20,0.82)
-	_tag_preview(skull)
-	head_socket.add_child(skull)
-
-	var muzzle := MeshInstance3D.new()
-	muzzle.name = "HoundMuzzle"
-	muzzle.mesh = _make_muzzle_mesh()
-	muzzle.material_override = _flesh_material
-	muzzle.position = Vector3(0.0,0.225,0.0)
-	muzzle.scale = Vector3(1.10,1.03,1.10)
-	_tag_preview(muzzle)
-	head_socket.add_child(muzzle)
+	# Camera-first authored canine head. The previous SphereMesh + generated muzzle
+	# read as a generic blob at phone size and hid the skull/cheek/muzzle hierarchy.
+	var authored_head := load(AUTHORED_HEAD_MESH) as Mesh
+	if authored_head == null:
+		push_error("Grave Hound preview: authored head mesh missing: %s" % AUTHORED_HEAD_MESH)
+	else:
+		var head := MeshInstance3D.new()
+		head.name = "HoundAuthoredHead"
+		head.mesh = authored_head
+		head.material_override = _flesh_material
+		head.position = Vector3(0.0,0.055,0.0)
+		head.scale = Vector3(1.03,1.03,1.03)
+		_tag_preview(head,AUTHORED_HEAD_MESH)
+		head_socket.add_child(head)
 
 	var nose := MeshInstance3D.new()
 	nose.name = "HoundNoseVoid"
@@ -150,7 +144,7 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	nose_mesh.rings = 6
 	nose_mesh.material = _void_material
 	nose.mesh = nose_mesh
-	nose.position = Vector3(0.0,0.43,0.0)
+	nose.position = Vector3(0.0,0.455,0.0)
 	nose.scale = Vector3(0.85,0.65,0.80)
 	_tag_preview(nose)
 	head_socket.add_child(nose)
@@ -209,29 +203,6 @@ func _attach_wounds(skeleton: Skeleton3D) -> void:
 		wound.rotation_degrees.z = data[2]
 		_tag_preview(wound)
 		socket.add_child(wound)
-
-func _make_muzzle_mesh() -> ArrayMesh:
-	var st:=SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_smooth_group(0)
-	var sides := 12
-	var back_y := -0.025
-	var front_y := 0.245
-	var back_rx := 0.125
-	var back_rz := 0.105
-	var front_rx := 0.078
-	var front_rz := 0.062
-	for i in range(sides):
-		var a0 := TAU*float(i)/float(sides)
-		var a1 := TAU*float(i+1)/float(sides)
-		var b0 := Vector3(cos(a0)*back_rx,back_y,sin(a0)*back_rz)
-		var b1 := Vector3(cos(a1)*back_rx,back_y,sin(a1)*back_rz)
-		var f0 := Vector3(cos(a0)*front_rx,front_y,sin(a0)*front_rz)
-		var f1 := Vector3(cos(a1)*front_rx,front_y,sin(a1)*front_rz)
-		_quad(st,b0,b1,f1,f0)
-		_tri(st,Vector3(0.0,front_y,0.0),f0,f1)
-	st.generate_normals()
-	return st.commit()
 
 func _make_ear_mesh(side: float) -> ArrayMesh:
 	var st:=SurfaceTool.new()
@@ -322,10 +293,10 @@ func _bone_socket(skeleton: Skeleton3D,bone_name: String,node_name: String) -> B
 	skeleton.add_child(socket)
 	return socket
 
-func _tag_preview(mesh: MeshInstance3D) -> void:
+func _tag_preview(mesh: MeshInstance3D,source: String = PREVIEW_SOURCE) -> void:
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	mesh.set_meta("shadowborn_visual_tier","production_preview")
-	mesh.set_meta("shadowborn_visual_source",PREVIEW_SOURCE)
+	mesh.set_meta("shadowborn_visual_source",source)
 
 func _tri(st: SurfaceTool,a: Vector3,b: Vector3,c: Vector3) -> void:
 	st.add_vertex(a)
