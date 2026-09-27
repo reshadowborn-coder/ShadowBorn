@@ -391,7 +391,8 @@ func _spawn_actor(unit: Dictionary) -> void:
 		model.scale = Vector3(1.05,1.05,1.05)
 	else:
 		# First enemy must read as a waist-high undead dog, not a human-sized wolf.
-		model.scale = Vector3(0.62,0.62,0.62)
+		# Run 73 showed an overlong silhouette; compress local forward length while preserving height.
+		model.scale = Vector3(0.62,0.62,0.49)
 	visual.add_child(model)
 
 	if id=="shadow":
