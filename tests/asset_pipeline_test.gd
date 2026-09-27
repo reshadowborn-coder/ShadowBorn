@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Factory = preload("res://scripts/presentation/character_factory.gd")
+const HoundPreview = preload("res://assets/characters/grave_hound/grave_hound_preview.gd")
 
 func _init() -> void:
 	var failures := 0
@@ -51,8 +52,11 @@ func _check_hound_identity() -> int:
 		# preview contract instead of protecting the retired debug overlays.
 		hound.call("_ready")
 		failures += _expect(hound.find_child("GraveHoundSkinnedBodyV1",true,false) != null,"Hound production preview exposes original skinned body")
-		failures += _expect(hound.find_child("HoundSkull",true,false) != null,"Hound production preview exposes authored skull identity")
-		failures += _expect(hound.find_child("HoundMuzzle",true,false) != null,"Hound production preview exposes authored muzzle identity")
+		var authored_head := hound.find_child("HoundAuthoredHead",true,false) as MeshInstance3D
+		failures += _expect(authored_head != null,"Hound production preview exposes authored canine head identity")
+		if authored_head != null:
+			failures += _expect(str(authored_head.get_meta("shadowborn_visual_source","")) == HoundPreview.AUTHORED_HEAD_MESH,"Hound authored head provenance matches project-owned mesh")
+		failures += _expect(hound.find_child("HoundNoseVoid",true,false) != null,"Hound production preview keeps authored head nose/void read")
 		failures += _expect(hound.find_child("ExposedRibsSocket",true,false) != null,"Hound production preview keeps exposed-rib undead language")
 		failures += _expect(hound.find_child("HoundWoundsSocket",true,false) != null,"Hound production preview keeps wound undead language")
 	elif tier == "debug_vendor":
