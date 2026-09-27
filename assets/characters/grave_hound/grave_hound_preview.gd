@@ -35,10 +35,10 @@ render_mode diffuse_burley, specular_schlick_ggx, cull_disabled;
 void fragment() {
 	float facing = clamp(dot(normalize(NORMAL),normalize(VIEW)),0.0,1.0);
 	float rim = pow(1.0-facing,2.4);
-	ALBEDO = vec3(0.072,0.082,0.067);
+	ALBEDO = vec3(0.090,0.102,0.082);
 	ROUGHNESS = 0.96;
 	METALLIC = 0.0;
-	EMISSION = vec3(0.045,0.070,0.055)*rim*0.10;
+	EMISSION = vec3(0.055,0.085,0.065)*rim*0.14;
 }
 """
 	_flesh_material = ShaderMaterial.new()
@@ -49,7 +49,7 @@ void fragment() {
 	_wound_material.roughness = 0.95
 
 	_bone_material = StandardMaterial3D.new()
-	_bone_material.albedo_color = Color(0.34,0.31,0.235)
+	_bone_material.albedo_color = Color(0.42,0.38,0.29)
 	_bone_material.roughness = 0.91
 
 	_void_material = StandardMaterial3D.new()
@@ -77,18 +77,18 @@ func _build_skinned_body(skeleton: Skeleton3D) -> void:
 	# Tucked abdomen -> larger diseased chest -> thin neck/head connection.
 	_append_skinned_chain(st,skeleton,
 		["Back","Torso","Torso2","Torso3","Neck1","Neck2","Neck3","Head"],
-		[0.24,0.215,0.255,0.285,0.175,0.135,0.105,0.070],
-		[0.175,0.150,0.195,0.225,0.140,0.105,0.085,0.060],14)
+		[0.27,0.245,0.295,0.315,0.190,0.145,0.115,0.080],
+		[0.190,0.170,0.220,0.250,0.150,0.115,0.090,0.065],14)
 
 	for side in ["L","R"]:
 		_append_skinned_chain(st,skeleton,
 			["Torso2","FrontShoulder.%s" % side,"FrontUpperLeg.%s" % side,"FrontLowerLeg.%s" % side],
-			[0.145,0.125,0.095,0.060],
-			[0.115,0.100,0.075,0.050],10)
+			[0.165,0.145,0.110,0.075],
+			[0.128,0.112,0.086,0.060],10)
 		_append_skinned_chain(st,skeleton,
 			["Back","BackShoulder.%s" % side,"BackLeg.%s" % side,"BackUpperLeg.%s" % side,"BackLowerLeg.%s" % side],
-			[0.145,0.135,0.120,0.090,0.058],
-			[0.115,0.105,0.095,0.070,0.048],10)
+			[0.165,0.155,0.135,0.105,0.070],
+			[0.130,0.118,0.105,0.082,0.058],10)
 
 	_append_skinned_chain(st,skeleton,
 		["Back","Tail1","Tail2","Tail3","Tail4","Tail5","Tail6","Tail7","Tail8"],
