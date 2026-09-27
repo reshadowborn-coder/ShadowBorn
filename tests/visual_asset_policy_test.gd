@@ -51,8 +51,10 @@ func _check_shadow_preview_contract() -> int:
 	failures += _expect(not ("/vendor/" in Policy.SHADOW_PREVIEW_SCENE),"Shadow production-preview path is project-owned")
 	failures += _expect(ResourceLoader.exists(ShadowPreview.AUTHORED_HOOD_MESH),"Shadow preview authored hood mesh exists")
 	failures += _expect(ResourceLoader.exists(ShadowPreview.AUTHORED_COWL_MESH),"Shadow preview authored cowl mesh exists")
+	failures += _expect(ResourceLoader.exists(ShadowPreview.AUTHORED_HIP_CLOTH_MESH),"Shadow preview authored hip cloth mesh exists")
 	failures += _expect(not ("/vendor/" in ShadowPreview.AUTHORED_HOOD_MESH),"Shadow preview hood is project-owned, not vendor geometry")
 	failures += _expect(not ("/vendor/" in ShadowPreview.AUTHORED_COWL_MESH),"Shadow preview cowl is project-owned, not vendor geometry")
+	failures += _expect(not ("/vendor/" in ShadowPreview.AUTHORED_HIP_CLOTH_MESH),"Shadow preview hip cloth is project-owned, not vendor geometry")
 	var shadow := Factory.create_shadow(false)
 	if shadow == null:
 		push_error("Shadow preview contract: factory returned null")
