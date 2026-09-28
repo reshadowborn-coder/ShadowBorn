@@ -111,6 +111,47 @@ class MeshBuilder:
         for s in range(segments):
             self.faces.append((last[s], last[(s + 1) % segments], north))
 
+    def body_loft(
+        self,
+        stations: list[tuple[Vector, float, float]],
+        weight_pool: tuple[str, ...],
+        segments: int = 14,
+    ) -> None:
+        """Create one connected torso skin through elliptical cross-section rings.
+
+        Local quadruped convention is X=width, Y=head/tail axis, Z=height.
+        Stations are ordered front(chest) -> rear(pelvis).
+        """
+        if len(stations) < 2:
+            raise RuntimeError("Hound torso loft requires at least two stations")
+
+        rings: list[list[int]] = []
+        for center, half_width, half_height in stations:
+            ring: list[int] = []
+            for i in range(segments):
+                angle = math.tau * float(i) / float(segments)
+                point = center + Vector((
+                    half_width * math.cos(angle),
+                    0.0,
+                    half_height * math.sin(angle),
+                ))
+                ring.append(self._add_vertex(point, weight_pool))
+            rings.append(ring)
+
+        for ring_index in range(len(rings) - 1):
+            a = rings[ring_index]
+            b = rings[ring_index + 1]
+            for i in range(segments):
+                n = (i + 1) % segments
+                self.faces.append((a[i], a[n], b[n], b[i]))
+
+        front_center = self._add_vertex(stations[0][0], weight_pool)
+        rear_center = self._add_vertex(stations[-1][0], weight_pool)
+        for i in range(segments):
+            n = (i + 1) % segments
+            self.faces.append((front_center, rings[0][i], rings[0][n]))
+            self.faces.append((rear_center, rings[-1][n], rings[-1][i]))
+
     def tapered_segment(
         self,
         start: Vector,
@@ -252,22 +293,38 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     chest = (_bone_center(rig, "DEF-spine.007") + _bone_center(rig, "DEF-spine.008")) * 0.5
     shoulder_mid = (_bone_center(rig, "DEF-shoulder.L") + _bone_center(rig, "DEF-shoulder.R")) * 0.5
 
-    # Camera-reviewed canine mass hierarchy:
-    # compact pelvis -> visibly tucked abdomen -> deep shoulder/chest.
-    # A narrow high back bridge joins the masses without filling the belly line.
-    b.ellipsoid(pelvis + Vector((0, 0.015, 0.010)), Vector((0.185, 0.245, 0.205)), pelvis_pool)
-    b.ellipsoid(abdomen + Vector((0, 0.010, -0.040)), Vector((0.145, 0.300, 0.135)), abdomen_pool)
-    b.ellipsoid(chest + Vector((0, -0.005, 0.005)), Vector((0.225, 0.320, 0.245)), chest_pool)
-    b.ellipsoid(shoulder_mid + Vector((0, 0.005, 0.020)), Vector((0.195, 0.165, 0.195)), chest_pool, segments=10, rings=6)
-
-    back_bridge = (pelvis + chest) * 0.5 + Vector((0, 0.0, 0.115))
-    b.ellipsoid(
-        back_bridge,
-        Vector((0.150, 0.430, 0.095)),
-        _pool("DEF-spine.005", "DEF-spine.006", "DEF-spine.007", "DEF-spine.008"),
-        segments=12,
-        rings=6,
+    # Camera-reviewed v3 torso: one connected loft instead of overlapping
+    # chest/abdomen/pelvis ellipsoids. The topline stays continuous while the
+    # underside tucks strongly through the abdomen.
+    torso_pool = _pool(
+        "DEF-spine.004", "DEF-spine.005", "DEF-spine.006", "DEF-spine.007", "DEF-spine.008",
+        "DEF-pelvis.L", "DEF-pelvis.R",
+        "DEF-shoulder.L", "DEF-shoulder.R",
+        "DEF-thigh.L", "DEF-thigh.R",
+        "DEF-front_thigh.L", "DEF-front_thigh.R",
     )
+
+    chest_front = shoulder_mid + Vector((0.0, -0.080, 0.005))
+    chest_rear = chest + Vector((0.0, 0.090, 0.000))
+    abdomen_front = (chest + abdomen) * 0.5 + Vector((0.0, 0.015, 0.010))
+    abdomen_rear = abdomen + Vector((0.0, 0.110, 0.025))
+    loin = (abdomen + pelvis) * 0.5 + Vector((0.0, 0.030, 0.030))
+    pelvis_front = pelvis + Vector((0.0, -0.110, 0.015))
+    pelvis_rear = pelvis + Vector((0.0, 0.145, 0.010))
+
+    torso_stations = [
+        (chest_front, 0.205, 0.245),
+        (chest,       0.220, 0.255),
+        (chest_rear,  0.205, 0.225),
+        (abdomen_front,0.165, 0.170),
+        (abdomen_rear, 0.142, 0.132),
+        (loin,         0.158, 0.150),
+        (pelvis_front, 0.182, 0.190),
+        (pelvis_rear,  0.174, 0.182),
+    ]
+    # Basic Quadruped faces -Y, so ensure station order follows head -> tail.
+    torso_stations.sort(key=lambda station: station[0].y)
+    b.body_loft(torso_stations, torso_pool, segments=14)
 
     # Neck transitions into shoulders instead of floating as a thin tube.
     neck_start = _bone_center(rig, "DEF-spine.008")
@@ -572,11 +629,12 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "second camera-reviewed original skinned Grave Hound mesh candidate; not final user-accepted art",
+        "purpose": "third camera-reviewed original skinned Grave Hound mesh candidate with connected torso loft; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 2,
+        "candidate_revision": 3,
+        "torso_topology": "single_connected_elliptical_loft_surface",
         "candidate_stats_before_export": candidate_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
