@@ -3,7 +3,7 @@ extends SceneTree
 const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
 const ARENA_SCENE := "res://assets/environments/checkpoint01/grave_hound_arena.tscn"
 const CharacterFactory = preload("res://scripts/presentation/character_factory.gd")
-const OUT_PATH := "res://build/dcc_hound/captures/hound_candidate_gameplay_camera.png"
+const OUT_DIR := "res://build/dcc_hound/captures"
 
 func _init() -> void:
 	call_deferred("_run")
@@ -73,6 +73,7 @@ func _run() -> void:
 	hound.scale = Vector3.ONE
 	enemy_visual.add_child(hound)
 	_set_candidate_materials(hound)
+	_disable_candidate_fx(hound)
 	_play_animation(hound,"HND_IDLE_LOW_01")
 
 	# Exact BattleStage facing contract.
@@ -90,12 +91,11 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 
-	var image := root.get_texture().get_image()
-	var err := image.save_png(ProjectSettings.globalize_path(OUT_PATH))
-	if err != OK:
-		push_error("Failed gameplay candidate capture: %s" % err)
-		quit(1)
-		return
+	await _capture(OUT_DIR+"/hound_candidate_battle_neutral_pbr_idle.png")
+	_apply_review_override(hound,Color(0.46,0.47,0.48),false)
+	await _capture(OUT_DIR+"/hound_candidate_battle_flat_gray_idle.png")
+	_apply_review_override(hound,Color(0.006,0.006,0.007),true)
+	await _capture(OUT_DIR+"/hound_candidate_battle_silhouette_idle.png")
 
 	print("SHADOWBORN_HOUND_GAMEPLAY_CAMERA_CAPTURE_PASS")
 	quit(0)
@@ -149,3 +149,40 @@ func _set_candidate_materials(node: Node) -> void:
 
 	for child in node.get_children():
 		_set_candidate_materials(child)
+
+
+func _disable_candidate_fx(node: Node) -> void:
+	if node is GPUParticles3D:
+		(node as GPUParticles3D).emitting = false
+		(node as GPUParticles3D).visible = false
+	elif node is CPUParticles3D:
+		(node as CPUParticles3D).emitting = false
+		(node as CPUParticles3D).visible = false
+	elif node is Light3D:
+		(node as Light3D).visible = false
+	for child in node.get_children():
+		_disable_candidate_fx(child)
+
+func _apply_review_override(node: Node,color: Color,unshaded: bool) -> void:
+	if node is MeshInstance3D:
+		var mesh_node := node as MeshInstance3D
+		if mesh_node.visible:
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = color
+			mat.roughness = 1.0
+			mat.metallic = 0.0
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			mat.emission_enabled = false
+			mat.cull_mode = BaseMaterial3D.CULL_BACK
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED if unshaded else BaseMaterial3D.SHADING_MODE_PER_PIXEL
+			mesh_node.material_override = mat
+	for child in node.get_children():
+		_apply_review_override(child,color,unshaded)
+
+func _capture(path: String) -> void:
+	await process_frame
+	await process_frame
+	var image := root.get_texture().get_image()
+	var err := image.save_png(ProjectSettings.globalize_path(path))
+	if err != OK:
+		push_error("Failed gameplay candidate capture %s: %s" % [path,err])
