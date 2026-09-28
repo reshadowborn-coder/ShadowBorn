@@ -8,6 +8,7 @@ on:
       - "tools/blender/grave_hound_rig_smoke.py"
       - ".github/workflows/dcc-hound-smoke.yml"
       - "docs/art/GRAVE_HOUND_PRODUCTION_BRIEF.md"
+      - "tests/dcc_hound_generated_glb_test.gd"
 
 jobs:
   blender-rig-roundtrip:
@@ -34,6 +35,26 @@ jobs:
           test -s build/dcc_hound/grave_hound_game_rig_smoke.blend
           test -s build/dcc_hound/grave_hound_game_rig_smoke.glb
           test -s build/dcc_hound/grave_hound_rig_smoke_report.json
+
+      - name: Install Godot 4.7.2
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+
+      - name: Import generated game rig in Godot 4.7.2
+        run: |
+          set -euo pipefail
+          # Keep the .blend artifact out of Godot's filesystem scan; this gate is
+          # specifically validating the generated GLB import contract.
+          mv build/dcc_hound/grave_hound_game_rig_smoke.blend /tmp/grave_hound_game_rig_smoke.blend
+          /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/hound_godot_import.log
+          ! grep -q "SCRIPT ERROR:" /tmp/hound_godot_import.log
+          /tmp/godot/godot --headless --path . --script res://tests/dcc_hound_generated_glb_test.gd 2>&1 | tee /tmp/hound_godot_test.log
+          grep -q "Shadowborn generated Hound GLB Godot import: PASS" /tmp/hound_godot_test.log
+          mv /tmp/grave_hound_game_rig_smoke.blend build/dcc_hound/grave_hound_game_rig_smoke.blend
 
       - name: Upload DCC smoke artifacts
         uses: actions/upload-artifact@v4
