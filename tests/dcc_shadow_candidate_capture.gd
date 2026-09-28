@@ -173,7 +173,7 @@ func _attach_production_sword(shadow: Node3D) -> void:
 
 	var mount := Node3D.new()
 	mount.name = "CandidateWeaponGripMount"
-	mount.rotation_degrees = Vector3(0,0,-90)
+	mount.rotation_degrees = Vector3(90,0,0)
 	socket.add_child(mount)
 	sword.transform = grip.transform.affine_inverse()
 	mount.add_child(sword)
