@@ -245,11 +245,11 @@ def _build_body(rig):
         "DEF-pelvis.L","DEF-pelvis.R","DEF-shoulder.L","DEF-shoulder.R"
     )
     stations=[
-        (hips+Vector((0,0,0.015)),0.185,0.150),
-        (waist+Vector((0,0,0.010)),0.150,0.145),
-        ((waist+chest)*0.5,0.185,0.185),
-        (chest,0.225,0.205),
-        (upper,0.205,0.185),
+        (hips+Vector((0,0,0.020)),0.195,0.165),
+        (waist+Vector((0,0,0.015)),0.165,0.155),
+        ((waist+chest)*0.5,0.195,0.190),
+        (chest,0.235,0.205),
+        (upper+Vector((0,0,-0.005)),0.215,0.175),
     ]
     stations.sort(key=lambda s:s[0].z)
     b.body_loft(stations,torso_pool,segments=14)
@@ -266,7 +266,12 @@ def _build_body(rig):
         ]
         points=[_bone(rig,arm_names[0]).head_local]
         points.extend(_bone(rig,n).tail_local for n in arm_names)
-        b.tube(points,[0.085,0.090,0.078,0.066,0.055,0.047,0.040],tuple(arm_names),segments=9)
+        side_sign = -1.0 if side=="L" else 1.0
+        points = [
+            p + Vector((0.018*side_sign*(1.0-float(i)/max(1.0,float(len(points)-1))),0.0,0.0))
+            for i,p in enumerate(points)
+        ]
+        b.tube(points,[0.090,0.094,0.080,0.067,0.056,0.048,0.040],tuple(arm_names),segments=9)
 
     # Legs: slightly stronger thighs but still early/under-equipped.
     for side in ("L","R"):
@@ -293,7 +298,7 @@ def _build_hood(rig):
     # Narrow hood shell: taller than wide, no oversized sphere read.
     b.ellipsoid(
         head+Vector((0.0,0.010,0.010)),
-        Vector((0.145,0.155,0.205)),
+        Vector((0.122,0.132,0.172)),
         neck_pool,
         segments=14,
         rings=7,
@@ -302,9 +307,10 @@ def _build_hood(rig):
     # Short cowl mass at shoulders, not a heroic cape.
     chest=_center(rig,"DEF-spine.005")
     b.body_loft([
-        (chest+Vector((0,0,-0.055)),0.270,0.075),
-        (chest+Vector((0,0,0.050)),0.225,0.065),
-    ],_pool("DEF-spine.004","DEF-spine.005","DEF-shoulder.L","DEF-shoulder.R"),segments=14)
+        (chest+Vector((0,0,-0.070)),0.285,0.090),
+        (chest+Vector((0,0,0.035)),0.238,0.075),
+        (chest+Vector((0,0,0.115)),0.178,0.055),
+    ],_pool("DEF-spine.004","DEF-spine.005","DEF-spine.006","DEF-shoulder.L","DEF-shoulder.R"),segments=14)
     return b
 
 
@@ -330,22 +336,30 @@ def _build_cloth(rig):
     pool=_pool("DEF-spine","DEF-pelvis.L","DEF-pelvis.R","DEF-thigh.L","DEF-thigh.R")
 
     # Asymmetric torn front/back panels; thin geometry owns the early silhouette.
-    front_y=-0.115
-    back_y=0.105
-    z0=hips.z+0.06
-    z1=hips.z-0.48
+    front_y=-0.118
+    back_y=0.108
+    z0=hips.z+0.055
+    z1=hips.z-0.34
+    # Three shorter torn panels read as damaged cloth instead of one rigid skirt.
     b.quad(
-        Vector((-0.17,front_y,z0)),
-        Vector((0.17,front_y,z0)),
-        Vector((0.13,front_y,z1+0.08)),
-        Vector((-0.11,front_y,z1-0.02)),
+        Vector((-0.18,front_y,z0)),
+        Vector((-0.035,front_y,z0)),
+        Vector((-0.055,front_y,z1-0.045)),
+        Vector((-0.16,front_y,z1+0.030)),
         pool,
     )
     b.quad(
-        Vector((0.17,back_y,z0)),
-        Vector((-0.17,back_y,z0)),
-        Vector((-0.14,back_y,z1+0.02)),
-        Vector((0.10,back_y,z1+0.12)),
+        Vector((0.005,front_y,z0-0.010)),
+        Vector((0.17,front_y,z0)),
+        Vector((0.12,front_y,z1+0.055)),
+        Vector((0.025,front_y,z1-0.010)),
+        pool,
+    )
+    b.quad(
+        Vector((0.16,back_y,z0)),
+        Vector((-0.16,back_y,z0)),
+        Vector((-0.105,back_y,z1+0.065)),
+        Vector((0.075,back_y,z1+0.110)),
         pool,
     )
     return b
@@ -440,7 +454,7 @@ def main():
 
     report={
         "status":"pass",
-        "purpose":"first original faceless Shadow mesh candidate; not final accepted art",
+        "purpose":"second camera-reviewed faceless Shadow mesh candidate with compact hood, connected upper silhouette and torn cloth panels; not final accepted art",
         "blender_version":bpy.app.version_string,
         "rig_route":"Rigify Basic Human",
         "measured_controls":controls,
