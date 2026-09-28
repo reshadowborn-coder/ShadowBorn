@@ -4,7 +4,8 @@ const GENERATED_HOUND_GLTF := "res://build/dcc_hound/grave_hound_game_rig_smoke.
 const MIN_GAME_BONES := 32
 const MAX_GAME_BONES := 48
 const REQUIRED_BONE := "DEF-jaw"
-const REQUIRED_ACTIONS := PackedStringArray(["HND_IDLE_LOW_01","HND_BITE_01"])
+const REQUIRED_IDLE_ACTION := "HND_IDLE_LOW_01"
+const REQUIRED_BITE_ACTION := "HND_BITE_01"
 
 func _init() -> void:
 	call_deferred("_run")
@@ -150,7 +151,7 @@ func _animation_stats(players: Array[AnimationPlayer]) -> Dictionary:
 		for animation_name in player.get_animation_list():
 			if not names.has(str(animation_name)):
 				names.append(str(animation_name))
-			if str(animation_name) != "HND_BITE_01":
+			if str(animation_name) != REQUIRED_BITE_ACTION:
 				continue
 			var animation := player.get_animation(animation_name)
 			if animation == null:
@@ -161,7 +162,7 @@ func _animation_stats(players: Array[AnimationPlayer]) -> Dictionary:
 					bite_has_jaw_track = true
 
 	var required_found := true
-	for required_name in REQUIRED_ACTIONS:
+	for required_name in [REQUIRED_IDLE_ACTION,REQUIRED_BITE_ACTION]:
 		if not names.has(required_name):
 			required_found = false
 
