@@ -294,6 +294,27 @@ def _pool(*names: str) -> tuple[str, ...]:
     return tuple(names)
 
 
+def _pbr_material(
+    name: str,
+    base_color: tuple[float, float, float, float],
+    roughness: float,
+    metallic: float = 0.0,
+) -> bpy.types.Material:
+    """Create a glTF-exportable opaque Principled BSDF material."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    mat.diffuse_color = base_color
+    nodes = mat.node_tree.nodes if mat.node_tree is not None else None
+    bsdf = nodes.get("Principled BSDF") if nodes is not None else None
+    if bsdf is None:
+        raise RuntimeError(f"{name} missing Principled BSDF node")
+    bsdf.inputs["Base Color"].default_value = base_color
+    bsdf.inputs["Roughness"].default_value = float(roughness)
+    bsdf.inputs["Metallic"].default_value = float(metallic)
+    bsdf.inputs["Alpha"].default_value = 1.0
+    return mat
+
+
 def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: bool) -> None:
     if front:
         names = [
@@ -568,10 +589,11 @@ def _create_ribs_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     obj = bpy.data.objects.new(RIBS_NAME, mesh)
     bpy.context.scene.collection.objects.link(obj)
 
-    bone_mat = bpy.data.materials.new("HND_EXPOSED_OLD_BONE")
-    bone_mat.diffuse_color = (0.34, 0.31, 0.235, 1.0)
-    bone_mat.metallic = 0.0
-    bone_mat.roughness = 0.94
+    bone_mat = _pbr_material(
+        "HND_EXPOSED_OLD_BONE",
+        (0.34, 0.31, 0.235, 1.0),
+        0.94,
+    )
     obj.data.materials.append(bone_mat)
 
     groups: dict[str, bpy.types.VertexGroup] = {}
@@ -654,10 +676,11 @@ def _create_wound_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, di
     obj = bpy.data.objects.new(WOUND_NAME, mesh)
     bpy.context.scene.collection.objects.link(obj)
 
-    mat = bpy.data.materials.new("HND_DRY_THORAX_CAVITY")
-    mat.diffuse_color = (0.052, 0.012, 0.010, 1.0)
-    mat.metallic = 0.0
-    mat.roughness = 0.84
+    mat = _pbr_material(
+        "HND_DRY_THORAX_CAVITY",
+        (0.052, 0.012, 0.010, 1.0),
+        0.84,
+    )
     obj.data.materials.append(mat)
 
     groups: dict[str, bpy.types.VertexGroup] = {}
@@ -733,10 +756,11 @@ def _create_head_damage_layers(rig: bpy.types.Object) -> tuple[list[bpy.types.Ob
     eye_obj = bpy.data.objects.new(EYE_SOCKET_NAME, eye_mesh)
     bpy.context.scene.collection.objects.link(eye_obj)
 
-    eye_mat = bpy.data.materials.new("HND_EMPTY_CLOUDED_SOCKET")
-    eye_mat.diffuse_color = (0.025, 0.028, 0.024, 1.0)
-    eye_mat.metallic = 0.0
-    eye_mat.roughness = 0.90
+    eye_mat = _pbr_material(
+        "HND_EMPTY_CLOUDED_SOCKET",
+        (0.025, 0.028, 0.024, 1.0),
+        0.90,
+    )
     eye_obj.data.materials.append(eye_mat)
 
     eye_group = eye_obj.vertex_groups.new(name="DEF-spine.011")
@@ -772,10 +796,11 @@ def _create_head_damage_layers(rig: bpy.types.Object) -> tuple[list[bpy.types.Ob
     jaw_obj = bpy.data.objects.new(JAW_BONE_NAME, jaw_mesh)
     bpy.context.scene.collection.objects.link(jaw_obj)
 
-    jaw_mat = bpy.data.materials.new("HND_EXPOSED_JAW_BONE")
-    jaw_mat.diffuse_color = (0.36, 0.32, 0.235, 1.0)
-    jaw_mat.metallic = 0.0
-    jaw_mat.roughness = 0.95
+    jaw_mat = _pbr_material(
+        "HND_EXPOSED_JAW_BONE",
+        (0.36, 0.32, 0.235, 1.0),
+        0.95,
+    )
     jaw_obj.data.materials.append(jaw_mat)
 
     for bone_name, weight in (("DEF-jaw", 0.90), ("DEF-spine.011", 0.10)):
@@ -823,16 +848,18 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     obj = bpy.data.objects.new(BODY_NAME, mesh)
     bpy.context.scene.collection.objects.link(obj)
 
-    dry_mat = bpy.data.materials.new("HND_DRY_GRAVE_HIDE")
-    dry_mat.diffuse_color = (0.17, 0.19, 0.16, 1.0)
-    dry_mat.metallic = 0.0
-    dry_mat.roughness = 0.88
+    dry_mat = _pbr_material(
+        "HND_DRY_GRAVE_HIDE",
+        (0.17, 0.19, 0.16, 1.0),
+        0.88,
+    )
     obj.data.materials.append(dry_mat)
 
-    wet_mat = bpy.data.materials.new("HND_WET_DEAD_FUR")
-    wet_mat.diffuse_color = (0.070, 0.082, 0.068, 1.0)
-    wet_mat.metallic = 0.0
-    wet_mat.roughness = 0.38
+    wet_mat = _pbr_material(
+        "HND_WET_DEAD_FUR",
+        (0.070, 0.082, 0.068, 1.0),
+        0.38,
+    )
     obj.data.materials.append(wet_mat)
 
     # Broad opaque wet-fur zones only. Avoid noisy micro-patches and alpha hair
@@ -1052,11 +1079,12 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "sixteenth camera-reviewed Grave Hound candidate with restrained missing-eye socket and compact jaw damage plus opaque wet-fur breakup; not final user-accepted art",
+        "purpose": "seventeenth camera-reviewed Grave Hound candidate with verified glTF Principled PBR material authoring; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 16,
+        "candidate_revision": 17,
+        "material_export_contract": "opaque Principled BSDF metal/rough PBR for glTF",
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
