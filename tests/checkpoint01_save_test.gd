@@ -13,7 +13,10 @@ func _run() -> void:
 	_test_default_and_reject_invalid()
 	_test_atomic_generations_and_backup_recovery()
 	_test_tmp_crash_window_recovery()
+	_test_invalid_tmp_falls_back_to_backup()
+	_test_oversized_primary_falls_back_to_backup()
 	_test_checksum_rejects_valid_json_tamper()
+	_test_future_schema_rejected()
 	await _test_game_root_resume_routes()
 	_cleanup()
 	print("Checkpoint 01 save tests complete. failures=%d" % failures)
@@ -54,6 +57,26 @@ func _test_tmp_crash_window_recovery() -> void:
 	_check(str(recovered.checkpoint) == "awakening","valid tmp is recovered when primary is absent")
 	_check(int(recovered.generation) == 1,"tmp recovery keeps newest committed candidate generation")
 
+func _test_invalid_tmp_falls_back_to_backup() -> void:
+	_cleanup()
+	_check(Save.save_checkpoint("awakening"),"invalid-tmp fixture generation one succeeds")
+	_check(Save.save_checkpoint("first_battle"),"invalid-tmp fixture generation two succeeds")
+	# Remove/corrupt primary to enter recovery mode, but make tmp unusable.
+	_write_text(Save.SAVE_PATH,"{broken-primary")
+	_write_text(Save.TMP_PATH,"{broken-tmp")
+	var recovered := Save.load_state()
+	_check(str(recovered.checkpoint) == "awakening","invalid tmp never outranks previous-good backup")
+	_check(int(recovered.generation) == 1,"invalid tmp fallback retains backup generation")
+
+func _test_oversized_primary_falls_back_to_backup() -> void:
+	_cleanup()
+	_check(Save.save_checkpoint("awakening"),"oversize fixture generation one succeeds")
+	_check(Save.save_checkpoint("first_battle"),"oversize fixture generation two succeeds")
+	_write_text(Save.SAVE_PATH,"x".repeat(Save.MAX_SAVE_BYTES+64))
+	var recovered := Save.load_state()
+	_check(str(recovered.checkpoint) == "awakening","oversized newest primary is rejected before parsing")
+	_check(int(recovered.generation) == 1,"oversized primary recovery keeps previous-good backup")
+
 func _test_checksum_rejects_valid_json_tamper() -> void:
 	_cleanup()
 	_check(Save.save_checkpoint("awakening"),"checksum fixture generation one succeeds")
@@ -74,6 +97,27 @@ func _test_checksum_rejects_valid_json_tamper() -> void:
 	_write_text(Save.SAVE_PATH,JSON.stringify(envelope))
 	var recovered := Save.load_state()
 	_check(str(recovered.checkpoint) == "awakening" and int(recovered.generation) == 1,"checksum mismatch rejects tampered primary and recovers backup")
+
+func _test_future_schema_rejected() -> void:
+	_cleanup()
+	_check(Save.save_checkpoint("awakening"),"future-schema fixture generation one succeeds")
+	_check(Save.save_checkpoint("first_battle"),"future-schema fixture generation two succeeds")
+	var envelope = JSON.parse_string(_read_text(Save.SAVE_PATH))
+	if typeof(envelope) != TYPE_DICTIONARY:
+		_check(false,"future-schema fixture primary envelope parses")
+		return
+	var payload = JSON.parse_string(str(envelope.payload))
+	if typeof(payload) != TYPE_DICTIONARY:
+		_check(false,"future-schema fixture payload parses")
+		return
+	payload["version"] = Save.SAVE_VERSION+1
+	var payload_json := JSON.stringify(payload)
+	envelope["payload"] = payload_json
+	envelope["sha256"] = payload_json.sha256_text()
+	_write_text(Save.SAVE_PATH,JSON.stringify(envelope))
+	var recovered := Save.load_state()
+	_check(str(recovered.checkpoint) == "awakening","future schema version fails closed to previous-good backup")
+	_check(int(recovered.generation) == 1,"future schema cannot silently migrate itself")
 
 func _test_game_root_resume_routes() -> void:
 	_cleanup()
