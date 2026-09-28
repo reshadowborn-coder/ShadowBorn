@@ -100,7 +100,9 @@ jobs:
             /tmp/godot/godot --path . --rendering-method gl_compatibility \
             --script res://tests/dcc_hound_gameplay_camera_capture.gd 2>&1 | tee /tmp/hound_gameplay_camera.log
           grep -q "SHADOWBORN_HOUND_GAMEPLAY_CAMERA_CAPTURE_PASS" /tmp/hound_gameplay_camera.log
-          test -s build/dcc_hound/captures/hound_candidate_gameplay_camera.png
+          test -s build/dcc_hound/captures/hound_candidate_battle_neutral_pbr_idle.png
+          test -s build/dcc_hound/captures/hound_candidate_battle_flat_gray_idle.png
+          test -s build/dcc_hound/captures/hound_candidate_battle_silhouette_idle.png
 
       - name: Upload DCC smoke artifacts
         uses: actions/upload-artifact@v4
