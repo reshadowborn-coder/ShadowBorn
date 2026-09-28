@@ -12,6 +12,7 @@ on:
       - "tests/dcc_hound_generated_glb_test.gd"
       - "tests/dcc_hound_mesh_candidate_test.gd"
       - "tests/dcc_hound_candidate_capture.gd"
+      - "tests/dcc_hound_gameplay_camera_capture.gd"
 
 jobs:
   blender-rig-roundtrip:
@@ -91,6 +92,15 @@ jobs:
           test -s build/dcc_hound/captures/hound_candidate_bite_windup.png
           test -s build/dcc_hound/captures/hound_candidate_bite_contact.png
           test -s build/dcc_hound/captures/hound_candidate_bite_recovery.png
+
+      - name: Capture candidate from exact battle camera contract
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            /tmp/godot/godot --path . --rendering-method gl_compatibility \
+            --script res://tests/dcc_hound_gameplay_camera_capture.gd 2>&1 | tee /tmp/hound_gameplay_camera.log
+          grep -q "SHADOWBORN_HOUND_GAMEPLAY_CAMERA_CAPTURE_PASS" /tmp/hound_gameplay_camera.log
+          test -s build/dcc_hound/captures/hound_candidate_gameplay_camera.png
 
       - name: Upload DCC smoke artifacts
         uses: actions/upload-artifact@v4
