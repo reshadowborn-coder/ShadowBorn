@@ -2,6 +2,7 @@
 
 Status: USER CANON / production quality contract
 Baseline visual-gameplay readiness: 5/100
+Latest user visual acceptance checkpoint (2026-09-28): 8.5/100 (previously 7/100). The slice is visibly better, especially Shadow, but remains raw; the newer camera angle was judged worse, so camera work must return toward the earlier diagonal composition before readiness rises again.
 
 ## Why this file exists
 The current slice may be technically functional while still looking wrong from the player's camera. These gates exist to prevent repeating visible orientation, staging and presentation mistakes and to make progress measurable by what the player actually sees.
