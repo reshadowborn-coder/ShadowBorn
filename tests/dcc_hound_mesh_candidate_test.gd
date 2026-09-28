@@ -118,6 +118,7 @@ func _run() -> void:
 		failures += _expect(surface_count >= 2,"Hound body preserves separate opaque dry/wet material surfaces")
 		var material_stats := _body_material_stats(body)
 		failures += _expect(bool(material_stats["all_opaque"]),"Hound dry/wet body materials remain fully opaque")
+		failures += _expect(bool(material_stats["all_backface_culled"]),"Hound closed body surfaces cull hidden backfaces for mobile")
 		failures += _expect(bool(material_stats["all_pbr"]),"Hound body surfaces import as BaseMaterial3D PBR materials")
 		failures += _expect(float(material_stats["roughness_span"]) >= 0.25,"Hound dry/wet materials preserve a meaningful roughness contrast")
 		failures += _expect(not uses_8,"Hound candidate remains on four-influence path")
@@ -156,6 +157,7 @@ func _collect(node: Node,skeletons: Array[Skeleton3D],meshes: Array[MeshInstance
 
 func _body_material_stats(body: MeshInstance3D) -> Dictionary:
 	var all_opaque := true
+	var all_backface_culled := true
 	var all_pbr := true
 	var roughness_min := 1.0
 	var roughness_max := 0.0
@@ -163,6 +165,7 @@ func _body_material_stats(body: MeshInstance3D) -> Dictionary:
 	if body.mesh == null:
 		return {
 			"all_opaque": false,
+			"all_backface_culled": false,
 			"all_pbr": false,
 			"roughness_span": 0.0,
 		}
@@ -174,10 +177,12 @@ func _body_material_stats(body: MeshInstance3D) -> Dictionary:
 		var pbr := material as BaseMaterial3D
 		found += 1
 		all_opaque = all_opaque and pbr.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
+		all_backface_culled = all_backface_culled and pbr.cull_mode == BaseMaterial3D.CULL_BACK
 		roughness_min = minf(roughness_min,pbr.roughness)
 		roughness_max = maxf(roughness_max,pbr.roughness)
 	return {
 		"all_opaque": all_opaque and found >= 2,
+		"all_backface_culled": all_backface_culled and found >= 2,
 		"all_pbr": all_pbr and found >= 2,
 		"roughness_span": roughness_max-roughness_min if found >= 2 else 0.0,
 	}
