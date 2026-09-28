@@ -61,10 +61,13 @@ The rig must support readable real canine gait timing before undead stylization.
 
 ### Rig authoring route
 
-- Blender 5.2 Rigify **Wolf** meta-rig is the preferred first production rig-authoring candidate.
-- Use its quadruped/paw structure as a control and deformation framework only; it is not a visible asset source.
+- Blender 5.2 Rigify **Basic Quadruped** is the preferred production rig-authoring baseline.
+- A measured Blender 5.2.2 smoke showed Basic Quadruped at 34 metarig / 46 generated deform bones versus Wolf at 190 / 197 before project-specific pruning.
+- Add a Shadowborn jaw as a `basic.super_copy` deform/control bone; disable nonessential breast deform helpers for the Hound candidate rig.
+- Use the quadruped rig as an authoring/control framework only; it is not a visible asset source.
 - Final Grave Hound mesh, proportions, wounds, skull, materials and animation poses remain original Shadowborn content.
 - Export deformation bones/required hierarchy to GLB; do not ship Rigify control widgets or editor-only UI objects.
+- Current compact game-rig candidate must stay at or below 48 deform bones until iPhone 13 Pro profiling justifies a change; this is a Shadowborn project budget candidate, not an iOS hard limit.
 - Validate the exported Godot Skeleton3D bone hierarchy and all paw contacts before animation polish.
 
 ## DCC / GLB handoff contract
