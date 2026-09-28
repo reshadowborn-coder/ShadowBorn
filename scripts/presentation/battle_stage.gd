@@ -13,6 +13,8 @@ const CAMERA_TARGET := Vector3(0.0,1.0,0.0)
 const CAMERA_FOV := 38.0
 const SHADOW_WORLD_BAR_HEIGHT := 2.52
 const HOUND_WORLD_BAR_HEIGHT := 1.66
+const HOUND_PRODUCTION_SCALE := Vector3.ONE
+const HOUND_PREVIEW_SCALE := Vector3(0.62,0.62,0.49)
 const WORLD_HEALTH_BAR_WIDTH := 1.34
 const WORLD_HEALTH_BAR_HEIGHT := 0.105
 
@@ -392,9 +394,11 @@ func _spawn_actor(unit: Dictionary) -> void:
 	if id=="shadow":
 		model.scale = Vector3(1.05,1.05,1.05)
 	else:
-		# First enemy must read as a waist-high undead dog, not a human-sized wolf.
-		# Run 73 showed an overlong silhouette; compress local forward length while preserving height.
-		model.scale = Vector3(0.62,0.62,0.49)
+		# Final project-authored Hound is authored in meter scale. The old vendor
+		# preview needs a separate compression because its native proportions are
+		# much larger/longer. Never carry preview scale into the production GLB.
+		var visual_tier := str(model.get_meta("shadowborn_visual_tier",""))
+		model.scale = HOUND_PRODUCTION_SCALE if visual_tier=="production" else HOUND_PREVIEW_SCALE
 	visual.add_child(model)
 
 	if id=="shadow":
