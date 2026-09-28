@@ -136,6 +136,16 @@ func _set_candidate_materials(node: Node) -> void:
 			wound.roughness = 0.88
 			wound.cull_mode = BaseMaterial3D.CULL_DISABLED
 			mesh_node.material_override = wound
+		elif mesh_node.name.begins_with("HND_MISSING_EYE_SOCKET_CANDIDATE"):
+			var socket := StandardMaterial3D.new()
+			socket.albedo_color = Color(0.018,0.022,0.019)
+			socket.roughness = 0.92
+			mesh_node.material_override = socket
+		elif mesh_node.name.begins_with("HND_EXPOSED_JAW_BONE_CANDIDATE"):
+			var jaw_bone := StandardMaterial3D.new()
+			jaw_bone.albedo_color = Color(0.48,0.42,0.30)
+			jaw_bone.roughness = 0.95
+			mesh_node.material_override = jaw_bone
 		else:
 			mesh_node.visible = false
 
