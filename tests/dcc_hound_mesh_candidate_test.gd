@@ -116,6 +116,10 @@ func _run() -> void:
 		# shipping budget only after fixed-camera iPhone profiling.
 		failures += _expect(body.skin != null,"Hound candidate has imported Skin")
 		failures += _expect(surface_count >= 2,"Hound body preserves separate opaque dry/wet material surfaces")
+		var material_stats := _body_material_stats(body)
+		failures += _expect(bool(material_stats["all_opaque"]),"Hound dry/wet body materials remain fully opaque")
+		failures += _expect(bool(material_stats["all_pbr"]),"Hound body surfaces import as BaseMaterial3D PBR materials")
+		failures += _expect(float(material_stats["roughness_span"]) >= 0.25,"Hound dry/wet materials preserve a meaningful roughness contrast")
 		failures += _expect(not uses_8,"Hound candidate remains on four-influence path")
 		failures += _expect(max_positive <= 4,"Hound candidate uses at most four positive influences per vertex")
 		failures += _expect(all_vertices_weighted,"Hound candidate has no unweighted imported vertices")
@@ -149,6 +153,34 @@ func _collect(node: Node,skeletons: Array[Skeleton3D],meshes: Array[MeshInstance
 		players.append(node as AnimationPlayer)
 	for child in node.get_children():
 		_collect(child,skeletons,meshes,players)
+
+func _body_material_stats(body: MeshInstance3D) -> Dictionary:
+	var all_opaque := true
+	var all_pbr := true
+	var roughness_min := 1.0
+	var roughness_max := 0.0
+	var found := 0
+	if body.mesh == null:
+		return {
+			"all_opaque": false,
+			"all_pbr": false,
+			"roughness_span": 0.0,
+		}
+	for surface in range(body.mesh.get_surface_count()):
+		var material := body.mesh.surface_get_material(surface)
+		if not (material is BaseMaterial3D):
+			all_pbr = false
+			continue
+		var pbr := material as BaseMaterial3D
+		found += 1
+		all_opaque = all_opaque and pbr.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
+		roughness_min = minf(roughness_min,pbr.roughness)
+		roughness_max = maxf(roughness_max,pbr.roughness)
+	return {
+		"all_opaque": all_opaque and found >= 2,
+		"all_pbr": all_pbr and found >= 2,
+		"roughness_span": roughness_max-roughness_min if found >= 2 else 0.0,
+	}
 
 func _find_mesh_prefix(meshes: Array[MeshInstance3D],prefix: String) -> MeshInstance3D:
 	for mesh_instance in meshes:
