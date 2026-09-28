@@ -520,6 +520,31 @@ def main() -> None:
     rigify_types = sorted({pb.rigify_type for pb in metarig.pose.bones if pb.rigify_type})
     metarig_bones = sorted(b.name for b in metarig.data.bones)
 
+    key_rest_names = (
+        "front_thigh.L","front_shin.L","front_foot.L","front_toe.L",
+        "thigh.L","shin.L","foot.L","toe.L",
+        "shoulder.L","pelvis.L",
+        "spine.004","spine.005","spine.006","spine.007","spine.008",
+        "spine.009","spine.010","spine.011","jaw",
+    )
+    metarig_rest_metrics = {}
+    all_rest_z = []
+    for bone in metarig.data.bones:
+        all_rest_z.extend((float(bone.head_local.z),float(bone.tail_local.z)))
+    metarig_rest_metrics["z_min"] = min(all_rest_z)
+    metarig_rest_metrics["z_max"] = max(all_rest_z)
+    metarig_rest_metrics["height"] = max(all_rest_z)-min(all_rest_z)
+    metarig_rest_metrics["key_bones"] = {}
+    for bone_name in key_rest_names:
+        bone = metarig.data.bones.get(bone_name)
+        if bone is None:
+            continue
+        metarig_rest_metrics["key_bones"][bone_name] = {
+            "head": [round(float(v),6) for v in bone.head_local],
+            "tail": [round(float(v),6) for v in bone.tail_local],
+            "length": round(float(bone.length),6),
+        }
+
     rig = _generate_rig(metarig)
     deform_bones = sorted(b.name for b in rig.data.bones if b.use_deform)
     proxies = _create_skin_proxy(rig)
@@ -546,6 +571,7 @@ def main() -> None:
         "authoring_metarig": "Basic Quadruped + Shadowborn custom jaw",
         "metarig_bone_count": len(metarig_bones),
         "metarig_bones": metarig_bones,
+        "metarig_rest_metrics": metarig_rest_metrics,
         "required_rigify_types": sorted(REQUIRED_RIGIFY_TYPES),
         "observed_rigify_types": rigify_types,
         "disabled_runtime_deform_helpers": ["breast.L", "breast.R"],
