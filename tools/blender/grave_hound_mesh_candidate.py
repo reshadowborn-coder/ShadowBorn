@@ -200,7 +200,7 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
             f"DEF-front_foot.{side}.001",
             f"DEF-front_toe.{side}",
         ]
-        radii = [0.085, 0.080, 0.066, 0.057, 0.052, 0.045, 0.036]
+        radii = [0.074, 0.069, 0.058, 0.050, 0.046, 0.040, 0.032]
     else:
         names = [
             f"DEF-thigh.{side}",
@@ -211,7 +211,7 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
             f"DEF-foot.{side}.001",
             f"DEF-toe.{side}",
         ]
-        radii = [0.098, 0.090, 0.073, 0.062, 0.055, 0.047, 0.038]
+        radii = [0.088, 0.080, 0.067, 0.057, 0.050, 0.043, 0.034]
 
     leg_pool = tuple(names)
     for index, bone_name in enumerate(names):
@@ -224,7 +224,7 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
     paw_center = _bone_tail(rig, names[-1])
     builder.ellipsoid(
         paw_center + Vector((0.0, -0.015, 0.012)),
-        Vector((0.072, 0.105, 0.046)),
+        Vector((0.058, 0.084, 0.036)),
         leg_pool,
         segments=10,
         rings=6,
@@ -252,27 +252,38 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     chest = (_bone_center(rig, "DEF-spine.007") + _bone_center(rig, "DEF-spine.008")) * 0.5
     shoulder_mid = (_bone_center(rig, "DEF-shoulder.L") + _bone_center(rig, "DEF-shoulder.R")) * 0.5
 
-    # Canine mass hierarchy: pelvis -> tucked abdomen -> deep shoulder/chest.
-    b.ellipsoid(pelvis + Vector((0, 0.015, 0.015)), Vector((0.215, 0.285, 0.235)), pelvis_pool)
-    b.ellipsoid(abdomen + Vector((0, 0.010, -0.020)), Vector((0.165, 0.285, 0.175)), abdomen_pool)
-    b.ellipsoid(chest + Vector((0, -0.005, 0.020)), Vector((0.245, 0.330, 0.285)), chest_pool)
-    b.ellipsoid(shoulder_mid + Vector((0, 0.005, 0.030)), Vector((0.235, 0.215, 0.230)), chest_pool, segments=10, rings=6)
+    # Camera-reviewed canine mass hierarchy:
+    # compact pelvis -> visibly tucked abdomen -> deep shoulder/chest.
+    # A narrow high back bridge joins the masses without filling the belly line.
+    b.ellipsoid(pelvis + Vector((0, 0.015, 0.010)), Vector((0.185, 0.245, 0.205)), pelvis_pool)
+    b.ellipsoid(abdomen + Vector((0, 0.010, -0.040)), Vector((0.145, 0.300, 0.135)), abdomen_pool)
+    b.ellipsoid(chest + Vector((0, -0.005, 0.005)), Vector((0.225, 0.320, 0.245)), chest_pool)
+    b.ellipsoid(shoulder_mid + Vector((0, 0.005, 0.020)), Vector((0.195, 0.165, 0.195)), chest_pool, segments=10, rings=6)
+
+    back_bridge = (pelvis + chest) * 0.5 + Vector((0, 0.0, 0.115))
+    b.ellipsoid(
+        back_bridge,
+        Vector((0.150, 0.430, 0.095)),
+        _pool("DEF-spine.005", "DEF-spine.006", "DEF-spine.007", "DEF-spine.008"),
+        segments=12,
+        rings=6,
+    )
 
     # Neck transitions into shoulders instead of floating as a thin tube.
     neck_start = _bone_center(rig, "DEF-spine.008")
     neck_mid = _bone_center(rig, "DEF-spine.009")
     neck_end = _bone_center(rig, "DEF-spine.010")
-    b.tapered_segment(neck_start, neck_mid, 0.145, 0.128, neck_pool, segments=10)
-    b.tapered_segment(neck_mid, neck_end, 0.128, 0.112, neck_pool, segments=10)
+    b.tapered_segment(neck_start, neck_mid, 0.125, 0.110, neck_pool, segments=10)
+    b.tapered_segment(neck_mid, neck_end, 0.110, 0.098, neck_pool, segments=10)
 
     head_bone = rig.data.bones["DEF-spine.011"]
     head_center = (head_bone.head_local + head_bone.tail_local) * 0.5
     head_forward = (head_bone.tail_local - head_bone.head_local).normalized()
-    b.ellipsoid(head_center + Vector((0, 0, 0.012)), Vector((0.175, 0.205, 0.175)), head_pool)
+    b.ellipsoid(head_center + Vector((0, 0, 0.006)), Vector((0.150, 0.178, 0.148)), head_pool)
 
-    muzzle_root = head_center + head_forward * 0.10 + Vector((0, 0, -0.020))
-    muzzle_tip = head_center + head_forward * 0.37 + Vector((0, 0, -0.035))
-    b.tapered_segment(muzzle_root, muzzle_tip, 0.115, 0.068, head_pool, segments=10)
+    muzzle_root = head_center + head_forward * 0.085 + Vector((0, 0, -0.020))
+    muzzle_tip = head_center + head_forward * 0.325 + Vector((0, 0, -0.040))
+    b.tapered_segment(muzzle_root, muzzle_tip, 0.095, 0.055, head_pool, segments=10)
 
     # Separate lower-jaw volume guarantees semantic bite deformation around DEF-jaw.
     jaw_head = _bone_head(rig, "DEF-jaw")
@@ -280,8 +291,8 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     b.tapered_segment(
         jaw_head + Vector((0, 0, -0.035)),
         jaw_tail + Vector((0, 0, -0.035)),
-        0.090,
-        0.055,
+        0.076,
+        0.045,
         jaw_pool,
         segments=10,
         forced={"DEF-jaw": 0.86, "DEF-spine.011": 0.14},
@@ -310,15 +321,17 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     _append_leg(b, rig, "L", front=False)
     _append_leg(b, rig, "R", front=False)
 
-    # Damaged tail: use only the compact four-bone chain already validated in camera.
-    tail_names = ("DEF-spine", "DEF-spine.001", "DEF-spine.002", "DEF-spine.003")
-    tail_radii = (0.070, 0.060, 0.046, 0.030)
+    # Damaged tail: shortened to three deform segments and given a slight corpse droop.
+    tail_names = ("DEF-spine", "DEF-spine.001", "DEF-spine.002")
+    tail_radii = (0.060, 0.046, 0.030)
     for i, name in enumerate(tail_names):
+        drop_a = Vector((0, 0, -0.018 * float(i)))
+        drop_b = Vector((0, 0, -0.018 * float(i + 1)))
         b.tapered_segment(
-            _bone_head(rig, name),
-            _bone_tail(rig, name),
+            _bone_head(rig, name) + drop_a,
+            _bone_tail(rig, name) + drop_b,
             tail_radii[i],
-            max(tail_radii[i] * 0.72, 0.018),
+            max(tail_radii[i] * 0.68, 0.016),
             tail_names,
             segments=8,
         )
@@ -559,10 +572,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "first original skinned Grave Hound mesh candidate; not final user-accepted art",
+        "purpose": "second camera-reviewed original skinned Grave Hound mesh candidate; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
+        "candidate_revision": 2,
         "candidate_stats_before_export": candidate_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
