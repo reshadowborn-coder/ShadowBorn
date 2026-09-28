@@ -115,6 +115,7 @@ func _run() -> void:
 		# normals/UVs/skin boundaries; record the Godot runtime count and set the
 		# shipping budget only after fixed-camera iPhone profiling.
 		failures += _expect(body.skin != null,"Hound candidate has imported Skin")
+		failures += _expect(surface_count >= 2,"Hound body preserves separate opaque dry/wet material surfaces")
 		failures += _expect(not uses_8,"Hound candidate remains on four-influence path")
 		failures += _expect(max_positive <= 4,"Hound candidate uses at most four positive influences per vertex")
 		failures += _expect(all_vertices_weighted,"Hound candidate has no unweighted imported vertices")
