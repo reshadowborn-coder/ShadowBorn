@@ -3,6 +3,7 @@ extends SceneTree
 const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
 const BODY_PREFIX := "HND_BODY_CANDIDATE"
 const RIBS_PREFIX := "HND_EXPOSED_RIBS_CANDIDATE"
+const WOUND_PREFIX := "HND_THORAX_WOUND_CANDIDATE"
 const REQUIRED_IDLE := "HND_IDLE_LOW_01"
 const REQUIRED_BITE := "HND_BITE_01"
 
@@ -52,6 +53,20 @@ func _run() -> void:
 			rib_vertices += (rib_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 		failures += _expect(rib_vertices >= 60,"Exposed-rib candidate has substantive authored geometry")
 		failures += _expect(ribs.skin != null,"Exposed-rib candidate remains skinned to Hound rig")
+
+	var wound: MeshInstance3D = null
+	for mesh_instance in meshes:
+		if mesh_instance.name.begins_with(WOUND_PREFIX):
+			wound = mesh_instance
+			break
+	failures += _expect(wound != null,"Godot preserves exposed thorax wound-cavity mesh")
+	if wound != null and wound.mesh != null:
+		var wound_vertices := 0
+		for surface in range(wound.mesh.get_surface_count()):
+			var wound_arrays := wound.mesh.surface_get_arrays(surface)
+			wound_vertices += (wound_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		failures += _expect(wound_vertices >= 18,"Thorax wound candidate has substantive side-readable geometry")
+		failures += _expect(wound.skin != null,"Thorax wound candidate remains skinned to Hound rig")
 
 	if body != null and body.mesh != null:
 		var vertex_count := 0
