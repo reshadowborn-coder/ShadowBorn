@@ -121,10 +121,8 @@ func _set_candidate_materials(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mesh_node := node as MeshInstance3D
 		if mesh_node.name.begins_with("HND_BODY_CANDIDATE"):
-			var mat := StandardMaterial3D.new()
-			mat.albedo_color = Color(0.17,0.19,0.16)
-			mat.roughness = 0.86
-			mesh_node.material_override = mat
+			# Keep the imported dry/wet opaque material split from the GLB.
+			pass
 		elif mesh_node.name.begins_with("HND_EXPOSED_RIBS_CANDIDATE"):
 			var bone := StandardMaterial3D.new()
 			bone.albedo_color = Color(0.50,0.44,0.31)
