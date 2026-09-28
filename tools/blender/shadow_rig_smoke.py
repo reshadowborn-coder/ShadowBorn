@@ -260,18 +260,41 @@ def _create_smoke_actions(rig: bpy.types.Object) -> tuple[list[str],dict]:
     _reset_pose(rig)
     a1 = bpy.data.actions.new("SHD_A1_SWORD_01")
     rig.animation_data.action = a1
-    for frame, torso_z, chest_z in ((1,0.0,0.0),(5,-0.14,-0.10),(9,0.20,0.18),(14,0.0,0.0)):
+    # Camera-readable one-handed cut: clear shoulder-high windup, diagonal
+    # contact across the torso, then recovery. The earlier smoke moved mostly in
+    # depth and changed only ~0.3% of the fixed BattleCamera frame.
+    for frame, torso_z, chest_z, chest_x in (
+        (1,  0.00,  0.00, 0.00),
+        (5, -0.30, -0.24,-0.08),
+        (9,  0.38,  0.32, 0.10),
+        (14, 0.00,  0.00, 0.00),
+    ):
         key_rot(torso,frame,(0,0,torso_z))
-        key_rot(chest,frame,(0,0,chest_z))
+        key_rot(chest,frame,(chest_x,0,chest_z))
     if upper_arm_r is not None:
-        for frame, angle in ((1,0.10),(5,-0.65),(9,0.75),(14,0.10)):
-            key_rot(upper_arm_r,frame,(angle,0.0,-0.25))
+        for frame, pose in (
+            (1,  (0.10, 0.00,-0.18)),
+            (5,  (-0.35,-0.42,-1.00)),
+            (9,  (0.42, 0.35, 0.78)),
+            (14, (0.10, 0.00,-0.18)),
+        ):
+            key_rot(upper_arm_r,frame,pose)
     if forearm_r is not None:
-        for frame, angle in ((1,-0.20),(5,-0.45),(9,-0.80),(14,-0.20)):
-            key_rot(forearm_r,frame,(angle,0.0,0.0))
+        for frame, pose in (
+            (1,  (-0.20, 0.00, 0.00)),
+            (5,  (-0.72, 0.30,-0.32)),
+            (9,  (-0.45,-0.22, 0.28)),
+            (14, (-0.20, 0.00, 0.00)),
+        ):
+            key_rot(forearm_r,frame,pose)
     if hand_r is not None:
-        for frame, angle in ((1,0.0),(5,-0.20),(9,0.18),(14,0.0)):
-            key_rot(hand_r,frame,(0.0,angle,0.0))
+        for frame, pose in (
+            (1,  (0.00, 0.00, 0.00)),
+            (5,  (-0.12,-0.32,-0.18)),
+            (9,  (0.10, 0.26, 0.22)),
+            (14, (0.00, 0.00, 0.00)),
+        ):
+            key_rot(hand_r,frame,pose)
     created.append("SHD_A1_SWORD_01")
 
     rig.animation_data.action = None
