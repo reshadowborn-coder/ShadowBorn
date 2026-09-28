@@ -97,6 +97,14 @@ func _run() -> void:
 	_apply_review_override(hound,Color(0.006,0.006,0.007),true)
 	await _capture(OUT_DIR+"/hound_candidate_battle_silhouette_idle.png")
 
+	_seek_animation(hound,"HND_BITE_01",9.0/30.0)
+	_set_candidate_materials(hound)
+	await _capture(OUT_DIR+"/hound_candidate_battle_neutral_pbr_contact.png")
+	_apply_review_override(hound,Color(0.46,0.47,0.48),false)
+	await _capture(OUT_DIR+"/hound_candidate_battle_flat_gray_contact.png")
+	_apply_review_override(hound,Color(0.006,0.006,0.007),true)
+	await _capture(OUT_DIR+"/hound_candidate_battle_silhouette_contact.png")
+
 	print("SHADOWBORN_HOUND_GAMEPLAY_CAMERA_CAPTURE_PASS")
 	quit(0)
 
@@ -121,8 +129,8 @@ func _set_candidate_materials(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mesh_node := node as MeshInstance3D
 		if mesh_node.name.begins_with("HND_BODY_CANDIDATE"):
-			# Keep the imported dry/wet opaque material split from the GLB.
-			pass
+			# Restore the imported dry/wet opaque material split from the GLB.
+			mesh_node.material_override = null
 		elif mesh_node.name.begins_with("HND_EXPOSED_RIBS_CANDIDATE"):
 			var bone := StandardMaterial3D.new()
 			bone.albedo_color = Color(0.50,0.44,0.31)
@@ -186,3 +194,12 @@ func _capture(path: String) -> void:
 	var err := image.save_png(ProjectSettings.globalize_path(path))
 	if err != OK:
 		push_error("Failed gameplay candidate capture %s: %s" % [path,err])
+
+
+func _seek_animation(node: Node,animation_name: String,time_seconds: float) -> void:
+	var player := _find_animation_player(node)
+	if player == null or not player.has_animation(animation_name):
+		push_error("Candidate missing animation for review capture: %s" % animation_name)
+		return
+	player.play(animation_name)
+	player.seek(time_seconds,true)
