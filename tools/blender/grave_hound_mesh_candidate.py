@@ -359,24 +359,24 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     # single triangles, so at least one ear survives the fixed side view.
     ear_pool = _pool("DEF-spine.011")
     ear_l_start = head_center + Vector((0.075, 0.010, 0.095))
-    ear_l_end = ear_l_start + Vector((0.000, 0.085, 0.215))
+    ear_l_end = ear_l_start + Vector((0.000, 0.075, 0.155))
     b.tapered_segment(
         ear_l_start,
         ear_l_end,
-        0.055,
-        0.012,
+        0.046,
+        0.010,
         ear_pool,
         segments=6,
         forced={"DEF-spine.011": 1.0},
     )
     # Torn ear is shorter and leans rearward.
     ear_r_start = head_center + Vector((-0.075, 0.025, 0.085))
-    ear_r_end = ear_r_start + Vector((0.000, 0.115, 0.145))
+    ear_r_end = ear_r_start + Vector((0.000, 0.095, 0.105))
     b.tapered_segment(
         ear_r_start,
         ear_r_end,
-        0.048,
-        0.010,
+        0.040,
+        0.009,
         ear_pool,
         segments=6,
         forced={"DEF-spine.011": 1.0},
@@ -401,7 +401,7 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
         0.037,
         tail_names,
         segments=8,
-        forced={"DEF-spine": 0.70, "DEF-spine.001": 0.30},
+        forced={"DEF-spine.004": 0.68, "DEF-spine": 0.32},
     )
     b.tapered_segment(
         tail_mid,
@@ -410,7 +410,7 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
         0.018,
         tail_names,
         segments=8,
-        forced={"DEF-spine.001": 0.58, "DEF-spine.002": 0.42},
+        forced={"DEF-spine": 0.52, "DEF-spine.001": 0.48},
     )
 
     return b
@@ -652,11 +652,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "seventh camera-reviewed original skinned Grave Hound candidate with embedded tail root and side-readable ears; not final user-accepted art",
+        "purpose": "eighth camera-reviewed original skinned Grave Hound candidate with pelvis-anchored tail weighting and restrained ears; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 7,
+        "candidate_revision": 8,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short authored silhouette weighted to Rigify tail deform bones",
         "candidate_stats_before_export": candidate_stats,
