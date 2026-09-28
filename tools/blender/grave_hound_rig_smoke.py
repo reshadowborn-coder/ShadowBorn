@@ -350,11 +350,11 @@ def _create_smoke_actions(rig: bpy.types.Object) -> list[str]:
 
     bite_keys = (
         # frame, jaw, head, neck, chest, hips_y, hips_z
-        (1,  0.00,  0.02,  0.01,  0.00,  0.000,  0.000),
-        (4,  0.58,  0.12,  0.09, -0.05,  0.035, -0.020),  # coil/open
-        (7,  0.30, -0.22, -0.16,  0.08, -0.055,  0.012),  # thrust
-        (9, -0.08, -0.16, -0.10,  0.05, -0.040,  0.006),  # jaw snap/contact
-        (13, 0.00,  0.02,  0.01,  0.00,  0.000,  0.000),  # recover
+        (1,  0.00,  0.01,  0.00,  0.00,  0.000,  0.000),
+        (4,  0.48, -0.11, -0.07, -0.03,  0.040, -0.025),  # low coil / open
+        (7,  0.56,  0.09,  0.06,  0.06, -0.060,  0.025),  # launch / jaws open
+        (9, -0.10,  0.03,  0.02,  0.04, -0.045,  0.010),  # snap/contact
+        (13, 0.00,  0.01,  0.00,  0.00,  0.000,  0.000),  # recover
     )
     for frame, jaw_angle, head_angle, neck_angle, chest_angle, hips_y, hips_z in bite_keys:
         key_rot_x(jaw, frame, jaw_angle)
