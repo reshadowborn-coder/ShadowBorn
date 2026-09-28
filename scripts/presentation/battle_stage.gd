@@ -8,9 +8,9 @@ const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environ
 
 const PLAYER_HOME := Vector3(-2.80,0.0,0.30)
 const ENEMY_HOME := Vector3(2.80,0.0,-0.30)
-const CAMERA_HOME := Vector3(0.0,2.40,9.0)
-const CAMERA_TARGET := Vector3(0.0,1.0,0.0)
-const CAMERA_FOV := 38.0
+const CAMERA_HOME := Vector3(-5.05,4.00,6.55)
+const CAMERA_TARGET := Vector3(0.35,1.02,-0.45)
+const CAMERA_FOV := 34.0
 const SHADOW_WORLD_BAR_HEIGHT := 2.52
 const HOUND_WORLD_BAR_HEIGHT := 1.66
 const HOUND_PRODUCTION_SCALE := Vector3.ONE
@@ -293,7 +293,7 @@ func _build_debug_environment() -> void:
 	_build_autumn_leaves()
 	_build_preview_grave_markers()
 
-	# Camera: side-on, slightly elevated, with player/enemy kept at comparable depth and baseline.
+	# Camera: restored 3/4 diagonal composition after user review; keep both actors readable without flattening the arena.
 	battle_camera = Camera3D.new()
 	battle_camera.current = true
 	battle_camera.fov = CAMERA_FOV
