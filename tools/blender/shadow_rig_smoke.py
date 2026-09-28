@@ -374,6 +374,7 @@ def main() -> None:
     _clear_scene()
 
     metarig=_create_basic_human_metarig()
+    metarig_bone_count=len(metarig.data.bones)
     rig=_generate_rig(metarig)
     deform=sorted(b.name for b in rig.data.bones if b.use_deform)
     proxies=_create_skin_proxy(rig)
@@ -387,7 +388,7 @@ def main() -> None:
         "purpose":"Shadow humanoid rig/skin/action smoke only; not shipping art",
         "blender_version":bpy.app.version_string,
         "authoring_metarig":"Rigify Basic Human",
-        "metarig_bone_count":len(metarig.data.bones),
+        "metarig_bone_count":metarig_bone_count,
         "generated_deform_bone_count":len(deform),
         "generated_deform_bones":deform,
         "measured_controls":controls,
