@@ -355,22 +355,30 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
         forced={"DEF-jaw": 0.86, "DEF-spine.011": 0.14},
     )
 
-    # Ear silhouette: one intact, one torn/asymmetric. Both remain head-driven.
-    ear_root_l = head_center + Vector((0.110, 0.010, 0.105))
-    b.triangle(
-        ear_root_l + Vector((0.0, -0.055, 0.0)),
-        ear_root_l + Vector((0.010, 0.000, 0.255)),
-        ear_root_l + Vector((-0.020, 0.095, 0.035)),
-        head_pool,
+    # Side-camera readable ears: narrow tapered organic wedges rather than
+    # single triangles, so at least one ear survives the fixed side view.
+    ear_pool = _pool("DEF-spine.011")
+    ear_l_start = head_center + Vector((0.075, 0.010, 0.095))
+    ear_l_end = ear_l_start + Vector((0.000, 0.085, 0.215))
+    b.tapered_segment(
+        ear_l_start,
+        ear_l_end,
+        0.055,
+        0.012,
+        ear_pool,
+        segments=6,
         forced={"DEF-spine.011": 1.0},
     )
-    # Right ear is deliberately torn/shorter and leans rearward.
-    ear_root_r = head_center + Vector((-0.110, 0.025, 0.095))
-    b.triangle(
-        ear_root_r + Vector((0.0, -0.045, 0.0)),
-        ear_root_r + Vector((-0.010, 0.035, 0.170)),
-        ear_root_r + Vector((0.015, 0.115, 0.030)),
-        head_pool,
+    # Torn ear is shorter and leans rearward.
+    ear_r_start = head_center + Vector((-0.075, 0.025, 0.085))
+    ear_r_end = ear_r_start + Vector((0.000, 0.115, 0.145))
+    b.tapered_segment(
+        ear_r_start,
+        ear_r_end,
+        0.048,
+        0.010,
+        ear_pool,
+        segments=6,
         forced={"DEF-spine.011": 1.0},
     )
 
@@ -382,7 +390,8 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     # Damaged tail uses an authored short corpse silhouette instead of inheriting
     # the full Rigify tail length. Rigify bones provide deformation only.
     tail_names = ("DEF-spine", "DEF-spine.001", "DEF-spine.002")
-    tail_start = pelvis_rear + Vector((0.0, 0.020, 0.020))
+    # Start inside the rear torso cross-section so skinning cannot reveal a gap.
+    tail_start = pelvis_rear.copy()
     tail_mid = tail_start + Vector((0.0, 0.160, -0.032))
     tail_tip = tail_mid + Vector((0.0, 0.120, -0.042))
     b.tapered_segment(
@@ -643,11 +652,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "sixth camera-reviewed original skinned Grave Hound candidate with joined damaged tail and stronger bite contact; not final user-accepted art",
+        "purpose": "seventh camera-reviewed original skinned Grave Hound candidate with embedded tail root and side-readable ears; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 6,
+        "candidate_revision": 7,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short authored silhouette weighted to Rigify tail deform bones",
         "candidate_stats_before_export": candidate_stats,
