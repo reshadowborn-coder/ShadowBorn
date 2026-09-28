@@ -4,6 +4,7 @@ const GENERATED_HOUND_GLTF := "res://build/dcc_hound/grave_hound_game_rig_smoke.
 const MIN_GAME_BONES := 32
 const MAX_GAME_BONES := 48
 const REQUIRED_BONE := "DEF-jaw"
+const REQUIRED_ACTIONS := PackedStringArray(["HND_IDLE_LOW_01","HND_BITE_01"])
 
 func _init() -> void:
 	call_deferred("_run")
@@ -27,7 +28,8 @@ func _run() -> void:
 
 	var skeletons: Array[Skeleton3D] = []
 	var meshes: Array[MeshInstance3D] = []
-	_collect_nodes(instance,skeletons,meshes)
+	var animation_players: Array[AnimationPlayer] = []
+	_collect_nodes(instance,skeletons,meshes,animation_players)
 	failures += _expect(skeletons.size() == 1,"generated Hound GLB contains exactly one Skeleton3D")
 	failures += _expect(meshes.size() >= 1,"generated Hound GLB preserves skinned proxy geometry")
 
@@ -58,26 +60,36 @@ func _run() -> void:
 		failures += _expect(bool(skin_stats["four_influence_vertex_found"]),"Godot preserves the intentional four-influence skin probe")
 		failures += _expect(bool(skin_stats["bone_weight_array_lengths_valid"]),"Godot bone/weight arrays match four influences per vertex")
 
-		print("HOUND_DCC_GODOT_METRICS bone_count=%d jaw_index=%d skeleton=%s mesh_instances=%d skinned_surfaces=%d four_influence_probe=%s" % [
+		var animation_stats := _animation_stats(animation_players)
+		failures += _expect(bool(animation_stats["required_actions_found"]),"Godot imports semantic Hound idle and bite actions by name")
+		failures += _expect(bool(animation_stats["bite_has_jaw_track"]),"HND_BITE_01 contains an imported DEF-jaw animation track")
+		failures += _expect(float(animation_stats["bite_length"]) > 0.05,"HND_BITE_01 has non-zero imported duration")
+
+		print("HOUND_DCC_GODOT_METRICS bone_count=%d jaw_index=%d skeleton=%s mesh_instances=%d skinned_surfaces=%d four_influence_probe=%s animations=%s bite_length=%.3f bite_jaw_track=%s" % [
 			bone_count,
 			skeleton.find_bone(REQUIRED_BONE),
 			skeleton.name,
 			meshes.size(),
 			int(skin_stats["skinned_surface_count"]),
-			str(bool(skin_stats["four_influence_vertex_found"]))
+			str(bool(skin_stats["four_influence_vertex_found"])),
+			str(animation_stats["animation_names"]),
+			float(animation_stats["bite_length"]),
+			str(bool(animation_stats["bite_has_jaw_track"]))
 		])
 
 	instance.queue_free()
 	await process_frame
 	_finish(failures)
 
-func _collect_nodes(node: Node,skeletons: Array[Skeleton3D],meshes: Array[MeshInstance3D]) -> void:
+func _collect_nodes(node: Node,skeletons: Array[Skeleton3D],meshes: Array[MeshInstance3D],animation_players: Array[AnimationPlayer]) -> void:
 	if node is Skeleton3D:
 		skeletons.append(node as Skeleton3D)
 	if node is MeshInstance3D:
 		meshes.append(node as MeshInstance3D)
+	if node is AnimationPlayer:
+		animation_players.append(node as AnimationPlayer)
 	for child in node.get_children():
-		_collect_nodes(child,skeletons,meshes)
+		_collect_nodes(child,skeletons,meshes,animation_players)
 
 func _skin_stats(meshes: Array[MeshInstance3D]) -> Dictionary:
 	var skinned_surface_count := 0
@@ -128,6 +140,38 @@ func _skin_stats(meshes: Array[MeshInstance3D]) -> Dictionary:
 		"four_influence_vertex_found": four_influence_vertex_found,
 		"bone_weight_array_lengths_valid": bone_weight_array_lengths_valid,
 	}
+
+func _animation_stats(players: Array[AnimationPlayer]) -> Dictionary:
+	var names := PackedStringArray()
+	var bite_has_jaw_track := false
+	var bite_length := 0.0
+
+	for player in players:
+		for animation_name in player.get_animation_list():
+			if not names.has(str(animation_name)):
+				names.append(str(animation_name))
+			if str(animation_name) != "HND_BITE_01":
+				continue
+			var animation := player.get_animation(animation_name)
+			if animation == null:
+				continue
+			bite_length = maxf(bite_length,animation.length)
+			for track_index in range(animation.get_track_count()):
+				if "DEF-jaw" in str(animation.track_get_path(track_index)):
+					bite_has_jaw_track = true
+
+	var required_found := true
+	for required_name in REQUIRED_ACTIONS:
+		if not names.has(required_name):
+			required_found = false
+
+	return {
+		"animation_names": names,
+		"required_actions_found": required_found,
+		"bite_has_jaw_track": bite_has_jaw_track,
+		"bite_length": bite_length,
+	}
+
 
 func _duplicate_bone_names(skeleton: Skeleton3D) -> PackedStringArray:
 	var seen: Dictionary = {}
