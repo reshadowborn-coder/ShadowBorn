@@ -86,6 +86,37 @@ class MeshBuilder:
             self.faces.append((c0,rings[0][n],rings[0][i]))
             self.faces.append((c1,rings[-1][i],rings[-1][n]))
 
+    def vertical_loft(self,stations,pool,segments=14,forced=None):
+        """Create a connected human-form surface along Z.
+
+        Each station is (center, half_width_X, half_depth_Y). Unlike body_loft
+        (quadruped Y-axis), rings live in XY and progress vertically through Z.
+        """
+        if len(stations)<2:
+            raise RuntimeError("vertical_loft requires at least two stations")
+        rings=[]
+        for center,rx,ry in stations:
+            ring=[]
+            for i in range(segments):
+                a=math.tau*float(i)/float(segments)
+                ring.append(self._v(
+                    center+Vector((rx*math.cos(a),ry*math.sin(a),0.0)),
+                    pool,
+                    forced,
+                ))
+            rings.append(ring)
+        for r in range(len(rings)-1):
+            a=rings[r]; b=rings[r+1]
+            for i in range(segments):
+                n=(i+1)%segments
+                self.faces.append((a[i],a[n],b[n],b[i]))
+        low=self._v(stations[0][0],pool,forced)
+        high=self._v(stations[-1][0],pool,forced)
+        for i in range(segments):
+            n=(i+1)%segments
+            self.faces.append((low,rings[0][i],rings[0][n]))
+            self.faces.append((high,rings[-1][n],rings[-1][i]))
+
     def tube(self,points,radii,pool,segments=10,forced=None):
         rings=[]
         for idx,p in enumerate(points):
@@ -245,14 +276,21 @@ def _build_body(rig):
         "DEF-pelvis.L","DEF-pelvis.R","DEF-shoulder.L","DEF-shoulder.R"
     )
     stations=[
-        (hips+Vector((0,0,0.020)),0.195,0.165),
-        (waist+Vector((0,0,0.015)),0.165,0.155),
-        ((waist+chest)*0.5,0.195,0.190),
-        (chest,0.235,0.205),
-        (upper+Vector((0,0,-0.005)),0.215,0.175),
+        (hips+Vector((0,0,0.020)),0.195,0.125),
+        (waist+Vector((0,0,0.015)),0.165,0.115),
+        ((waist+chest)*0.5,0.195,0.135),
+        (chest,0.235,0.150),
+        (upper+Vector((0,0,-0.005)),0.215,0.135),
     ]
     stations.sort(key=lambda s:s[0].z)
-    b.body_loft(stations,torso_pool,segments=14)
+    b.vertical_loft(stations,torso_pool,segments=14)
+
+    # Explicit neck bridge closes the old visual gap between torso and hood.
+    head_base=_center(rig,"DEF-spine.006")
+    b.vertical_loft([
+        (upper+Vector((0,0,0.080)),0.090,0.078),
+        (head_base+Vector((0,0,-0.135)),0.078,0.070),
+    ],_pool("DEF-spine.005","DEF-spine.006"),segments=12)
 
     # Arms: lean rather than heroic, with clear wrist/hand taper.
     for side in ("L","R"):
@@ -293,24 +331,26 @@ def _build_body(rig):
 def _build_hood(rig):
     b=MeshBuilder()
     head=_center(rig,"DEF-spine.006")
-    neck_pool=_pool("DEF-spine.005","DEF-spine.006")
+    pool=_pool("DEF-spine.005","DEF-spine.006","DEF-shoulder.L","DEF-shoulder.R")
 
-    # Narrow hood shell: taller than wide, no oversized sphere read.
-    b.ellipsoid(
-        head+Vector((0.0,0.010,0.010)),
-        Vector((0.122,0.132,0.172)),
-        neck_pool,
-        segments=14,
-        rings=7,
-    )
+    # Vertical hood shell: narrow crown, slightly deeper brow, tapered neck.
+    # This avoids the spherical helmet read of the previous ellipsoid.
+    b.vertical_loft([
+        (head+Vector((0.0,0.010,-0.165)),0.110,0.102),
+        (head+Vector((0.0,0.008,-0.075)),0.128,0.122),
+        (head+Vector((0.0,-0.005,0.030)),0.132,0.138),
+        (head+Vector((0.0,0.012,0.125)),0.105,0.112),
+        (head+Vector((0.0,0.025,0.190)),0.060,0.072),
+    ],pool,segments=14)
 
-    # Short cowl mass at shoulders, not a heroic cape.
+    # Short damaged cowl spreads across shoulders but stays compact.
     chest=_center(rig,"DEF-spine.005")
-    b.body_loft([
-        (chest+Vector((0,0,-0.070)),0.285,0.090),
-        (chest+Vector((0,0,0.035)),0.238,0.075),
-        (chest+Vector((0,0,0.115)),0.178,0.055),
-    ],_pool("DEF-spine.004","DEF-spine.005","DEF-spine.006","DEF-shoulder.L","DEF-shoulder.R"),segments=14)
+    b.vertical_loft([
+        (chest+Vector((0,0,-0.105)),0.292,0.145),
+        (chest+Vector((0,0,-0.025)),0.272,0.138),
+        (chest+Vector((0,0,0.060)),0.215,0.118),
+        (chest+Vector((0,0,0.125)),0.155,0.095),
+    ],pool,segments=14)
     return b
 
 
@@ -318,10 +358,10 @@ def _build_void(rig):
     b=MeshBuilder()
     head=_center(rig,"DEF-spine.006")
     # Basic Human faces -Y in the measured Rigify baseline.
-    center=head+Vector((0.0,-0.145,0.005))
+    center=head+Vector((0.0,-0.142,-0.010))
     b.ellipsoid(
         center,
-        Vector((0.082,0.018,0.112)),
+        Vector((0.076,0.022,0.098)),
         _pool("DEF-spine.006"),
         segments=12,
         rings=6,
@@ -454,7 +494,7 @@ def main():
 
     report={
         "status":"pass",
-        "purpose":"second camera-reviewed faceless Shadow mesh candidate with compact hood, connected upper silhouette and torn cloth panels; not final accepted art",
+        "purpose":"third camera-reviewed faceless Shadow candidate using a correct vertical human torso/hood loft; not final accepted art",
         "blender_version":bpy.app.version_string,
         "rig_route":"Rigify Basic Human",
         "measured_controls":controls,
