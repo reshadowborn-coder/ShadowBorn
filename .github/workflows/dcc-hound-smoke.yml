@@ -6,9 +6,11 @@ on:
     branches: [main]
     paths:
       - "tools/blender/grave_hound_rig_smoke.py"
+      - "tools/blender/grave_hound_mesh_candidate.py"
       - ".github/workflows/dcc-hound-smoke.yml"
       - "docs/art/GRAVE_HOUND_PRODUCTION_BRIEF.md"
       - "tests/dcc_hound_generated_glb_test.gd"
+      - "tests/dcc_hound_mesh_candidate_test.gd"
 
 jobs:
   blender-rig-roundtrip:
@@ -36,6 +38,18 @@ jobs:
           test -s build/dcc_hound/grave_hound_game_rig_smoke.glb
           test -s build/dcc_hound/grave_hound_rig_smoke_report.json
 
+      - name: Build first original Hound mesh candidate
+        run: |
+          set -euo pipefail
+          /tmp/blender-5.2.2-linux-x64/blender \
+            -b --factory-startup \
+            --python tools/blender/grave_hound_mesh_candidate.py \
+            -- --out-dir build/dcc_hound 2>&1 | tee /tmp/hound_mesh_candidate.log
+          grep -q "SHADOWBORN_HOUND_MESH_CANDIDATE_PASS" /tmp/hound_mesh_candidate.log
+          test -s build/dcc_hound/grave_hound_mesh_candidate.blend
+          test -s build/dcc_hound/grave_hound_mesh_candidate.glb
+          test -s build/dcc_hound/grave_hound_mesh_candidate_report.json
+
       - name: Install Godot 4.7.2
         run: |
           set -euo pipefail
@@ -50,11 +64,15 @@ jobs:
           # Keep the .blend artifact out of Godot's filesystem scan; this gate is
           # specifically validating the generated GLB import contract.
           mv build/dcc_hound/grave_hound_game_rig_smoke.blend /tmp/grave_hound_game_rig_smoke.blend
+          mv build/dcc_hound/grave_hound_mesh_candidate.blend /tmp/grave_hound_mesh_candidate.blend
           /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/hound_godot_import.log
           ! grep -q "SCRIPT ERROR:" /tmp/hound_godot_import.log
           /tmp/godot/godot --headless --path . --script res://tests/dcc_hound_generated_glb_test.gd 2>&1 | tee /tmp/hound_godot_test.log
           grep -q "Shadowborn generated Hound GLB Godot import: PASS" /tmp/hound_godot_test.log
+          /tmp/godot/godot --headless --path . --script res://tests/dcc_hound_mesh_candidate_test.gd 2>&1 | tee /tmp/hound_mesh_candidate_godot_test.log
+          grep -q "Shadowborn original Hound mesh candidate Godot import: PASS" /tmp/hound_mesh_candidate_godot_test.log
           mv /tmp/grave_hound_game_rig_smoke.blend build/dcc_hound/grave_hound_game_rig_smoke.blend
+          mv /tmp/grave_hound_mesh_candidate.blend build/dcc_hound/grave_hound_mesh_candidate.blend
 
       - name: Upload DCC smoke artifacts
         uses: actions/upload-artifact@v4
