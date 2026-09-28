@@ -382,9 +382,9 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     # Damaged tail uses an authored short corpse silhouette instead of inheriting
     # the full Rigify tail length. Rigify bones provide deformation only.
     tail_names = ("DEF-spine", "DEF-spine.001", "DEF-spine.002")
-    tail_start = pelvis_rear + Vector((0.0, 0.125, 0.030))
-    tail_mid = tail_start + Vector((0.0, 0.180, -0.035))
-    tail_tip = tail_mid + Vector((0.0, 0.150, -0.050))
+    tail_start = pelvis_rear + Vector((0.0, 0.020, 0.020))
+    tail_mid = tail_start + Vector((0.0, 0.160, -0.032))
+    tail_tip = tail_mid + Vector((0.0, 0.120, -0.042))
     b.tapered_segment(
         tail_start,
         tail_mid,
@@ -643,11 +643,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "fifth camera-reviewed original skinned Grave Hound candidate with compact authored damaged tail and canine skull profile; not final user-accepted art",
+        "purpose": "sixth camera-reviewed original skinned Grave Hound candidate with joined damaged tail and stronger bite contact; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 5,
+        "candidate_revision": 6,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short authored silhouette weighted to Rigify tail deform bones",
         "candidate_stats_before_export": candidate_stats,
