@@ -48,6 +48,13 @@ func _run() -> void:
 	battle.queue_free()
 	await process_frame
 
+	# Production identity evidence: Bite and Rend are mechanically distinct skills.
+	# Capture them through the exact same timing harness so a presentation fallback
+	# that collapses both actions becomes visible in CI artifacts instead of hiding
+	# behind skill IDs or damage values.
+	await _capture_hound_skill_package("hound_bite","bite")
+	await _capture_hound_skill_package("hound_rend","rend")
+
 	# Pose-fraction captures are diagnostic, not semantic timing. They let us compare
 	# silhouette evolution independent of tween timing and expose generic/reused clips
 	# that a single "hero frame" can hide. Production contact still comes from the
@@ -63,6 +70,33 @@ func _run() -> void:
 	# regression tests; keep the helpers below for manual diagnosis only.
 	print("Shadowborn visual capture: PASS")
 	quit(0)
+
+
+func _capture_hound_skill_package(skill_id: String,label: String) -> void:
+	var battle := BattleStageScript.new()
+	root.add_child(battle)
+	await process_frame
+	battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await create_timer(0.20).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_idle.png")
+	battle.play_windup("hound","shadow",skill_id)
+	await create_timer(0.08).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_coil.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_launch.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_contact.png")
+	battle.play_impact("hound","shadow",skill_id,12,"")
+	await create_timer(0.035).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_impact.png")
+	battle.queue_free()
+	await process_frame
 
 
 func _capture_hound_bite_pose(fraction: float,path: String) -> void:
