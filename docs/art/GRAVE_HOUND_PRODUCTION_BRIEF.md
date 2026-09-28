@@ -49,11 +49,13 @@ Avoid glossy gore. The creature should feel old, starved and grave-soiled rather
 Checkpoint 01 identity must survive with eye emission disabled and without transparent gore cards.
 
 Priority forms in the shipping side camera:
-1. asymmetric exposed rib window on one flank;
-2. readable shoulder/scapula bone break or exposed crest;
-3. one large hide rupture around the rib/shoulder transition;
+1. asymmetric exposed rib window on one flank, placed just caudal to the scapular/shoulder mass so the rib structure reads anatomically rather than as random decoration;
+2. readable shoulder/scapula bone break or exposed crest, using the scapular spine as the primary lateral bony landmark;
+3. one large hide rupture bridging the shoulder-to-rib transition while preserving the forelimb chain and shoulder silhouette;
 4. compact damaged tail and asymmetric ears;
 5. only after those read, add smaller dirt/wound breakup.
+
+Anatomy placement rule: damage may exaggerate or remove tissue, but it must still respect the recognizable canine shoulder → thorax → forelimb organization. Do not communicate decay by arbitrarily lengthening distal limb bones or scattering unattached rib/bone primitives.
 
 Material rule for the first Hound GLB:
 - keep **three opaque gameplay families** as the target baseline: dry hide, bone, dark tissue/grave-soil;
