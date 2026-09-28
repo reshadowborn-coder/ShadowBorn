@@ -17,17 +17,17 @@ static func default_state() -> Dictionary:
 	}
 
 static func load_state() -> Dictionary:
-	var primary := _read_state(SAVE_PATH)
+	var primary: Variant = _read_state(SAVE_PATH)
 	if primary != null:
 		return primary
 
 	# If promotion was interrupted after primary->backup but before tmp->primary,
 	# the fully flushed/read-back temporary generation is newer than the backup.
-	var temporary := _read_state(TMP_PATH)
+	var temporary: Variant = _read_state(TMP_PATH)
 	if temporary != null:
 		return temporary
 
-	var backup := _read_state(BAK_PATH)
+	var backup: Variant = _read_state(BAK_PATH)
 	if backup != null:
 		return backup
 	return default_state()
