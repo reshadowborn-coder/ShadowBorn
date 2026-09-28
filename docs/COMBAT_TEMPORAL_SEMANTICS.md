@@ -30,6 +30,22 @@ This matches the RAID comparator behavior documented by Plarium for Stun, Freeze
 
 The user-authoritative Shadowborn requirement remains the broader RAID-like rule that Stun/Sleep/Freeze skip turns. This document freezes the current implementation rule for cooldown interaction; it does not silently promote every RAID secondary rider into Shadowborn canon.
 
+## Poison owner-turn ordering
+
+Poison is periodic owner-turn damage, not an action and not a cooldown refresh.
+
+Current reboot ordering at an owner's opportunity is:
+
+1. deterministic scheduler grants the opportunity;
+2. Poison ticks and its duration advances;
+3. if the actor survives, Stun/Freeze/Sleep legality is resolved;
+4. if control steals the opportunity, no skill cooldown advances;
+5. if the actor performs a real action, cooldowns advance exactly once at action commit.
+
+Therefore a poisoned + stunned actor still suffers Poison, loses the turn to Stun, and keeps the same skill cooldown values.
+
+This matches the RAID comparator's documented rule that Poison continues to work while Sleep prevents actions, and it preserves the old Shadowborn Act 1 poison ordering without restoring the removed legacy controller wholesale.
+
 ## Non-goals in this slice
 
 Not promoted by this change:
@@ -39,7 +55,7 @@ Not promoted by this change:
 - Resolve/anti-lock refunds;
 - Extra Turns;
 - Provoke/Silence;
-- live Poison timing.
+- Poison stacking/reapplication numbers beyond the current prototype helper.
 
 Those are separate semantic gates.
 
