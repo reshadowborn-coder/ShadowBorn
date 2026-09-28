@@ -140,3 +140,44 @@ FAIL examples:
 - all threat communicated by red eyes;
 - paws slide while body moves;
 - generic Attack reused for both Bite and Rush.
+
+
+## Fixed battle-camera deformation acceptance
+
+Status: PRODUCTION DECISION / does not by itself raise visual readiness.
+
+FACT:
+- Blender 5.2 glTF export supports deformation-bones-only export, explicit skin influence counts, Armature Actions and resetting pose bones between actions.
+- Godot mobile review should prefer opaque materials; alpha blending is slower and introduces sorting limitations.
+- Canine/quadruped shoulder motion is not a rigid hinge at the thorax: the scapular/pectoral girdle contributes to forelimb excursion and load support. The Hound surface therefore needs a deformable shoulder-to-thorax transition rather than a visually welded upper leg.
+
+RESEARCH CANDIDATE:
+- Treat scapula/shoulder, thorax, tucked abdomen, pelvis and paw support as the five deformation zones that must survive the first production mesh pass.
+- Paw-contact quality is judged from semantic attack phases and final camera; no invented centimeter tolerance is frozen before a real authored mesh and physical-device capture exist.
+
+PRODUCTION DECISION:
+- Every generated Hound candidate must produce exact BattleCamera captures with VFX/emission disabled in three diagnostic material modes: black silhouette, flat gray, neutral opaque PBR.
+- The matrix currently gates idle and semantic Bite contact. Side diagnostic capture continues to cover idle, coil/windup, contact and recovery.
+- Material review cannot rescue anatomy: silhouette and flat-gray passes must already show a low canine head, shoulder/chest mass, tucked abdomen, pelvis, short damaged tail and non-spider limb proportions.
+- Neutral PBR may separate dry hide, bone and damaged tissue, but must stay opaque-first for Checkpoint 01.
+
+PASS:
+- Hound faces Shadow and Bite contact commits head/neck/chest toward the target from the production BattleCamera.
+- Black silhouette reads as a waist-high undead canid rather than a generic wolf blob or insect/spider shape.
+- Flat gray preserves skull/muzzle, shoulder/thorax, abdomen/pelvis and paw-chain readability without texture/emission help.
+- Bite contact has no obvious limb telescoping, foreleg spider stretch, detached paw, floating body or instantaneous pose reset.
+- Neutral PBR remains readable with emission off and does not depend on transparent gore/fur cards.
+- The generated GLB still passes Godot 4.7.2 import, one-skeleton skinning, semantic action and four-influence gates.
+
+FAIL:
+- Any diagnostic pass needs eye glow, particles, blood transparency or dark lighting to hide weak anatomy.
+- Shoulder or pelvis collapses into the torso at contact.
+- Paw/limb deformation produces visible skating/stretch that breaks weight support.
+- A green CI result is treated as visual acceptance without reviewing the generated captures.
+
+Evidence links:
+- Blender 5.2 glTF 2.0 exporter: https://docs.blender.org/manual/en/5.2/addons/scene_gltf2.html
+- Blender 5.2 Rigify rig types: https://docs.blender.org/manual/en/5.2/addons/rigify/rig_types/index.html
+- Godot 4.7 3D rendering limitations: https://docs.godotengine.org/en/4.7/tutorials/3d/3d_rendering_limitations.html
+- Canine thoracic-limb kinematic model: DOI 10.1055/s-0042-1757591
+- Comparative quadruped pectoral-girdle mechanics: DOI 10.1186/1742-9994-7-21
