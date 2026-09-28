@@ -39,6 +39,7 @@ from grave_hound_rig_smoke import (
 )
 
 BODY_NAME = "HND_BODY_CANDIDATE"
+RIBS_NAME = "HND_EXPOSED_RIBS_CANDIDATE"
 MIN_CANDIDATE_VERTICES = 500
 MAX_CANDIDATE_VERTICES = 2200
 MAX_INFLUENCES = 4
@@ -447,6 +448,96 @@ def _weights_for_vertex(
     return {bone_name: weight / total for bone_name, weight in raw}
 
 
+def _create_ribs_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, dict]:
+    """Create three broad exposed rib arcs on the camera-near thorax.
+
+    They are deliberately sparse: enough to read as undead anatomy at phone size
+    without turning the rib cage into high-frequency shimmer.
+    """
+    builder = MeshBuilder()
+    chest = (_bone_center(rig, "DEF-spine.007") + _bone_center(rig, "DEF-spine.008")) * 0.5
+    rib_weights = {"DEF-spine.007": 0.54, "DEF-spine.008": 0.46}
+    rib_pool = _pool("DEF-spine.007", "DEF-spine.008")
+
+    # Camera sits on +X for the diagnostic side view, so expose the +X thorax.
+    for index, y_offset in enumerate((-0.115, -0.015, 0.085)):
+        root = chest + Vector((0.205, y_offset, 0.155 - 0.008 * index))
+        mid = chest + Vector((0.245, y_offset + 0.030, 0.015 - 0.018 * index))
+        end = chest + Vector((0.205, y_offset + 0.070, -0.135 + 0.006 * index))
+        builder.tapered_segment(
+            root,
+            mid,
+            0.018,
+            0.015,
+            rib_pool,
+            segments=6,
+            forced=rib_weights,
+        )
+        builder.tapered_segment(
+            mid,
+            end,
+            0.015,
+            0.010 if index != 2 else 0.006,
+            rib_pool,
+            segments=6,
+            forced=rib_weights,
+        )
+
+    mesh = bpy.data.meshes.new(RIBS_NAME + "_Mesh")
+    mesh.from_pydata(builder.vertices, [], builder.faces)
+    mesh.update()
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+
+    obj = bpy.data.objects.new(RIBS_NAME, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+
+    bone_mat = bpy.data.materials.new("HND_EXPOSED_OLD_BONE")
+    bone_mat.diffuse_color = (0.34, 0.31, 0.235, 1.0)
+    bone_mat.metallic = 0.0
+    bone_mat.roughness = 0.94
+    obj.data.materials.append(bone_mat)
+
+    groups: dict[str, bpy.types.VertexGroup] = {}
+    max_influences = 0
+    for vertex_index, point_tuple in enumerate(builder.vertices):
+        weights = _weights_for_vertex(
+            rig,
+            Vector(point_tuple),
+            builder.weight_pools[vertex_index],
+            builder.forced_weights[vertex_index],
+        )
+        max_influences = max(max_influences, len(weights))
+        for bone_name, weight in weights.items():
+            group = groups.get(bone_name)
+            if group is None:
+                group = obj.vertex_groups.new(name=bone_name)
+                groups[bone_name] = group
+            group.add([vertex_index], float(weight), "REPLACE")
+
+    modifier = obj.modifiers.new(name="HoundRibArmature", type="ARMATURE")
+    modifier.object = rig
+    modifier.use_vertex_groups = True
+
+    world_matrix = obj.matrix_world.copy()
+    obj.parent = rig
+    obj.matrix_parent_inverse = rig.matrix_world.inverted()
+    obj.matrix_world = world_matrix
+
+    obj["shadowborn_asset_tier"] = "production_candidate"
+    obj["shadowborn_anatomy_layer"] = "exposed_ribs"
+    obj["shadowborn_original_mesh"] = True
+    obj["shadowborn_shipping_accepted"] = False
+
+    return obj, {
+        "vertex_count": len(builder.vertices),
+        "polygon_count": len(builder.faces),
+        "max_influences_per_vertex": max_influences,
+        "rib_arc_count": 3,
+        "material_slots": len(obj.data.materials),
+    }
+
+
 def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dict]:
     builder = _build_candidate_geometry(rig)
     vertex_count = len(builder.vertices)
@@ -528,12 +619,14 @@ def _save_source(out_dir: Path) -> Path:
 def _export_candidate(
     rig: bpy.types.Object,
     candidate: bpy.types.Object,
+    ribs: bpy.types.Object,
     out_dir: Path,
 ) -> Path:
     path = out_dir / "grave_hound_mesh_candidate.glb"
     bpy.ops.object.select_all(action="DESELECT")
     rig.select_set(True)
     candidate.select_set(True)
+    ribs.select_set(True)
     bpy.context.view_layer.objects.active = rig
 
     kwargs = dict(
@@ -585,6 +678,9 @@ def _roundtrip_candidate(path: Path) -> dict:
     candidate = next((obj for obj in meshes if obj.name.startswith(BODY_NAME)), None)
     if candidate is None:
         raise RuntimeError(f"Round-trip lost {BODY_NAME}")
+    ribs = next((obj for obj in meshes if obj.name.startswith(RIBS_NAME)), None)
+    if ribs is None:
+        raise RuntimeError(f"Round-trip lost {RIBS_NAME}")
 
     max_positive = 0
     weighted_vertices = 0
@@ -614,6 +710,8 @@ def _roundtrip_candidate(path: Path) -> dict:
         "mesh_count": len(meshes),
         "candidate_vertex_count": len(candidate.data.vertices),
         "candidate_polygon_count": len(candidate.data.polygons),
+        "rib_vertex_count": len(ribs.data.vertices),
+        "rib_polygon_count": len(ribs.data.polygons),
         "weighted_vertex_count": weighted_vertices,
         "max_positive_influences_per_vertex": max_positive,
         "animation_actions": actions,
@@ -633,22 +731,24 @@ def main() -> None:
     rig = _generate_rig(metarig)
     actions = _create_smoke_actions(rig)
     candidate, candidate_stats = _create_candidate_mesh(rig)
+    ribs, rib_stats = _create_ribs_candidate(rig)
 
     _reset_rig_pose(rig)
     source_path = _save_source(out_dir)
-    glb_path = _export_candidate(rig, candidate, out_dir)
+    glb_path = _export_candidate(rig, candidate, ribs, out_dir)
     roundtrip = _roundtrip_candidate(glb_path)
 
     report = {
         "status": "pass",
-        "purpose": "ninth camera-reviewed original skinned Grave Hound candidate with pelvis-anchored broken tail stump and restrained ears; not final user-accepted art",
+        "purpose": "tenth camera-reviewed original skinned Grave Hound candidate with sparse exposed thoracic ribs; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 9,
+        "candidate_revision": 10,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
+        "exposed_rib_stats_before_export": rib_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
         "semantic_actions_are_final_art": False,
