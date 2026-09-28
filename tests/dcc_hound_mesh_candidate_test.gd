@@ -2,6 +2,7 @@ extends SceneTree
 
 const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
 const BODY_PREFIX := "HND_BODY_CANDIDATE"
+const RIBS_PREFIX := "HND_EXPOSED_RIBS_CANDIDATE"
 const REQUIRED_IDLE := "HND_IDLE_LOW_01"
 const REQUIRED_BITE := "HND_BITE_01"
 
@@ -37,6 +38,20 @@ func _run() -> void:
 			body = mesh_instance
 			break
 	failures += _expect(body != null,"Godot preserves HND_BODY_CANDIDATE mesh")
+
+	var ribs: MeshInstance3D = null
+	for mesh_instance in meshes:
+		if mesh_instance.name.begins_with(RIBS_PREFIX):
+			ribs = mesh_instance
+			break
+	failures += _expect(ribs != null,"Godot preserves sparse exposed-rib anatomy mesh")
+	if ribs != null and ribs.mesh != null:
+		var rib_vertices := 0
+		for surface in range(ribs.mesh.get_surface_count()):
+			var rib_arrays := ribs.mesh.surface_get_arrays(surface)
+			rib_vertices += (rib_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		failures += _expect(rib_vertices >= 60,"Exposed-rib candidate has substantive authored geometry")
+		failures += _expect(ribs.skin != null,"Exposed-rib candidate remains skinned to Hound rig")
 
 	if body != null and body.mesh != null:
 		var vertex_count := 0
