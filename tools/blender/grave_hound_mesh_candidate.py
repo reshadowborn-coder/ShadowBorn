@@ -715,10 +715,10 @@ def _create_head_damage_layers(rig: bpy.types.Object) -> tuple[list[bpy.types.Ob
 
     # Production battle camera resolves the +X side; put the missing eye there.
     eye_builder = MeshBuilder()
-    eye_center = head_center + Vector((0.120, -0.035, 0.030))
+    eye_center = head_center + Vector((0.128, -0.025, 0.032))
     eye_builder.ellipsoid(
         eye_center,
-        Vector((0.018, 0.038, 0.032)),
+        Vector((0.010, 0.021, 0.018)),
         _pool("DEF-spine.011"),
         segments=10,
         rings=6,
@@ -752,13 +752,13 @@ def _create_head_damage_layers(rig: bpy.types.Object) -> tuple[list[bpy.types.Ob
     jaw_builder = MeshBuilder()
     jaw_head = jaw_bone.head_local.copy()
     jaw_tail = jaw_bone.tail_local.copy()
-    jaw_start = jaw_head.lerp(jaw_tail, 0.30) + Vector((0.055, 0.0, -0.010))
-    jaw_end = jaw_head.lerp(jaw_tail, 0.86) + Vector((0.052, 0.0, -0.012))
+    jaw_start = jaw_head.lerp(jaw_tail, 0.42) + Vector((0.048, 0.0, -0.009))
+    jaw_end = jaw_head.lerp(jaw_tail, 0.72) + Vector((0.046, 0.0, -0.010))
     jaw_builder.tapered_segment(
         jaw_start,
         jaw_end,
-        0.017,
-        0.010,
+        0.011,
+        0.006,
         _pool("DEF-jaw", "DEF-spine.011"),
         segments=7,
         forced={"DEF-jaw": 0.90, "DEF-spine.011": 0.10},
@@ -1052,11 +1052,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "fifteenth camera-reviewed Grave Hound candidate with opaque wet-dead-fur material breakup plus controlled corpse damage; not final user-accepted art",
+        "purpose": "sixteenth camera-reviewed Grave Hound candidate with restrained missing-eye socket and compact jaw damage plus opaque wet-fur breakup; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 15,
+        "candidate_revision": 16,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
