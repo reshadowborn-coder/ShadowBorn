@@ -486,6 +486,16 @@ def main() -> None:
     glb_path, export_contract = _export_smoke_glb(rig, proxies, out_dir)
     roundtrip = _roundtrip_check(glb_path)
 
+    pose_bone_names = sorted(pb.name for pb in rig.pose.bones)
+    likely_animation_controls = [
+        name for name in pose_bone_names
+        if not name.startswith(("DEF-", "MCH-", "ORG-"))
+        and any(token in name.lower() for token in (
+            "root", "torso", "chest", "hips", "pelvis", "neck", "head",
+            "jaw", "foot", "paw", "thigh", "shin", "tail"
+        ))
+    ]
+
     report = {
         "status": "pass",
         "purpose": "DCC game-rig + skin smoke only; not shipping Grave Hound art",
@@ -501,6 +511,7 @@ def main() -> None:
         "candidate_max_deform_bones": MAX_GAME_DEFORM_BONES_CANDIDATE,
         "candidate_budget_is_platform_limit": False,
         "generated_deform_bones": deform_bones,
+        "likely_animation_controls": likely_animation_controls,
         "skin_proxy_mesh_count": len(proxies),
         "skin_proxy_is_shipping_art": False,
         "four_influence_probe_bones": list(FOUR_INFLUENCE_BONES),
