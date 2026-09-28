@@ -62,7 +62,7 @@ func _run() -> void:
 		return
 
 	_hide_non_candidate_meshes(actor,[body,ribs,wound,eye_socket,jaw_bone])
-	body.material_override = _clay_material()
+	# Preserve the candidate's imported dry/wet body material split.
 	wound.material_override = _wound_material()
 	ribs.material_override = _bone_material()
 	eye_socket.material_override = _eye_socket_material()
