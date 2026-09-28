@@ -103,6 +103,9 @@ jobs:
           test -s build/dcc_hound/captures/hound_candidate_battle_neutral_pbr_idle.png
           test -s build/dcc_hound/captures/hound_candidate_battle_flat_gray_idle.png
           test -s build/dcc_hound/captures/hound_candidate_battle_silhouette_idle.png
+          test -s build/dcc_hound/captures/hound_candidate_battle_neutral_pbr_contact.png
+          test -s build/dcc_hound/captures/hound_candidate_battle_flat_gray_contact.png
+          test -s build/dcc_hound/captures/hound_candidate_battle_silhouette_contact.png
 
       - name: Upload DCC smoke artifacts
         uses: actions/upload-artifact@v4
