@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Shadowborn Grave Hound DCC rig smoke test.
+"""Shadowborn Grave Hound DCC rig + skin smoke test.
 
 Run only inside Blender 5.2.2:
   blender -b --factory-startup --python tools/blender/grave_hound_rig_smoke.py -- --out-dir build/dcc_hound
 
 This deliberately DOES NOT create the shipping grave_hound.glb. It proves that the
-chosen Basic Quadruped + custom jaw authoring rig can generate a compact deform-only
-GLB and survive a Blender glTF round trip. Final runtime acceptance still requires
-Godot 4.7.2 import, animation, gameplay-camera review and iPhone 13 Pro profiling.
+chosen Basic Quadruped + custom jaw authoring rig can generate a compact skinned
+GLB, preserve a four-influence test surface, and survive a Blender glTF round trip.
+Final runtime acceptance still requires authored Hound geometry/materials,
+semantic animations, gameplay-camera review and iPhone 13 Pro profiling.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 EXPECTED_BLENDER = (5, 2, 2)
 REQUIRED_RIGIFY_TYPES = {
@@ -31,6 +33,12 @@ MIN_METARIG_BONES = 30
 MIN_GAME_DEFORM_BONES = 32
 MAX_GAME_DEFORM_BONES_CANDIDATE = 48
 CUSTOM_JAW_NAME = "jaw"
+FOUR_INFLUENCE_BONES = (
+    "DEF-spine.003",
+    "DEF-spine.004",
+    "DEF-shoulder.L",
+    "DEF-shoulder.R",
+)
 
 
 def _args() -> argparse.Namespace:
@@ -51,8 +59,6 @@ def _require_blender_version() -> None:
 
 
 def _enable_rigify() -> None:
-    # Importing Rigify is not enough: the add-on must be registered so Armature
-    # receives rigify_colors / rigify_target_rig and the generation operators.
     try:
         result = bpy.ops.preferences.addon_enable(module="rigify")
     except Exception as exc:
@@ -83,7 +89,6 @@ def _new_metarig_object(name: str) -> bpy.types.Object:
 
 
 def _add_hound_jaw(metarig: bpy.types.Object) -> None:
-    """Add one simple controllable/deforming jaw below the Basic Quadruped head."""
     bpy.context.view_layer.objects.active = metarig
     if metarig.mode != "EDIT":
         bpy.ops.object.mode_set(mode="EDIT")
@@ -110,8 +115,6 @@ def _add_hound_jaw(metarig: bpy.types.Object) -> None:
 
 
 def _disable_nonessential_deform(metarig: bpy.types.Object) -> None:
-    # Basic Quadruped ships breast volume helpers that are useful for general rigs
-    # but not required for the phone-size Grave Hound silhouette.
     for bone_name in ("breast.L", "breast.R"):
         pose_bone = metarig.pose.bones.get(bone_name)
         if pose_bone is None:
@@ -181,21 +184,118 @@ def _generate_rig(metarig: bpy.types.Object) -> bpy.types.Object:
     return rig
 
 
+def _tetra_vertices(center: Vector, radius: float) -> tuple[list[tuple[float, float, float]], list[tuple[int, int, int]]]:
+    vertices = [
+        center + Vector(( radius,  radius,  radius)),
+        center + Vector((-radius, -radius,  radius)),
+        center + Vector((-radius,  radius, -radius)),
+        center + Vector(( radius, -radius, -radius)),
+    ]
+    faces = [(0, 1, 2), (0, 3, 1), (0, 2, 3), (1, 3, 2)]
+    return [tuple(v) for v in vertices], faces
+
+
+def _new_weighted_proxy(
+    rig: bpy.types.Object,
+    name: str,
+    center: Vector,
+    radius: float,
+    weights: dict[str, float],
+) -> bpy.types.Object:
+    total = sum(weights.values())
+    if abs(total - 1.0) > 1e-5:
+        raise RuntimeError(f"{name} proxy weights must sum to 1.0, got {total}")
+
+    vertices, faces = _tetra_vertices(center, radius)
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+
+    for bone_name, weight in weights.items():
+        if bone_name not in rig.data.bones:
+            raise RuntimeError(f"Proxy references missing deform bone: {bone_name}")
+        group = obj.vertex_groups.new(name=bone_name)
+        group.add(list(range(len(vertices))), float(weight), "REPLACE")
+
+    modifier = obj.modifiers.new(name="HoundArmature", type="ARMATURE")
+    modifier.object = rig
+    modifier.use_vertex_groups = True
+    obj["shadowborn_dcc_smoke_proxy"] = True
+    return obj
+
+
+def _create_skin_proxy(rig: bpy.types.Object) -> list[bpy.types.Object]:
+    """Create tiny non-shipping skinned geometry to prove skin/joint export.
+
+    Each deform bone gets one rigid tetra. A separate chest tetra uses exactly
+    four influences to validate the mobile-compatible four-influence path.
+    """
+    proxies: list[bpy.types.Object] = []
+    deform_bones = [bone for bone in rig.data.bones if bone.use_deform]
+
+    for index, bone in enumerate(deform_bones):
+        center_local = (bone.head_local + bone.tail_local) * 0.5
+        center = rig.matrix_world @ center_local
+        radius = max(0.008, min(0.022, bone.length * 0.055))
+        proxies.append(
+            _new_weighted_proxy(
+                rig,
+                f"HND_SKIN_PROXY_{index:02d}_{bone.name.replace('.', '_')}",
+                center,
+                radius,
+                {bone.name: 1.0},
+            )
+        )
+
+    missing = [name for name in FOUR_INFLUENCE_BONES if name not in rig.data.bones]
+    if missing:
+        raise RuntimeError(f"Four-influence probe missing bones: {missing}")
+
+    blend_center = Vector((0.0, 0.0, 0.0))
+    for bone_name in FOUR_INFLUENCE_BONES:
+        bone = rig.data.bones[bone_name]
+        blend_center += rig.matrix_world @ ((bone.head_local + bone.tail_local) * 0.5)
+    blend_center /= float(len(FOUR_INFLUENCE_BONES))
+
+    proxies.append(
+        _new_weighted_proxy(
+            rig,
+            "HND_SKIN_PROXY_4_INFLUENCE",
+            blend_center,
+            0.030,
+            {name: 0.25 for name in FOUR_INFLUENCE_BONES},
+        )
+    )
+    return proxies
+
+
 def _save_source(out_dir: Path) -> Path:
     blend_path = out_dir / "grave_hound_game_rig_smoke.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
     return blend_path
 
 
-def _export_rig_only_glb(rig: bpy.types.Object, out_dir: Path) -> Path:
+def _export_smoke_glb(
+    rig: bpy.types.Object,
+    proxies: list[bpy.types.Object],
+    out_dir: Path,
+) -> tuple[Path, dict]:
     glb_path = out_dir / "grave_hound_game_rig_smoke.glb"
     bpy.ops.object.select_all(action="DESELECT")
     rig.hide_set(False)
     rig.hide_viewport = False
     rig.select_set(True)
+    for proxy in proxies:
+        proxy.hide_set(False)
+        proxy.hide_viewport = False
+        proxy.select_set(True)
     bpy.context.view_layer.objects.active = rig
 
-    result = bpy.ops.export_scene.gltf(
+    export_props = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
+    kwargs = dict(
         filepath=str(glb_path),
         export_format="GLB",
         use_selection=True,
@@ -208,9 +308,19 @@ def _export_rig_only_glb(rig: bpy.types.Object, out_dir: Path) -> Path:
         export_lights=False,
         export_extras=True,
     )
+    if "export_all_influences" in export_props:
+        kwargs["export_all_influences"] = False
+    if "export_influence_nb" in export_props:
+        kwargs["export_influence_nb"] = 4
+
+    result = bpy.ops.export_scene.gltf(**kwargs)
     if "FINISHED" not in result or not glb_path.exists() or glb_path.stat().st_size <= 0:
         raise RuntimeError(f"glTF export failed: {result}")
-    return glb_path
+    return glb_path, {
+        "export_all_influences": kwargs.get("export_all_influences"),
+        "export_influence_nb": kwargs.get("export_influence_nb"),
+        "operator_supports_export_influence_nb": "export_influence_nb" in export_props,
+    }
 
 
 def _roundtrip_check(glb_path: Path) -> dict:
@@ -224,8 +334,11 @@ def _roundtrip_check(glb_path: Path) -> dict:
         raise RuntimeError(f"glTF re-import failed: {result}")
 
     armatures = [obj for obj in bpy.context.scene.objects if obj.type == "ARMATURE"]
+    meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
     if len(armatures) != 1:
         raise RuntimeError(f"Expected one imported armature, found {len(armatures)}")
+    if len(meshes) < 1:
+        raise RuntimeError("Expected imported skinned proxy meshes, found none")
 
     armature = armatures[0]
     bone_names = sorted(b.name for b in armature.data.bones)
@@ -236,10 +349,27 @@ def _roundtrip_check(glb_path: Path) -> dict:
         )
     if "DEF-jaw" not in bone_names:
         raise RuntimeError("Round-trip GLB lost DEF-jaw")
+
+    weighted_meshes = 0
+    four_influence_proxy_found = False
+    for mesh_obj in meshes:
+        if len(mesh_obj.vertex_groups) > 0:
+            weighted_meshes += 1
+        if mesh_obj.name.startswith("HND_SKIN_PROXY_4_INFLUENCE"):
+            four_influence_proxy_found = len(mesh_obj.vertex_groups) == 4
+
+    if weighted_meshes < 1:
+        raise RuntimeError("Round-trip GLB lost all skin vertex groups")
+    if not four_influence_proxy_found:
+        raise RuntimeError("Round-trip GLB lost the four-influence proxy contract")
+
     return {
         "imported_armature": armature.name,
         "imported_bone_count": len(bone_names),
         "imported_bones": bone_names,
+        "imported_mesh_count": len(meshes),
+        "weighted_mesh_count": weighted_meshes,
+        "four_influence_proxy_found": four_influence_proxy_found,
     }
 
 
@@ -258,13 +388,14 @@ def main() -> None:
 
     rig = _generate_rig(metarig)
     deform_bones = sorted(b.name for b in rig.data.bones if b.use_deform)
+    proxies = _create_skin_proxy(rig)
     source_path = _save_source(out_dir)
-    glb_path = _export_rig_only_glb(rig, out_dir)
+    glb_path, export_contract = _export_smoke_glb(rig, proxies, out_dir)
     roundtrip = _roundtrip_check(glb_path)
 
     report = {
         "status": "pass",
-        "purpose": "DCC game-rig/export smoke only; not shipping Grave Hound art",
+        "purpose": "DCC game-rig + skin smoke only; not shipping Grave Hound art",
         "blender_version": bpy.app.version_string,
         "rigify_source": "bundled Blender add-on",
         "authoring_metarig": "Basic Quadruped + Shadowborn custom jaw",
@@ -277,11 +408,15 @@ def main() -> None:
         "candidate_max_deform_bones": MAX_GAME_DEFORM_BONES_CANDIDATE,
         "candidate_budget_is_platform_limit": False,
         "generated_deform_bones": deform_bones,
+        "skin_proxy_mesh_count": len(proxies),
+        "skin_proxy_is_shipping_art": False,
+        "four_influence_probe_bones": list(FOUR_INFLUENCE_BONES),
+        "export_contract": export_contract,
         "source_blend": source_path.name,
         "smoke_glb": glb_path.name,
         "roundtrip": roundtrip,
         "shipping_path_written": False,
-        "next_gate": "Godot 4.7.2 generated-GLB import + authored mesh/weights + semantic clips + iPhone 13 Pro profile",
+        "next_gate": "authored Hound mesh topology + production weights + HND_IDLE_LOW_01/HND_BITE_01 + iPhone 13 Pro profile",
     }
     report_path = out_dir / "grave_hound_rig_smoke_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
