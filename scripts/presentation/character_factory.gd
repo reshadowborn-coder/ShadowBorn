@@ -22,6 +22,11 @@ const DEV_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
 # into the forearm/torso. -90 degrees makes it leave the right hand toward the
 # opponent in the fixed battle camera.
 const PRODUCTION_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,-90.0)
+# Measured on the Blender 5.2 Rigify Basic Human production candidate:
+# DEF-hand.R uses a different rest basis from legacy Wrist.R. Rotating the
+# authored BladeTip (+Y from Grip) +90 degrees around local X points the blade
+# almost directly toward the opponent in BattleCamera (~0.94 direction dot).
+const PRODUCTION_RIGIFY_SWORD_HAND_ROTATION := Vector3(90.0,0.0,0.0)
 
 const META_ANIMATION_PLAYER_PATH := &"_shadowborn_animation_player_path"
 const META_SKELETON_PATH := &"_shadowborn_skeleton_path"
@@ -144,7 +149,7 @@ static func attach_sword(root: Node3D) -> void:
 				else:
 					var mount := Node3D.new()
 					mount.name = "WeaponGripMount"
-					mount.rotation_degrees = PRODUCTION_SWORD_WRIST_ROTATION
+					mount.rotation_degrees = PRODUCTION_RIGIFY_SWORD_HAND_ROTATION if weapon_bone == "DEF-hand.R" else PRODUCTION_SWORD_WRIST_ROTATION
 					socket.add_child(mount)
 					sword.transform = grip.transform.affine_inverse()
 					mount.add_child(sword)
