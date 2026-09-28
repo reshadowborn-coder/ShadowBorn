@@ -410,17 +410,17 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     # Continuous canine skull/muzzle profile. The old ellipsoid + cylinder read
     # as a toy head in fixed-camera captures, so the visible upper head is now
     # one lofted surface from occiput to nose.
-    skull_rear = head_center - head_forward * 0.115 + Vector((0.0, 0.0, 0.010))
-    skull_mid = head_center + head_forward * 0.015 + Vector((0.0, 0.0, 0.008))
-    cheek = head_center + head_forward * 0.120 + Vector((0.0, 0.0, -0.004))
-    muzzle_mid = head_center + head_forward * 0.255 + Vector((0.0, 0.0, -0.028))
-    nose = head_center + head_forward * 0.370 + Vector((0.0, 0.0, -0.045))
+    skull_rear = head_center - head_forward * 0.085 + Vector((0.0, 0.0, 0.008))
+    skull_mid = head_center + head_forward * 0.010 + Vector((0.0, 0.0, 0.006))
+    cheek = head_center + head_forward * 0.085 + Vector((0.0, 0.0, -0.004))
+    muzzle_mid = head_center + head_forward * 0.185 + Vector((0.0, 0.0, -0.024))
+    nose = head_center + head_forward * 0.285 + Vector((0.0, 0.0, -0.038))
     head_stations = [
-        (skull_rear, 0.120, 0.112),
-        (skull_mid,  0.145, 0.126),
-        (cheek,      0.118, 0.098),
-        (muzzle_mid, 0.078, 0.065),
-        (nose,       0.050, 0.046),
+        (skull_rear, 0.108, 0.100),
+        (skull_mid,  0.132, 0.114),
+        (cheek,      0.106, 0.088),
+        (muzzle_mid, 0.068, 0.055),
+        (nose,       0.043, 0.038),
     ]
     head_stations.sort(key=lambda station: station[0].y)
     b.body_loft(head_stations, head_pool, segments=12)
@@ -441,25 +441,25 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     # Side-camera readable ears: narrow tapered organic wedges rather than
     # single triangles, so at least one ear survives the fixed side view.
     ear_pool = _pool("DEF-spine.011")
-    ear_l_start = head_center + Vector((0.075, 0.010, 0.095))
-    ear_l_end = ear_l_start + Vector((0.000, 0.075, 0.155))
+    ear_l_start = head_center + Vector((0.066, 0.008, 0.084))
+    ear_l_end = ear_l_start + Vector((0.000, 0.058, 0.105))
     b.tapered_segment(
         ear_l_start,
         ear_l_end,
-        0.046,
-        0.010,
+        0.034,
+        0.008,
         ear_pool,
         segments=6,
         forced={"DEF-spine.011": 1.0},
     )
     # Torn ear is shorter and leans rearward.
-    ear_r_start = head_center + Vector((-0.075, 0.025, 0.085))
-    ear_r_end = ear_r_start + Vector((0.000, 0.095, 0.105))
+    ear_r_start = head_center + Vector((-0.064, 0.022, 0.075))
+    ear_r_end = ear_r_start + Vector((0.000, 0.070, 0.068))
     b.tapered_segment(
         ear_r_start,
         ear_r_end,
-        0.040,
-        0.009,
+        0.029,
+        0.007,
         ear_pool,
         segments=6,
         forced={"DEF-spine.011": 1.0},
@@ -542,26 +542,18 @@ def _create_ribs_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     rib_pool = _pool("DEF-spine.007", "DEF-spine.008")
 
     # Camera sits on +X for the diagnostic side view, so expose the +X thorax.
-    for index, y_offset in enumerate((-0.115, -0.015, 0.085)):
-        root = chest + Vector((0.205, y_offset, 0.155 - 0.008 * index))
-        mid = chest + Vector((0.245, y_offset + 0.030, 0.015 - 0.018 * index))
-        end = chest + Vector((0.205, y_offset + 0.070, -0.135 + 0.006 * index))
-        builder.tapered_segment(
-            root,
-            mid,
-            0.018,
-            0.015,
+    # Use one connected curved tube per rib; lateral-view anatomy should read as
+    # springlike thoracic arcs, not vertical rods.
+    for index, y_offset in enumerate((-0.095, 0.000, 0.092)):
+        root = chest + Vector((0.205, y_offset, 0.135 - 0.006 * index))
+        mid = chest + Vector((0.242, y_offset + 0.028, 0.012 - 0.014 * index))
+        end = chest + Vector((0.202, y_offset + 0.072, -0.110 + 0.004 * index))
+        builder.tube_chain(
+            [root, mid, end],
+            [0.015, 0.013, 0.008 if index != 2 else 0.006],
             rib_pool,
-            segments=6,
-            forced=rib_weights,
-        )
-        builder.tapered_segment(
-            mid,
-            end,
-            0.015,
-            0.010 if index != 2 else 0.006,
-            rib_pool,
-            segments=6,
+            segments=7,
+            cap_ends=True,
             forced=rib_weights,
         )
 
@@ -631,17 +623,17 @@ def _create_wound_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, di
     forced = {"DEF-spine.007": 0.56, "DEF-spine.008": 0.44}
     pool = _pool("DEF-spine.007", "DEF-spine.008")
 
-    center = chest + Vector((0.222, 0.010, 0.005))
+    center = chest + Vector((0.218, 0.010, 0.000))
     ring_offsets = [
-        Vector((0.0, -0.165,  0.125)),
-        Vector((0.0, -0.205,  0.035)),
-        Vector((0.0, -0.170, -0.120)),
-        Vector((0.0, -0.055, -0.175)),
-        Vector((0.0,  0.085, -0.160)),
-        Vector((0.0,  0.180, -0.070)),
-        Vector((0.0,  0.185,  0.075)),
-        Vector((0.0,  0.080,  0.165)),
-        Vector((0.0, -0.060,  0.175)),
+        Vector((0.0, -0.105,  0.090)),
+        Vector((0.0, -0.132,  0.022)),
+        Vector((0.0, -0.104, -0.082)),
+        Vector((0.0, -0.030, -0.112)),
+        Vector((0.0,  0.070, -0.100)),
+        Vector((0.0,  0.122, -0.035)),
+        Vector((0.0,  0.115,  0.065)),
+        Vector((0.0,  0.040,  0.112)),
+        Vector((0.0, -0.045,  0.110)),
     ]
     points = [center + offset for offset in ring_offsets]
     for i in range(len(points)):
@@ -915,11 +907,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "eleventh camera-reviewed original skinned Grave Hound candidate with continuous limbs/head and exposed thorax wound; not final user-accepted art",
+        "purpose": "twelfth camera-reviewed original skinned Grave Hound candidate with compact canine head and curved exposed ribs; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 11,
+        "candidate_revision": 12,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
