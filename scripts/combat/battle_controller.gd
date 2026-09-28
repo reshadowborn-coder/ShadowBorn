@@ -58,7 +58,7 @@ func request_player_skill(skill_index: int) -> void:
 	if str(actor.get("id","")) != PLAYER_ID:
 		return
 	var cooldowns: Array = actor.get("cooldowns",[0,0])
-	if skill_index < 0 or skill_index >= cooldowns.size() or int(cooldowns[skill_index]) > 0:
+	if not BattleRules.cooldown_ready(cooldowns,skill_index):
 		return
 	waiting_for_player = false
 	action_busy = true
@@ -137,7 +137,6 @@ func _begin_turn(index: int) -> void:
 	action_busy = true
 	active_actor_index = index
 	var actor: Dictionary = units[index]
-	_tick_cooldowns(actor)
 
 	var skipped := BattleRules.consume_control(actor.get("statuses",{}))
 	if not skipped.is_empty():
@@ -186,10 +185,11 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 		_sync_units_from_scheduler()
 		effect = "TURN METER -30"
 
-	if skill_index > 0:
-		var cooldowns: Array = attacker.get("cooldowns",[0,0])
-		cooldowns[skill_index] = int(skill.get("cooldown",0))
-		attacker["cooldowns"] = cooldowns
+	attacker["cooldowns"] = BattleRules.resolve_action_cooldowns(
+		attacker.get("cooldowns",[0,0]),
+		skill_index,
+		int(skill.get("cooldown",0))
+	)
 
 	action_impact.emit(str(attacker["id"]),str(target["id"]),skill_id,actual,effect)
 	_emit_state()
@@ -227,7 +227,7 @@ func _finish_battle(victory: bool) -> void:
 func _choose_auto_skill(index: int) -> int:
 	var actor: Dictionary = units[index]
 	var cooldowns: Array = actor.get("cooldowns",[0,0])
-	if str(actor["team"]) == PLAYER_TEAM and cooldowns.size() > 1 and int(cooldowns[1]) == 0:
+	if str(actor["team"]) == PLAYER_TEAM and cooldowns.size() > 1 and BattleRules.cooldown_ready(cooldowns,1):
 		return 1
 	return 0
 
@@ -239,12 +239,6 @@ func _skill_for(actor: Dictionary, skill_index: int) -> Dictionary:
 	if skill_index == 1:
 		return {"id":"hound_rend","multiplier":1.28,"cooldown":2,"windup":0.52,"recover":0.62,"effect":""}
 	return {"id":"hound_bite","multiplier":1.0,"cooldown":0,"windup":0.52,"recover":0.62,"effect":""}
-
-func _tick_cooldowns(actor: Dictionary) -> void:
-	var cooldowns: Array = actor.get("cooldowns",[0,0])
-	for i in range(cooldowns.size()):
-		cooldowns[i] = maxi(0,int(cooldowns[i])-1)
-	actor["cooldowns"] = cooldowns
 
 func _make_shadow() -> Dictionary:
 	return {
