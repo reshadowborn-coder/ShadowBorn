@@ -89,6 +89,31 @@ def _create_wolf_metarig() -> bpy.types.Object:
     return metarig
 
 
+def _probe_basic_quadruped() -> dict:
+    """Measure Blender's simpler quadruped preset before locking the authoring rig."""
+    _clear_scene()
+    armature = bpy.data.armatures.new("HND_BASIC_QUADRUPED_METARIG")
+    metarig = bpy.data.objects.new("HND_BASIC_QUADRUPED_METARIG", armature)
+    bpy.context.scene.collection.objects.link(metarig)
+    bpy.context.view_layer.objects.active = metarig
+    metarig.select_set(True)
+
+    module = importlib.import_module("rigify.metarigs.Basic.basic_quadruped")
+    module.create(metarig)
+    metarig_names = sorted(b.name for b in metarig.data.bones)
+    rigify_types = sorted({pb.rigify_type for pb in metarig.pose.bones if pb.rigify_type})
+    rig = _generate_rig(metarig)
+    deform_names = sorted(b.name for b in rig.data.bones if b.use_deform)
+    return {
+        "metarig": "Basic Quadruped",
+        "metarig_bone_count": len(metarig_names),
+        "metarig_bones": metarig_names,
+        "observed_rigify_types": rigify_types,
+        "generated_deform_bone_count": len(deform_names),
+        "generated_deform_bones": deform_names,
+    }
+
+
 def _generate_rig(metarig: bpy.types.Object) -> bpy.types.Object:
     bpy.context.view_layer.objects.active = metarig
     metarig.select_set(True)
@@ -189,13 +214,15 @@ def main() -> None:
 
     metarig = _create_wolf_metarig()
     rigify_types = sorted({pb.rigify_type for pb in metarig.pose.bones if pb.rigify_type})
-    metarig_bone_count = len(metarig.data.bones)
+    metarig_bones = sorted(b.name for b in metarig.data.bones)
+    metarig_bone_count = len(metarig_bones)
 
     rig = _generate_rig(metarig)
     deform_bones = sorted(b.name for b in rig.data.bones if b.use_deform)
     source_path = _save_source(out_dir)
     glb_path = _export_rig_only_glb(rig, out_dir)
     roundtrip = _roundtrip_check(glb_path)
+    basic_quadruped_probe = _probe_basic_quadruped()
 
     report = {
         "status": "pass",
@@ -204,6 +231,7 @@ def main() -> None:
         "rigify_source": "bundled Blender add-on",
         "metarig": "Wolf",
         "metarig_bone_count": metarig_bone_count,
+        "metarig_bones": metarig_bones,
         "required_rigify_types": sorted(REQUIRED_RIGIFY_TYPES),
         "observed_rigify_types": rigify_types,
         "generated_deform_bone_count": len(deform_bones),
@@ -211,6 +239,7 @@ def main() -> None:
         "source_blend": source_path.name,
         "smoke_glb": glb_path.name,
         "roundtrip": roundtrip,
+        "basic_quadruped_probe": basic_quadruped_probe,
         "shipping_path_written": False,
     }
     report_path = out_dir / "grave_hound_rig_smoke_report.json"
