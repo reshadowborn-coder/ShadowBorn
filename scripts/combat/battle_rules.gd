@@ -17,6 +17,21 @@ static func consume_control(statuses: Dictionary) -> String:
 			return key
 	return ""
 
+
+static func resolve_action_cooldowns(current: Array, used_skill_index: int, used_skill_cooldown: int) -> Array:
+	# Cooldown N means N later actionable owner opportunities are blocked.
+	# Existing cooldowns advance only after the actor actually commits an action.
+	# A hard-controlled skipped opportunity never calls this helper.
+	var out := current.duplicate()
+	for i in range(out.size()):
+		out[i] = maxi(0,int(out[i])-1)
+	if used_skill_index >= 0 and used_skill_index < out.size() and used_skill_cooldown > 0:
+		out[used_skill_index] = used_skill_cooldown
+	return out
+
+static func cooldown_ready(cooldowns: Array, skill_index: int) -> bool:
+	return skill_index >= 0 and skill_index < cooldowns.size() and int(cooldowns[skill_index]) <= 0
+
 static func compute_damage(power: float, multiplier: float, defense: float) -> int:
 	return maxi(1, int(round(power * multiplier - defense * 0.32)))
 
