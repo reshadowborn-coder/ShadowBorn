@@ -5,9 +5,33 @@ var awakening: AwakeningStage
 var stage: BattleStage
 var hud: CombatHUD
 var battle: BattleController
+var lifecycle_app_paused := false
+var lifecycle_focus_out := false
 
 func _ready() -> void:
 	_show_title()
+
+func _notification(what: int) -> void:
+	if not is_inside_tree():
+		return
+	match what:
+		MainLoop.NOTIFICATION_APPLICATION_PAUSED:
+			lifecycle_app_paused = true
+			_apply_lifecycle_pause()
+		MainLoop.NOTIFICATION_APPLICATION_RESUMED:
+			lifecycle_app_paused = false
+			_apply_lifecycle_pause()
+		MainLoop.NOTIFICATION_APPLICATION_FOCUS_OUT:
+			lifecycle_focus_out = true
+			_apply_lifecycle_pause()
+		MainLoop.NOTIFICATION_APPLICATION_FOCUS_IN:
+			lifecycle_focus_out = false
+			_apply_lifecycle_pause()
+
+func _apply_lifecycle_pause() -> void:
+	# Focus can return before the OS resume notification (or vice versa).
+	# Keep gameplay frozen until both lifecycle blockers are cleared.
+	get_tree().paused = lifecycle_app_paused or lifecycle_focus_out
 
 func _show_title() -> void:
 	_clear_all()
