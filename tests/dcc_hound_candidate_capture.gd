@@ -111,11 +111,13 @@ func _run() -> void:
 		return
 	var bite := player.get_animation(BITE_ACTION)
 	player.play(BITE_ACTION)
-	player.seek(bite.length*0.15,true)
+	# Sample authored semantic phases rather than arbitrary thirds:
+	# frame 4/13 ~= coil, frame 9/13 ~= jaw contact, near-end ~= recovery.
+	player.seek(bite.length*0.25,true)
 	await _settle_and_capture(OUT_DIR+"/hound_candidate_bite_windup.png")
-	player.seek(bite.length*0.50,true)
+	player.seek(bite.length*0.67,true)
 	await _settle_and_capture(OUT_DIR+"/hound_candidate_bite_contact.png")
-	player.seek(bite.length*0.85,true)
+	player.seek(bite.length*0.92,true)
 	await _settle_and_capture(OUT_DIR+"/hound_candidate_bite_recovery.png")
 
 	print("SHADOWBORN_HOUND_CANDIDATE_CAPTURE_PASS")
