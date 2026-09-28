@@ -5,7 +5,9 @@ Run only inside Blender 5.2.2:
   blender -b --factory-startup --python tools/blender/grave_hound_rig_smoke.py -- --out-dir build/dcc_hound
 
 This deliberately DOES NOT create the shipping grave_hound.glb. It proves that the
-chosen Rigify Wolf -> deform-bone GLB -> Blender re-import route is reproducible.
+chosen Basic Quadruped + custom jaw authoring rig can generate a compact deform-only
+GLB and survive a Blender glTF round trip. Final runtime acceptance still requires
+Godot 4.7.2 import, animation, gameplay-camera review and iPhone 13 Pro profiling.
 """
 
 from __future__ import annotations
@@ -23,9 +25,12 @@ REQUIRED_RIGIFY_TYPES = {
     "limbs.front_paw",
     "limbs.rear_paw",
     "spines.basic_tail",
+    "spines.super_head",
 }
-MIN_METARIG_BONES = 24
-MIN_DEFORM_BONES = 20
+MIN_METARIG_BONES = 30
+MIN_GAME_DEFORM_BONES = 32
+MAX_GAME_DEFORM_BONES_CANDIDATE = 48
+CUSTOM_JAW_NAME = "jaw"
 
 
 def _args() -> argparse.Namespace:
@@ -68,50 +73,73 @@ def _clear_scene() -> None:
                 datablocks.remove(block)
 
 
-def _create_wolf_metarig() -> bpy.types.Object:
-    armature = bpy.data.armatures.new("HND_METARIG")
-    metarig = bpy.data.objects.new("HND_METARIG", armature)
+def _new_metarig_object(name: str) -> bpy.types.Object:
+    armature = bpy.data.armatures.new(name)
+    metarig = bpy.data.objects.new(name, armature)
     bpy.context.scene.collection.objects.link(metarig)
     bpy.context.view_layer.objects.active = metarig
     metarig.select_set(True)
+    return metarig
 
-    wolf_module = importlib.import_module("rigify.metarigs.Animals.wolf")
-    wolf_module.create(metarig)
+
+def _add_hound_jaw(metarig: bpy.types.Object) -> None:
+    """Add one simple controllable/deforming jaw below the Basic Quadruped head."""
+    bpy.context.view_layer.objects.active = metarig
+    if metarig.mode != "EDIT":
+        bpy.ops.object.mode_set(mode="EDIT")
+
+    armature = metarig.data
+    if "spine.011" not in armature.edit_bones:
+        raise RuntimeError("Basic Quadruped head tip spine.011 not found")
+
+    jaw = armature.edit_bones.new(CUSTOM_JAW_NAME)
+    # Basic Quadruped faces -Y. Keep the jaw under/forward of the terminal head bone.
+    jaw.head = (0.0, -0.505, 0.865)
+    jaw.tail = (0.0, -0.705, 0.815)
+    jaw.roll = 0.0
+    jaw.use_connect = False
+    jaw.parent = armature.edit_bones["spine.011"]
+
+    bpy.ops.object.mode_set(mode="OBJECT")
+    pose_jaw = metarig.pose.bones[CUSTOM_JAW_NAME]
+    pose_jaw.rigify_type = "basic.super_copy"
+    pose_jaw.rotation_mode = "QUATERNION"
+    pose_jaw.rigify_parameters.make_control = True
+    pose_jaw.rigify_parameters.make_widget = False
+    pose_jaw.rigify_parameters.make_deform = True
+
+
+def _disable_nonessential_deform(metarig: bpy.types.Object) -> None:
+    # Basic Quadruped ships breast volume helpers that are useful for general rigs
+    # but not required for the phone-size Grave Hound silhouette.
+    for bone_name in ("breast.L", "breast.R"):
+        pose_bone = metarig.pose.bones.get(bone_name)
+        if pose_bone is None:
+            continue
+        if pose_bone.rigify_type == "basic.super_copy":
+            pose_bone.rigify_parameters.make_control = False
+            pose_bone.rigify_parameters.make_widget = False
+            pose_bone.rigify_parameters.make_deform = False
+
+
+def _create_hound_metarig() -> bpy.types.Object:
+    metarig = _new_metarig_object("HND_METARIG")
+    module = importlib.import_module("rigify.metarigs.Basic.basic_quadruped")
+    module.create(metarig)
+    _add_hound_jaw(metarig)
+    _disable_nonessential_deform(metarig)
 
     rigify_types = {pb.rigify_type for pb in metarig.pose.bones if pb.rigify_type}
     missing = REQUIRED_RIGIFY_TYPES - rigify_types
     if missing:
-        raise RuntimeError(f"Rigify Wolf metarig missing required rig types: {sorted(missing)}")
+        raise RuntimeError(
+            f"Basic Quadruped metarig missing required rig types: {sorted(missing)}"
+        )
     if len(metarig.data.bones) < MIN_METARIG_BONES:
         raise RuntimeError(
-            f"Unexpectedly small Wolf metarig: {len(metarig.data.bones)} bones"
+            f"Unexpectedly small Basic Quadruped metarig: {len(metarig.data.bones)} bones"
         )
     return metarig
-
-
-def _probe_basic_quadruped() -> dict:
-    """Measure Blender's simpler quadruped preset before locking the authoring rig."""
-    _clear_scene()
-    armature = bpy.data.armatures.new("HND_BASIC_QUADRUPED_METARIG")
-    metarig = bpy.data.objects.new("HND_BASIC_QUADRUPED_METARIG", armature)
-    bpy.context.scene.collection.objects.link(metarig)
-    bpy.context.view_layer.objects.active = metarig
-    metarig.select_set(True)
-
-    module = importlib.import_module("rigify.metarigs.Basic.basic_quadruped")
-    module.create(metarig)
-    metarig_names = sorted(b.name for b in metarig.data.bones)
-    rigify_types = sorted({pb.rigify_type for pb in metarig.pose.bones if pb.rigify_type})
-    rig = _generate_rig(metarig)
-    deform_names = sorted(b.name for b in rig.data.bones if b.use_deform)
-    return {
-        "metarig": "Basic Quadruped",
-        "metarig_bone_count": len(metarig_names),
-        "metarig_bones": metarig_names,
-        "observed_rigify_types": rigify_types,
-        "generated_deform_bone_count": len(deform_names),
-        "generated_deform_bones": deform_names,
-    }
 
 
 def _generate_rig(metarig: bpy.types.Object) -> bpy.types.Object:
@@ -137,21 +165,30 @@ def _generate_rig(metarig: bpy.types.Object) -> bpy.types.Object:
         rig = candidates[0]
 
     deform_bones = [bone for bone in rig.data.bones if bone.use_deform]
-    if len(deform_bones) < MIN_DEFORM_BONES:
+    deform_names = {bone.name for bone in deform_bones}
+    if len(deform_bones) < MIN_GAME_DEFORM_BONES:
         raise RuntimeError(
-            f"Generated rig has too few deform bones: {len(deform_bones)}"
+            f"Generated game rig has too few deform bones: {len(deform_bones)}"
         )
+    if len(deform_bones) > MAX_GAME_DEFORM_BONES_CANDIDATE:
+        raise RuntimeError(
+            "Generated game-rig candidate exceeds the temporary Shadowborn bone budget: "
+            f"{len(deform_bones)} > {MAX_GAME_DEFORM_BONES_CANDIDATE}. "
+            "This budget is a project candidate pending iPhone profiling, not a platform limit."
+        )
+    if "DEF-jaw" not in deform_names:
+        raise RuntimeError("Generated game rig is missing DEF-jaw")
     return rig
 
 
 def _save_source(out_dir: Path) -> Path:
-    blend_path = out_dir / "grave_hound_rig_smoke.blend"
+    blend_path = out_dir / "grave_hound_game_rig_smoke.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
     return blend_path
 
 
 def _export_rig_only_glb(rig: bpy.types.Object, out_dir: Path) -> Path:
-    glb_path = out_dir / "grave_hound_rig_smoke.glb"
+    glb_path = out_dir / "grave_hound_game_rig_smoke.glb"
     bpy.ops.object.select_all(action="DESELECT")
     rig.hide_set(False)
     rig.hide_viewport = False
@@ -192,14 +229,17 @@ def _roundtrip_check(glb_path: Path) -> dict:
 
     armature = armatures[0]
     bone_names = sorted(b.name for b in armature.data.bones)
-    if len(bone_names) < MIN_DEFORM_BONES:
+    if not (MIN_GAME_DEFORM_BONES <= len(bone_names) <= MAX_GAME_DEFORM_BONES_CANDIDATE):
         raise RuntimeError(
-            f"Round-trip GLB returned too few bones: {len(bone_names)}"
+            "Round-trip GLB bone count left the candidate game-rig envelope: "
+            f"{len(bone_names)}"
         )
+    if "DEF-jaw" not in bone_names:
+        raise RuntimeError("Round-trip GLB lost DEF-jaw")
     return {
         "imported_armature": armature.name,
         "imported_bone_count": len(bone_names),
-        "sample_bones": bone_names[:16],
+        "imported_bones": bone_names,
     }
 
 
@@ -212,35 +252,36 @@ def main() -> None:
     _enable_rigify()
     _clear_scene()
 
-    metarig = _create_wolf_metarig()
+    metarig = _create_hound_metarig()
     rigify_types = sorted({pb.rigify_type for pb in metarig.pose.bones if pb.rigify_type})
     metarig_bones = sorted(b.name for b in metarig.data.bones)
-    metarig_bone_count = len(metarig_bones)
 
     rig = _generate_rig(metarig)
     deform_bones = sorted(b.name for b in rig.data.bones if b.use_deform)
     source_path = _save_source(out_dir)
     glb_path = _export_rig_only_glb(rig, out_dir)
     roundtrip = _roundtrip_check(glb_path)
-    basic_quadruped_probe = _probe_basic_quadruped()
 
     report = {
         "status": "pass",
-        "purpose": "DCC rig/export smoke only; not shipping Grave Hound art",
+        "purpose": "DCC game-rig/export smoke only; not shipping Grave Hound art",
         "blender_version": bpy.app.version_string,
         "rigify_source": "bundled Blender add-on",
-        "metarig": "Wolf",
-        "metarig_bone_count": metarig_bone_count,
+        "authoring_metarig": "Basic Quadruped + Shadowborn custom jaw",
+        "metarig_bone_count": len(metarig_bones),
         "metarig_bones": metarig_bones,
         "required_rigify_types": sorted(REQUIRED_RIGIFY_TYPES),
         "observed_rigify_types": rigify_types,
+        "disabled_runtime_deform_helpers": ["breast.L", "breast.R"],
         "generated_deform_bone_count": len(deform_bones),
+        "candidate_max_deform_bones": MAX_GAME_DEFORM_BONES_CANDIDATE,
+        "candidate_budget_is_platform_limit": False,
         "generated_deform_bones": deform_bones,
         "source_blend": source_path.name,
         "smoke_glb": glb_path.name,
         "roundtrip": roundtrip,
-        "basic_quadruped_probe": basic_quadruped_probe,
         "shipping_path_written": False,
+        "next_gate": "Godot 4.7.2 generated-GLB import + authored mesh/weights + semantic clips + iPhone 13 Pro profile",
     }
     report_path = out_dir / "grave_hound_rig_smoke_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
