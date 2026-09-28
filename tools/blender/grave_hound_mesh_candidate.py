@@ -849,6 +849,9 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
             polygon.material_index = 1
             wet_face_count += 1
 
+    if wet_face_count < 8:
+        raise RuntimeError(f"Wet-fur material breakup selected too few body faces: {wet_face_count}")
+
     groups: dict[str, bpy.types.VertexGroup] = {}
     max_influences = 0
     four_influence_vertices = 0
