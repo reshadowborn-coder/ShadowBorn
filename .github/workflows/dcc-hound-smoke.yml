@@ -11,6 +11,7 @@ on:
       - "docs/art/GRAVE_HOUND_PRODUCTION_BRIEF.md"
       - "tests/dcc_hound_generated_glb_test.gd"
       - "tests/dcc_hound_mesh_candidate_test.gd"
+      - "tests/dcc_hound_candidate_capture.gd"
 
 jobs:
   blender-rig-roundtrip:
@@ -73,6 +74,23 @@ jobs:
           grep -q "Shadowborn original Hound mesh candidate Godot import: PASS" /tmp/hound_mesh_candidate_godot_test.log
           mv /tmp/grave_hound_game_rig_smoke.blend build/dcc_hound/grave_hound_game_rig_smoke.blend
           mv /tmp/grave_hound_mesh_candidate.blend build/dcc_hound/grave_hound_mesh_candidate.blend
+
+      - name: Prepare virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Capture original Hound candidate side silhouettes
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            /tmp/godot/godot --path . --rendering-method gl_compatibility \
+            --script res://tests/dcc_hound_candidate_capture.gd 2>&1 | tee /tmp/hound_candidate_capture.log
+          grep -q "SHADOWBORN_HOUND_CANDIDATE_CAPTURE_PASS" /tmp/hound_candidate_capture.log
+          test -s build/dcc_hound/captures/hound_candidate_idle_side.png
+          test -s build/dcc_hound/captures/hound_candidate_bite_windup.png
+          test -s build/dcc_hound/captures/hound_candidate_bite_contact.png
+          test -s build/dcc_hound/captures/hound_candidate_bite_recovery.png
 
       - name: Upload DCC smoke artifacts
         uses: actions/upload-artifact@v4
