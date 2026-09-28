@@ -41,6 +41,8 @@ from grave_hound_rig_smoke import (
 BODY_NAME = "HND_BODY_CANDIDATE"
 RIBS_NAME = "HND_EXPOSED_RIBS_CANDIDATE"
 WOUND_NAME = "HND_THORAX_WOUND_CANDIDATE"
+EYE_SOCKET_NAME = "HND_MISSING_EYE_SOCKET_CANDIDATE"
+JAW_BONE_NAME = "HND_EXPOSED_JAW_BONE_CANDIDATE"
 MIN_CANDIDATE_VERTICES = 500
 MAX_CANDIDATE_VERTICES = 2200
 MAX_INFLUENCES = 4
@@ -697,6 +699,111 @@ def _create_wound_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, di
     }
 
 
+def _create_head_damage_layers(rig: bpy.types.Object) -> tuple[list[bpy.types.Object], dict]:
+    """Create one missing-eye socket and one restrained exposed jaw-bone strip.
+
+    These are opaque, skinned, side-readable identity layers. They intentionally
+    avoid glow, transparency and oversized mutation so the creature remains an
+    ordinary cemetery dog ruined by death.
+    """
+    head_bone = rig.data.bones.get("DEF-spine.011")
+    jaw_bone = rig.data.bones.get("DEF-jaw")
+    if head_bone is None or jaw_bone is None:
+        raise RuntimeError("Hound head-damage layers require DEF-spine.011 and DEF-jaw")
+
+    head_center = (head_bone.head_local + head_bone.tail_local) * 0.5
+
+    # Production battle camera resolves the +X side; put the missing eye there.
+    eye_builder = MeshBuilder()
+    eye_center = head_center + Vector((0.120, -0.035, 0.030))
+    eye_builder.ellipsoid(
+        eye_center,
+        Vector((0.018, 0.038, 0.032)),
+        _pool("DEF-spine.011"),
+        segments=10,
+        rings=6,
+        forced={"DEF-spine.011": 1.0},
+    )
+
+    eye_mesh = bpy.data.meshes.new(EYE_SOCKET_NAME + "_Mesh")
+    eye_mesh.from_pydata(eye_builder.vertices, [], eye_builder.faces)
+    eye_mesh.update()
+    for polygon in eye_mesh.polygons:
+        polygon.use_smooth = True
+    eye_obj = bpy.data.objects.new(EYE_SOCKET_NAME, eye_mesh)
+    bpy.context.scene.collection.objects.link(eye_obj)
+
+    eye_mat = bpy.data.materials.new("HND_EMPTY_CLOUDED_SOCKET")
+    eye_mat.diffuse_color = (0.025, 0.028, 0.024, 1.0)
+    eye_mat.metallic = 0.0
+    eye_mat.roughness = 0.90
+    eye_obj.data.materials.append(eye_mat)
+
+    eye_group = eye_obj.vertex_groups.new(name="DEF-spine.011")
+    eye_group.add(list(range(len(eye_builder.vertices))), 1.0, "REPLACE")
+    eye_modifier = eye_obj.modifiers.new(name="HoundEyeSocketArmature", type="ARMATURE")
+    eye_modifier.object = rig
+    eye_modifier.use_vertex_groups = True
+    eye_world = eye_obj.matrix_world.copy()
+    eye_obj.parent = rig
+    eye_obj.matrix_parent_inverse = rig.matrix_world.inverted()
+    eye_obj.matrix_world = eye_world
+
+    jaw_builder = MeshBuilder()
+    jaw_head = jaw_bone.head_local.copy()
+    jaw_tail = jaw_bone.tail_local.copy()
+    jaw_start = jaw_head.lerp(jaw_tail, 0.30) + Vector((0.055, 0.0, -0.010))
+    jaw_end = jaw_head.lerp(jaw_tail, 0.86) + Vector((0.052, 0.0, -0.012))
+    jaw_builder.tapered_segment(
+        jaw_start,
+        jaw_end,
+        0.017,
+        0.010,
+        _pool("DEF-jaw", "DEF-spine.011"),
+        segments=7,
+        forced={"DEF-jaw": 0.90, "DEF-spine.011": 0.10},
+    )
+
+    jaw_mesh = bpy.data.meshes.new(JAW_BONE_NAME + "_Mesh")
+    jaw_mesh.from_pydata(jaw_builder.vertices, [], jaw_builder.faces)
+    jaw_mesh.update()
+    for polygon in jaw_mesh.polygons:
+        polygon.use_smooth = True
+    jaw_obj = bpy.data.objects.new(JAW_BONE_NAME, jaw_mesh)
+    bpy.context.scene.collection.objects.link(jaw_obj)
+
+    jaw_mat = bpy.data.materials.new("HND_EXPOSED_JAW_BONE")
+    jaw_mat.diffuse_color = (0.36, 0.32, 0.235, 1.0)
+    jaw_mat.metallic = 0.0
+    jaw_mat.roughness = 0.95
+    jaw_obj.data.materials.append(jaw_mat)
+
+    for bone_name, weight in (("DEF-jaw", 0.90), ("DEF-spine.011", 0.10)):
+        group = jaw_obj.vertex_groups.new(name=bone_name)
+        group.add(list(range(len(jaw_builder.vertices))), weight, "REPLACE")
+    jaw_modifier = jaw_obj.modifiers.new(name="HoundJawDamageArmature", type="ARMATURE")
+    jaw_modifier.object = rig
+    jaw_modifier.use_vertex_groups = True
+    jaw_world = jaw_obj.matrix_world.copy()
+    jaw_obj.parent = rig
+    jaw_obj.matrix_parent_inverse = rig.matrix_world.inverted()
+    jaw_obj.matrix_world = jaw_world
+
+    for obj, layer in ((eye_obj, "missing_eye_socket"), (jaw_obj, "damaged_jaw_bone")):
+        obj["shadowborn_asset_tier"] = "production_candidate"
+        obj["shadowborn_anatomy_layer"] = layer
+        obj["shadowborn_original_mesh"] = True
+        obj["shadowborn_shipping_accepted"] = False
+
+    return [eye_obj, jaw_obj], {
+        "missing_eye_socket_vertices": len(eye_builder.vertices),
+        "missing_eye_socket_polygons": len(eye_builder.faces),
+        "exposed_jaw_bone_vertices": len(jaw_builder.vertices),
+        "exposed_jaw_bone_polygons": len(jaw_builder.faces),
+        "material_slots": 2,
+    }
+
+
 def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dict]:
     builder = _build_candidate_geometry(rig)
     vertex_count = len(builder.vertices)
@@ -780,6 +887,7 @@ def _export_candidate(
     candidate: bpy.types.Object,
     ribs: bpy.types.Object,
     wound: bpy.types.Object,
+    head_damage: list[bpy.types.Object],
     out_dir: Path,
 ) -> Path:
     path = out_dir / "grave_hound_mesh_candidate.glb"
@@ -788,6 +896,8 @@ def _export_candidate(
     candidate.select_set(True)
     ribs.select_set(True)
     wound.select_set(True)
+    for damage_obj in head_damage:
+        damage_obj.select_set(True)
     bpy.context.view_layer.objects.active = rig
 
     kwargs = dict(
@@ -845,6 +955,12 @@ def _roundtrip_candidate(path: Path) -> dict:
     wound = next((obj for obj in meshes if obj.name.startswith(WOUND_NAME)), None)
     if wound is None:
         raise RuntimeError(f"Round-trip lost {WOUND_NAME}")
+    eye_socket = next((obj for obj in meshes if obj.name.startswith(EYE_SOCKET_NAME)), None)
+    if eye_socket is None:
+        raise RuntimeError(f"Round-trip lost {EYE_SOCKET_NAME}")
+    jaw_damage = next((obj for obj in meshes if obj.name.startswith(JAW_BONE_NAME)), None)
+    if jaw_damage is None:
+        raise RuntimeError(f"Round-trip lost {JAW_BONE_NAME}")
 
     max_positive = 0
     weighted_vertices = 0
@@ -878,6 +994,10 @@ def _roundtrip_candidate(path: Path) -> dict:
         "rib_polygon_count": len(ribs.data.polygons),
         "wound_vertex_count": len(wound.data.vertices),
         "wound_polygon_count": len(wound.data.polygons),
+        "eye_socket_vertex_count": len(eye_socket.data.vertices),
+        "eye_socket_polygon_count": len(eye_socket.data.polygons),
+        "jaw_damage_vertex_count": len(jaw_damage.data.vertices),
+        "jaw_damage_polygon_count": len(jaw_damage.data.polygons),
         "weighted_vertex_count": weighted_vertices,
         "max_positive_influences_per_vertex": max_positive,
         "animation_actions": actions,
@@ -899,24 +1019,26 @@ def main() -> None:
     candidate, candidate_stats = _create_candidate_mesh(rig)
     ribs, rib_stats = _create_ribs_candidate(rig)
     wound, wound_stats = _create_wound_candidate(rig)
+    head_damage, head_damage_stats = _create_head_damage_layers(rig)
 
     _reset_rig_pose(rig)
     source_path = _save_source(out_dir)
-    glb_path = _export_candidate(rig, candidate, ribs, wound, out_dir)
+    glb_path = _export_candidate(rig, candidate, ribs, wound, head_damage, out_dir)
     roundtrip = _roundtrip_candidate(glb_path)
 
     report = {
         "status": "pass",
-        "purpose": "thirteenth camera-reviewed original skinned Grave Hound candidate with deeper thorax and stronger proximal canine limb mass; not final user-accepted art",
+        "purpose": "fourteenth camera-reviewed Grave Hound candidate with controlled corpse identity: ribs, thorax wound, missing eye and damaged jaw; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 13,
+        "candidate_revision": 14,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
         "exposed_rib_stats_before_export": rib_stats,
         "thorax_wound_stats_before_export": wound_stats,
+        "head_damage_stats_before_export": head_damage_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
         "semantic_actions_are_final_art": False,
@@ -930,6 +1052,8 @@ def main() -> None:
             "asymmetric_ears": True,
             "continuous_canine_head_profile": True,
             "exposed_thorax_cavity": True,
+            "single_missing_eye": True,
+            "controlled_damaged_jaw": True,
         },
         "source_blend": source_path.name,
         "candidate_glb": glb_path.name,
