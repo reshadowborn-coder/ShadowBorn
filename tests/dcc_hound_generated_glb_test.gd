@@ -64,6 +64,7 @@ func _run() -> void:
 		var animation_stats := _animation_stats(animation_players)
 		failures += _expect(bool(animation_stats["required_actions_found"]),"Godot imports semantic Hound idle and bite actions by name")
 		failures += _expect(bool(animation_stats["bite_has_jaw_track"]),"HND_BITE_01 contains an imported DEF-jaw animation track")
+		failures += _expect(bool(animation_stats["bite_has_body_track"]),"HND_BITE_01 contains imported torso/neck deformation, not jaw-only motion")
 		failures += _expect(float(animation_stats["bite_length"]) > 0.05,"HND_BITE_01 has non-zero imported duration")
 
 		print("HOUND_DCC_GODOT_METRICS bone_count=%d jaw_index=%d skeleton=%s mesh_instances=%d skinned_surfaces=%d four_influence_probe=%s animations=%s bite_length=%.3f bite_jaw_track=%s" % [
@@ -145,6 +146,7 @@ func _skin_stats(meshes: Array[MeshInstance3D]) -> Dictionary:
 func _animation_stats(players: Array[AnimationPlayer]) -> Dictionary:
 	var names := PackedStringArray()
 	var bite_has_jaw_track := false
+	var bite_has_body_track := false
 	var bite_length := 0.0
 
 	for player in players:
@@ -158,8 +160,11 @@ func _animation_stats(players: Array[AnimationPlayer]) -> Dictionary:
 				continue
 			bite_length = maxf(bite_length,animation.length)
 			for track_index in range(animation.get_track_count()):
-				if "DEF-jaw" in str(animation.track_get_path(track_index)):
+				var track_path := str(animation.track_get_path(track_index))
+				if "DEF-jaw" in track_path:
 					bite_has_jaw_track = true
+				if "DEF-spine.008" in track_path or "DEF-spine.009" in track_path or "DEF-spine.010" in track_path:
+					bite_has_body_track = true
 
 	var required_found := true
 	for required_name in [REQUIRED_IDLE_ACTION,REQUIRED_BITE_ACTION]:
@@ -170,6 +175,7 @@ func _animation_stats(players: Array[AnimationPlayer]) -> Dictionary:
 		"animation_names": names,
 		"required_actions_found": required_found,
 		"bite_has_jaw_track": bite_has_jaw_track,
+		"bite_has_body_track": bite_has_body_track,
 		"bite_length": bite_length,
 	}
 
