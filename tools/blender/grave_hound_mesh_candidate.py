@@ -857,8 +857,8 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
 
     wet_mat = _pbr_material(
         "HND_WET_DEAD_FUR",
-        (0.070, 0.082, 0.068, 1.0),
-        0.38,
+        (0.105, 0.118, 0.098, 1.0),
+        0.56,
     )
     obj.data.materials.append(wet_mat)
 
@@ -870,8 +870,12 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
         for vertex_index in polygon.vertices:
             center += Vector(mesh.vertices[vertex_index].co)
         center /= float(len(polygon.vertices))
-        shoulder_patch = (-0.38 <= center.y <= -0.08 and center.z >= 0.50)
-        rump_patch = (0.20 <= center.y <= 0.48 and center.z >= 0.54)
+        shoulder_y = (center.y + 0.22) / 0.20
+        shoulder_z = (center.z - 0.72) / 0.19
+        rump_y = (center.y - 0.30) / 0.18
+        rump_z = (center.z - 0.70) / 0.17
+        shoulder_patch = shoulder_y*shoulder_y + shoulder_z*shoulder_z <= 1.0
+        rump_patch = rump_y*rump_y + rump_z*rump_z <= 1.0
         if shoulder_patch or rump_patch:
             polygon.material_index = 1
             wet_face_count += 1
@@ -1079,11 +1083,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "seventeenth camera-reviewed Grave Hound candidate with verified glTF Principled PBR material authoring; not final user-accepted art",
+        "purpose": "eighteenth camera-reviewed Grave Hound candidate with softer opaque wet-fur patches and verified glTF PBR; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 17,
+        "candidate_revision": 18,
         "material_export_contract": "opaque Principled BSDF metal/rough PBR for glTF",
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
