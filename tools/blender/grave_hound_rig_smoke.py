@@ -294,33 +294,75 @@ def _reset_rig_pose(rig: bpy.types.Object) -> None:
 
 
 def _create_smoke_actions(rig: bpy.types.Object) -> list[str]:
-    """Create semantic-name export probes; these are not production animation art."""
+    """Create semantic animation prototypes; these are not final production art.
+
+    Bite uses measured Rigify controls so the silhouette changes through the
+    whole canine chain instead of animating only the jaw.
+    """
     jaw = rig.pose.bones.get(CUSTOM_JAW_NAME)
-    if jaw is None:
-        raise RuntimeError("Generated Rigify control rig is missing jaw control bone")
+    head = rig.pose.bones.get("head")
+    neck = rig.pose.bones.get("neck")
+    chest = rig.pose.bones.get("chest")
+    hips = rig.pose.bones.get("hips")
+    required_controls = {
+        "jaw": jaw,
+        "head": head,
+        "neck": neck,
+        "chest": chest,
+        "hips": hips,
+    }
+    missing = [name for name, bone in required_controls.items() if bone is None]
+    if missing:
+        raise RuntimeError(f"Generated Rigify control rig missing Bite controls: {missing}")
 
     bpy.context.scene.render.fps = 30
     rig.animation_data_create()
     created: list[str] = []
 
-    action_specs = {
-        "HND_IDLE_LOW_01": [(1, -0.02), (16, -0.04), (31, -0.02)],
-        "HND_BITE_01": [(1, 0.00), (5, 0.68), (9, -0.10), (13, 0.00)],
-    }
+    def key_rot_x(bone: bpy.types.PoseBone, frame: int, angle: float) -> None:
+        bone.rotation_mode = "XYZ"
+        bone.rotation_euler = (angle, 0.0, 0.0)
+        bone.keyframe_insert(data_path="rotation_euler", frame=frame, group="HND_Bite")
 
-    for action_name, keys in action_specs.items():
-        _reset_rig_pose(rig)
-        action = bpy.data.actions.new(action_name)
-        rig.animation_data.action = action
-        jaw.rotation_mode = "XYZ"
-        for frame, angle in keys:
-            jaw.rotation_euler = (angle, 0.0, 0.0)
-            jaw.keyframe_insert(
-                data_path="rotation_euler",
-                frame=frame,
-                group="HND_Jaw",
-            )
-        created.append(action_name)
+    def key_loc(bone: bpy.types.PoseBone, frame: int, value: tuple[float, float, float]) -> None:
+        bone.location = value
+        bone.keyframe_insert(data_path="location", frame=frame, group="HND_Bite")
+
+    # Low idle: restrained head/neck breathing motion. It is deliberately tiny;
+    # the fixed camera must read the stance before secondary motion.
+    _reset_rig_pose(rig)
+    idle = bpy.data.actions.new("HND_IDLE_LOW_01")
+    rig.animation_data.action = idle
+    for frame, head_angle, neck_angle in (
+        (1, 0.035, 0.020),
+        (16, 0.060, 0.038),
+        (31, 0.035, 0.020),
+    ):
+        key_rot_x(head, frame, head_angle)
+        key_rot_x(neck, frame, neck_angle)
+    created.append("HND_IDLE_LOW_01")
+
+    # Bite prototype at 30 FPS (~0.4 s): coil -> open/thrust -> snap -> recover.
+    # Basic Quadruped faces -Y, therefore negative local Y is forward.
+    _reset_rig_pose(rig)
+    bite = bpy.data.actions.new("HND_BITE_01")
+    rig.animation_data.action = bite
+
+    bite_keys = (
+        # frame, jaw, head, neck, chest, hips_y, hips_z
+        (1,  0.00,  0.02,  0.01,  0.00,  0.000,  0.000),
+        (4,  0.58,  0.12,  0.09, -0.05,  0.035, -0.020),  # coil/open
+        (7,  0.30, -0.22, -0.16,  0.08, -0.055,  0.012),  # thrust
+        (9, -0.08, -0.16, -0.10,  0.05, -0.040,  0.006),  # jaw snap/contact
+        (13, 0.00,  0.02,  0.01,  0.00,  0.000,  0.000),  # recover
+    )
+    for frame, jaw_angle, head_angle, neck_angle, chest_angle, hips_y, hips_z in bite_keys:
+        key_rot_x(jaw, frame, jaw_angle)
+        key_rot_x(head, frame, head_angle)
+        key_rot_x(neck, frame, neck_angle)
+        key_rot_x(chest, frame, chest_angle)
+        key_loc(hips, frame, (0.0, hips_y, hips_z))
+    created.append("HND_BITE_01")
 
     rig.animation_data.action = None
     _reset_rig_pose(rig)
