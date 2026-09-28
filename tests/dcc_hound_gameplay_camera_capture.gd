@@ -1,11 +1,8 @@
 extends SceneTree
 
 const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
+const ARENA_SCENE := "res://assets/environments/checkpoint01/grave_hound_arena.tscn"
 const CharacterFactory = preload("res://scripts/presentation/character_factory.gd")
-const PLAYER_HOME := Vector3(-2.8,0.0,0.3)
-const ENEMY_HOME := Vector3(2.8,0.0,-0.3)
-const CAMERA_HOME := Vector3(0.0,2.4,9.0)
-const CAMERA_TARGET := Vector3(0.0,1.0,0.0)
 const OUT_PATH := "res://build/dcc_hound/captures/hound_candidate_gameplay_camera.png"
 
 func _init() -> void:
@@ -16,21 +13,42 @@ func _run() -> void:
 		push_error("Missing generated Hound candidate: %s" % CANDIDATE_GLTF)
 		quit(1)
 		return
+	if not ResourceLoader.exists(ARENA_SCENE):
+		push_error("Missing production arena: %s" % ARENA_SCENE)
+		quit(1)
+		return
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://build/dcc_hound/captures"))
 	root.size = Vector2i(1280,720)
 
-	var stage := Node3D.new()
-	stage.name = "GameplayCameraCandidateStage"
-	root.add_child(stage)
-	_build_world(stage)
+	var arena_packed := load(ARENA_SCENE) as PackedScene
+	if arena_packed == null:
+		push_error("Production arena failed to load")
+		quit(1)
+		return
+	var arena := arena_packed.instantiate() as Node3D
+	root.add_child(arena)
+	await process_frame
+	await process_frame
+
+	var player_anchor := arena.find_child("PlayerHome",true,false) as Node3D
+	var enemy_anchor := arena.find_child("EnemyHome",true,false) as Node3D
+	var camera := arena.find_child("BattleCamera",true,false) as Camera3D
+	if player_anchor == null or enemy_anchor == null or camera == null:
+		push_error("Production arena is missing PlayerHome / EnemyHome / BattleCamera")
+		quit(1)
+		return
+	camera.current = true
 
 	var player_root := Node3D.new()
 	player_root.name = "shadow"
-	player_root.position = PLAYER_HOME
-	stage.add_child(player_root)
+	arena.add_child(player_root)
+	player_root.global_position = player_anchor.global_position
+
 	var player_visual := Node3D.new()
+	player_visual.name = "Visual"
 	player_root.add_child(player_visual)
+
 	var shadow := CharacterFactory.create_shadow(true)
 	shadow.scale = Vector3(1.05,1.05,1.05)
 	player_visual.add_child(shadow)
@@ -38,9 +56,11 @@ func _run() -> void:
 
 	var enemy_root := Node3D.new()
 	enemy_root.name = "grave_hound_candidate"
-	enemy_root.position = ENEMY_HOME
-	stage.add_child(enemy_root)
+	arena.add_child(enemy_root)
+	enemy_root.global_position = enemy_anchor.global_position
+
 	var enemy_visual := Node3D.new()
+	enemy_visual.name = "Visual"
 	enemy_root.add_child(enemy_visual)
 
 	var packed := load(CANDIDATE_GLTF) as PackedScene
@@ -49,31 +69,22 @@ func _run() -> void:
 		quit(1)
 		return
 	var hound := packed.instantiate() as Node3D
-	# The generated candidate is authored in meter scale and represents the
-	# production path, not the oversized vendor preview carrier.
+	# Candidate represents the production meter-scale path, not vendor preview scale.
 	hound.scale = Vector3.ONE
 	enemy_visual.add_child(hound)
 	_set_candidate_materials(hound)
 	_play_animation(hound,"HND_IDLE_LOW_01")
 
-	# Mirror the exact BattleStage facing contract.
-	player_root.look_at(ENEMY_HOME,Vector3.UP)
+	# Exact BattleStage facing contract.
+	player_root.look_at(enemy_root.global_position,Vector3.UP)
 	player_root.rotation_degrees.x = 0.0
 	player_root.rotation_degrees.z = 0.0
 	shadow.rotation_degrees.y = 180.0
 
-	enemy_root.look_at(PLAYER_HOME,Vector3.UP)
+	enemy_root.look_at(player_root.global_position,Vector3.UP)
 	enemy_root.rotation_degrees.x = 0.0
 	enemy_root.rotation_degrees.z = 0.0
 	hound.rotation_degrees.y = 180.0
-
-	var camera := Camera3D.new()
-	camera.name = "BattleCamera"
-	camera.current = true
-	camera.fov = 38.0
-	camera.position = CAMERA_HOME
-	stage.add_child(camera)
-	camera.look_at(CAMERA_TARGET,Vector3.UP)
 
 	await process_frame
 	await process_frame
@@ -85,43 +96,9 @@ func _run() -> void:
 		push_error("Failed gameplay candidate capture: %s" % err)
 		quit(1)
 		return
+
 	print("SHADOWBORN_HOUND_GAMEPLAY_CAMERA_CAPTURE_PASS")
 	quit(0)
-
-func _build_world(stage: Node3D) -> void:
-	var world := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.008,0.011,0.018)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.135,0.160,0.215)
-	env.ambient_light_energy = 0.68
-	world.environment = env
-	stage.add_child(world)
-
-	var moon := DirectionalLight3D.new()
-	moon.rotation_degrees = Vector3(-48,-34,0)
-	moon.light_color = Color(0.54,0.66,0.96)
-	moon.light_energy = 1.02
-	moon.shadow_enabled = true
-	stage.add_child(moon)
-
-	var enemy_fire := OmniLight3D.new()
-	enemy_fire.position = Vector3(4.3,1.65,-2.7)
-	enemy_fire.light_color = Color(1.0,0.23,0.05)
-	enemy_fire.light_energy = 3.4
-	enemy_fire.omni_range = 4.8
-	stage.add_child(enemy_fire)
-
-	var floor := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(16.5,11.5)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.075,0.080,0.092)
-	mat.roughness = 0.94
-	plane.material = mat
-	floor.mesh = plane
-	stage.add_child(floor)
 
 func _play_animation(node: Node,animation_name: String) -> void:
 	var player := _find_animation_player(node)
@@ -161,5 +138,6 @@ func _set_candidate_materials(node: Node) -> void:
 			mesh_node.material_override = wound
 		else:
 			mesh_node.visible = false
+
 	for child in node.get_children():
 		_set_candidate_materials(child)
