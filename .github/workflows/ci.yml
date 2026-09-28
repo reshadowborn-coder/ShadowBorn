@@ -35,6 +35,9 @@ jobs:
       - name: Live scheduler integration
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/battle_controller_scheduler_integration_test.gd
+      - name: iOS lifecycle combat pause
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/ios_lifecycle_pause_test.gd
       - name: Asset pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
