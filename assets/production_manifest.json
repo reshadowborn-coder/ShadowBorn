@@ -276,7 +276,30 @@
     "grave_hound": {
       "path": "res://assets/characters/grave_hound/grave_hound.glb",
       "brief": "docs/art/GRAVE_HOUND_PRODUCTION_BRIEF.md",
-      "status": "missing"
+      "status": "missing",
+      "dcc_candidate": {
+        "blender_baseline": "5.2.2 LTS",
+        "rigify_metarig": "Basic Quadruped + Shadowborn custom jaw",
+        "generated_deform_bones": 45,
+        "candidate_max_deform_bones": 48,
+        "candidate_budget_is_platform_limit": false,
+        "skin_influences_per_vertex": 4,
+        "blender_glb_roundtrip": "pass",
+        "godot_4_7_2_import": "pass",
+        "godot_skeleton_count": 1,
+        "godot_skin_import": "pass",
+        "semantic_animation_smoke": {
+          "HND_IDLE_LOW_01": "pass",
+          "HND_BITE_01": "pass",
+          "HND_BITE_01_length_seconds": 0.4,
+          "HND_BITE_01_required_track": "DEF-jaw",
+          "required_track_present": true,
+          "production_animation_art": false
+        },
+        "smoke_proxy_is_shipping_art": false,
+        "workflow": ".github/workflows/dcc-hound-smoke.yml",
+        "next_gate": "original authored mesh topology + production weighting/deformation + real idle/bite + fixed-camera capture + iPhone 13 Pro profile"
+      }
     },
     "shadow_sword": {
       "path": "res://assets/weapons/shadow_sword/shadow_sword.tscn",
