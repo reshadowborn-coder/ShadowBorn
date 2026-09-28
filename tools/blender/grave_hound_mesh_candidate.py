@@ -345,21 +345,26 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
     leg_pool = tuple(names)
     points = [_bone_head(rig, names[0])]
     points.extend(_bone_tail(rig, bone_name) for bone_name in names)
+
+    # Keep the weight-bearing paw on the same topology island as the distal
+    # limb instead of gluing on a separate ellipsoid. The broad metacarpal /
+    # metatarsal pad is represented by a widened terminal ring, then tapers
+    # toward the digits. Basic Quadruped faces -Y.
+    paw_root = points[-1]
+    paw_mid = paw_root + Vector((0.0, -0.050, 0.008))
+    paw_tip = paw_root + Vector((0.0, -0.112, 0.004))
+    points.extend([paw_mid, paw_tip])
+    if front:
+        joint_radii.extend([0.046, 0.026])
+    else:
+        joint_radii.extend([0.050, 0.028])
+
     builder.tube_chain(
         points,
         joint_radii,
         leg_pool,
         segments=9,
         cap_ends=True,
-    )
-
-    paw_center = points[-1] + Vector((0.0, -0.018, 0.010))
-    builder.ellipsoid(
-        paw_center,
-        Vector((0.052, 0.078, 0.031)),
-        leg_pool,
-        segments=10,
-        rings=6,
     )
 
 
@@ -1116,11 +1121,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "eighteenth camera-reviewed Grave Hound candidate with softer opaque wet-fur patches and verified glTF PBR; not final user-accepted art",
+        "purpose": "nineteenth Grave Hound candidate: paws integrated into distal limb topology, opaque PBR and fixed-camera review; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 18,
+        "candidate_revision": 19,
         "material_export_contract": "opaque Principled BSDF metal/rough PBR for glTF",
         "torso_topology": "connected torso loft; whole candidate body still audited for disconnected surface islands",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
