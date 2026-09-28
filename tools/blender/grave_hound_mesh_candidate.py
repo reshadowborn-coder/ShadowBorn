@@ -303,7 +303,7 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
             f"DEF-front_foot.{side}.001",
             f"DEF-front_toe.{side}",
         ]
-        joint_radii = [0.072, 0.068, 0.060, 0.052, 0.045, 0.039, 0.032, 0.024]
+        joint_radii = [0.098, 0.086, 0.066, 0.054, 0.046, 0.039, 0.032, 0.024]
     else:
         names = [
             f"DEF-thigh.{side}",
@@ -314,7 +314,7 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
             f"DEF-foot.{side}.001",
             f"DEF-toe.{side}",
         ]
-        joint_radii = [0.086, 0.080, 0.070, 0.060, 0.050, 0.043, 0.034, 0.025]
+        joint_radii = [0.118, 0.102, 0.076, 0.062, 0.051, 0.043, 0.034, 0.025]
 
     leg_pool = tuple(names)
     points = [_bone_head(rig, names[0])]
@@ -378,14 +378,14 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     pelvis_rear = pelvis + Vector((0.0, 0.145, 0.010))
 
     torso_stations = [
-        (chest_front, 0.198, 0.225),
-        (chest,       0.214, 0.238),
-        (chest_rear,  0.198, 0.210),
-        (abdomen_front,0.158, 0.158),
-        (abdomen_rear, 0.138, 0.125),
-        (loin,         0.152, 0.145),
-        (pelvis_front, 0.178, 0.184),
-        (pelvis_rear,  0.168, 0.174),
+        (chest_front, 0.218, 0.255),
+        (chest,       0.232, 0.272),
+        (chest_rear,  0.210, 0.232),
+        (abdomen_front,0.162, 0.160),
+        (abdomen_rear, 0.140, 0.126),
+        (loin,         0.160, 0.152),
+        (pelvis_front, 0.198, 0.212),
+        (pelvis_rear,  0.184, 0.198),
     ]
     # Basic Quadruped faces -Y, so ensure station order follows head -> tail.
     torso_stations.sort(key=lambda station: station[0].y)
@@ -907,11 +907,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "twelfth camera-reviewed original skinned Grave Hound candidate with compact canine head and curved exposed ribs; not final user-accepted art",
+        "purpose": "thirteenth camera-reviewed original skinned Grave Hound candidate with deeper thorax and stronger proximal canine limb mass; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 12,
+        "candidate_revision": 13,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
@@ -924,6 +924,7 @@ def main() -> None:
             "deep_shoulder_chest": True,
             "tucked_abdomen": True,
             "stronger_hindquarter_mass": True,
+            "deeper_thorax_and_proximal_limb_mass": True,
             "compact_forelimb_read": True,
             "short_damaged_tail": True,
             "asymmetric_ears": True,
