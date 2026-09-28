@@ -34,8 +34,9 @@ func start_battle() -> void:
 	active_actor_index = -1
 	battle_message.emit("FIRST ENCOUNTER")
 	_emit_state()
-	await get_tree().create_timer(0.9).timeout
-	if not running:
+	var generation := turn_loop_generation
+	await _wait_presentation_time(0.9,generation,false)
+	if not running or generation != turn_loop_generation:
 		return
 	action_busy = false
 	call_deferred("_schedule_next_turn")
@@ -98,14 +99,16 @@ func _schedule_next_turn() -> void:
 	action_busy = false
 	_begin_turn(index)
 
-func _wait_presentation_time(seconds_1x: float,generation: int) -> void:
+func _wait_presentation_time(seconds_1x: float,generation: int,scale_with_battle_speed: bool = true) -> void:
 	var remaining := maxf(0.0,seconds_1x)
 	while remaining > 0.0001 and running and generation == turn_loop_generation:
-		var slice := minf(0.05,remaining/maxf(1.0,battle_speed))
-		var before := Time.get_ticks_usec()
-		await get_tree().create_timer(slice).timeout
-		var elapsed := float(Time.get_ticks_usec()-before)/1000000.0
-		remaining = maxf(0.0,remaining-elapsed*battle_speed)
+		var speed_scale := maxf(1.0,battle_speed) if scale_with_battle_speed else 1.0
+		var wall_slice := minf(0.05,remaining/speed_scale)
+		# process_always=false is deliberate: SceneTree pause must freeze battle time.
+		# Never subtract Time.get_ticks_usec() here; suspended/background wall time
+		# is not gameplay time and would otherwise skip the remaining action phase.
+		await get_tree().create_timer(wall_slice,false).timeout
+		remaining = maxf(0.0,remaining-wall_slice*speed_scale)
 
 func _initialize_turn_scheduler() -> void:
 	turn_scheduler.reset()
@@ -139,7 +142,10 @@ func _begin_turn(index: int) -> void:
 	var skipped := BattleRules.consume_control(actor.get("statuses",{}))
 	if not skipped.is_empty():
 		battle_message.emit("%s loses the turn: %s" % [actor["name"],skipped.to_upper()])
-		await get_tree().create_timer(0.32/battle_speed).timeout
+		var generation := turn_loop_generation
+		await _wait_presentation_time(0.32,generation)
+		if not running or generation != turn_loop_generation:
+			return
 		_finish_turn()
 		return
 
@@ -167,7 +173,10 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 	var skill_id := str(skill["id"])
 
 	action_windup.emit(str(attacker["id"]),str(target["id"]),skill_id)
-	await get_tree().create_timer(float(skill["windup"])/battle_speed).timeout
+	var generation := turn_loop_generation
+	await _wait_presentation_time(float(skill["windup"]),generation)
+	if not running or generation != turn_loop_generation:
+		return
 
 	var damage := BattleRules.compute_damage(float(attacker["power"]),float(skill["multiplier"]),float(target["defense"]))
 	var actual := BattleRules.apply_damage(target,damage)
@@ -184,13 +193,17 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 
 	action_impact.emit(str(attacker["id"]),str(target["id"]),skill_id,actual,effect)
 	_emit_state()
-	await get_tree().create_timer(float(skill["recover"])/battle_speed).timeout
+	await _wait_presentation_time(float(skill["recover"]),generation)
+	if not running or generation != turn_loop_generation:
+		return
 
 	if int(target["hp"]) <= 0:
 		turn_scheduler.set_alive(StringName(str(target["id"])),false)
 		_sync_units_from_scheduler()
 		actor_died.emit(str(target["id"]))
-		await get_tree().create_timer(0.55/battle_speed).timeout
+		await _wait_presentation_time(0.55,generation)
+		if not running or generation != turn_loop_generation:
+			return
 	_finish_turn()
 
 func _finish_turn() -> void:
