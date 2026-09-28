@@ -49,7 +49,9 @@ func _run() -> void:
 		quit(1)
 		return
 	var hound := packed.instantiate() as Node3D
-	hound.scale = Vector3(0.62,0.62,0.49)
+	# The generated candidate is authored in meter scale and represents the
+	# production path, not the oversized vendor preview carrier.
+	hound.scale = Vector3.ONE
 	enemy_visual.add_child(hound)
 	_set_candidate_materials(hound)
 	_play_animation(hound,"HND_IDLE_LOW_01")
