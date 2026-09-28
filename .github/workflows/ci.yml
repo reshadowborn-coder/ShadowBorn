@@ -25,6 +25,7 @@ jobs:
       - name: Python asset tool syntax
         run: |
           python3 -m py_compile tools/acquire_polyhaven_texture.py
+          python3 -m py_compile tools/blender/grave_hound_rig_smoke.py
       - name: Combat rules
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_rules_test.gd
