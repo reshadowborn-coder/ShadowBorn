@@ -823,11 +823,31 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     obj = bpy.data.objects.new(BODY_NAME, mesh)
     bpy.context.scene.collection.objects.link(obj)
 
-    mat = bpy.data.materials.new("HND_DRY_GRAVE_HIDE")
-    mat.diffuse_color = (0.075, 0.085, 0.068, 1.0)
-    mat.metallic = 0.0
-    mat.roughness = 0.88
-    obj.data.materials.append(mat)
+    dry_mat = bpy.data.materials.new("HND_DRY_GRAVE_HIDE")
+    dry_mat.diffuse_color = (0.17, 0.19, 0.16, 1.0)
+    dry_mat.metallic = 0.0
+    dry_mat.roughness = 0.88
+    obj.data.materials.append(dry_mat)
+
+    wet_mat = bpy.data.materials.new("HND_WET_DEAD_FUR")
+    wet_mat.diffuse_color = (0.070, 0.082, 0.068, 1.0)
+    wet_mat.metallic = 0.0
+    wet_mat.roughness = 0.38
+    obj.data.materials.append(wet_mat)
+
+    # Broad opaque wet-fur zones only. Avoid noisy micro-patches and alpha hair
+    # cards at the first mobile gameplay distance.
+    wet_face_count = 0
+    for polygon in mesh.polygons:
+        center = Vector((0.0, 0.0, 0.0))
+        for vertex_index in polygon.vertices:
+            center += Vector(mesh.vertices[vertex_index].co)
+        center /= float(len(polygon.vertices))
+        shoulder_patch = (-0.38 <= center.y <= -0.08 and center.z >= 0.50)
+        rump_patch = (0.20 <= center.y <= 0.48 and center.z >= 0.54)
+        if shoulder_patch or rump_patch:
+            polygon.material_index = 1
+            wet_face_count += 1
 
     groups: dict[str, bpy.types.VertexGroup] = {}
     max_influences = 0
@@ -872,6 +892,7 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
         "polygon_count": len(builder.faces),
         "max_influences_per_vertex": max_influences,
         "four_influence_vertex_count": four_influence_vertices,
+        "wet_fur_face_count": wet_face_count,
         "material_slots": len(obj.data.materials),
     }
 
@@ -1028,11 +1049,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "fourteenth camera-reviewed Grave Hound candidate with controlled corpse identity: ribs, thorax wound, missing eye and damaged jaw; not final user-accepted art",
+        "purpose": "fifteenth camera-reviewed Grave Hound candidate with opaque wet-dead-fur material breakup plus controlled corpse damage; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 14,
+        "candidate_revision": 15,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
@@ -1054,6 +1075,7 @@ def main() -> None:
             "exposed_thorax_cavity": True,
             "single_missing_eye": True,
             "controlled_damaged_jaw": True,
+            "opaque_wet_dead_fur_patches": True,
         },
         "source_blend": source_path.name,
         "candidate_glb": glb_path.name,
