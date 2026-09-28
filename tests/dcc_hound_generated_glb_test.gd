@@ -104,8 +104,8 @@ func _skin_stats(meshes: Array[MeshInstance3D]) -> Dictionary:
 				continue
 
 			skinned_surface_count += 1
-			var format := mesh.surface_get_format(surface)
-			var eight := (format & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS) != 0
+			var format: int = mesh.surface_get_format(surface)
+			var eight: bool = (format & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS) != 0
 			uses_8_influences = uses_8_influences or eight
 			var influences_per_vertex := 8 if eight else 4
 			if bones.size() != vertices.size()*influences_per_vertex or weights.size() != bones.size():
