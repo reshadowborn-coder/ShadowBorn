@@ -139,13 +139,14 @@ func _run() -> void:
 		return
 	var bite := player.get_animation(BITE_ACTION)
 	player.play(BITE_ACTION)
-	# Sample authored semantic phases rather than arbitrary thirds:
-	# frame 4/13 ~= coil, frame 9/13 ~= jaw contact, near-end ~= recovery.
-	player.seek(bite.length*0.25,true)
+	# The Blender exporter slides the action to t=0. Sample the authored
+	# phase contract directly: source frame 5 coil, frame 10 contact, frame 14
+	# recoil/recovery. This prevents capture drift when the clip duration changes.
+	player.seek(4.0/30.0,true)
 	await _settle_and_capture(OUT_DIR+"/hound_candidate_bite_windup.png")
-	player.seek(bite.length*0.67,true)
+	player.seek(9.0/30.0,true)
 	await _settle_and_capture(OUT_DIR+"/hound_candidate_bite_contact.png")
-	player.seek(bite.length*0.92,true)
+	player.seek(13.0/30.0,true)
 	await _settle_and_capture(OUT_DIR+"/hound_candidate_bite_recovery.png")
 
 	print("SHADOWBORN_HOUND_CANDIDATE_CAPTURE_PASS")
