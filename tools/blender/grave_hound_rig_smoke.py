@@ -342,19 +342,25 @@ def _create_smoke_actions(rig: bpy.types.Object) -> list[str]:
         key_rot_x(neck, frame, neck_angle)
     created.append("HND_IDLE_LOW_01")
 
-    # Bite prototype at 30 FPS (~0.4 s): coil -> open/thrust -> snap -> recover.
+    # Bite prototype at 30 FPS (~0.57 s): readable coil -> whole-body launch
+    # -> jaw contact -> recoil -> recover. Canine acceleration studies show a
+    # crouched, more-flexed launch posture and strong whole-body propulsion;
+    # the jaw is therefore the contact endpoint, not the only moving part.
     # Basic Quadruped faces -Y, therefore negative local Y is forward.
     _reset_rig_pose(rig)
     bite = bpy.data.actions.new("HND_BITE_01")
     rig.animation_data.action = bite
+    bite["shadowborn_contact_frame"] = 10
+    bite["shadowborn_phase_contract"] = "coil:1-5|launch:6-9|contact:10|recoil:11-14|recover:15-18"
 
     bite_keys = (
         # frame, jaw, head, neck, chest, hips_y, hips_z
         (1,  0.00,  0.01,  0.00,  0.00,  0.000,  0.000),
-        (4,  0.50, -0.17, -0.11, -0.05,  0.045, -0.030),  # low coil / open
-        (7,  0.58,  0.15,  0.10,  0.08, -0.075,  0.030),  # launch / jaws open
-        (9, -0.12,  0.16,  0.12,  0.09, -0.085,  0.026),  # snap/contact
-        (13, 0.00,  0.01,  0.00,  0.00,  0.000,  0.000),  # recover
+        (5,  0.42, -0.18, -0.13, -0.08,  0.060, -0.055),  # crouch / load hindquarters
+        (8,  0.60,  0.10,  0.08,  0.11, -0.070, -0.010),  # launch / jaws open
+        (10,-0.16,  0.20,  0.15,  0.14, -0.110,  0.018),  # snap/contact / peak commitment
+        (13,-0.04,  0.10,  0.07,  0.06, -0.065,  0.004),  # recoil without instant reset
+        (18, 0.00,  0.01,  0.00,  0.00,  0.000,  0.000),  # recover
     )
     for frame, jaw_angle, head_angle, neck_angle, chest_angle, hips_y, hips_z in bite_keys:
         key_rot_x(jaw, frame, jaw_angle)
