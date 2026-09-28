@@ -44,6 +44,26 @@ Exposed ribs, wounds and bone must be modeled/sculpted as part of the creature, 
 
 Avoid glossy gore. The creature should feel old, starved and grave-soiled rather than freshly bloody.
 
+### Undead identity macro-pass
+
+Checkpoint 01 identity must survive with eye emission disabled and without transparent gore cards.
+
+Priority forms in the shipping side camera:
+1. asymmetric exposed rib window on one flank;
+2. readable shoulder/scapula bone break or exposed crest;
+3. one large hide rupture around the rib/shoulder transition;
+4. compact damaged tail and asymmetric ears;
+5. only after those read, add smaller dirt/wound breakup.
+
+Material rule for the first Hound GLB:
+- keep **three opaque gameplay families** as the target baseline: dry hide, bone, dark tissue/grave-soil;
+- do not use semi-transparent blood/fur to rescue weak anatomy;
+- if a later torn-edge card is unavoidable, prefer alpha scissor over alpha blending and validate it on the mobile renderer;
+- tangent-space normal maps follow glTF +Y convention and remain secondary to silhouette;
+- Godot imported mesh/material/vertex statistics are authoritative because glTF may split vertices at normals/UV/material boundaries.
+
+The current generated candidate is a topology/rig/animation research asset, not accepted shipping art. Smooth shading may improve surface continuity but never counts as a silhouette fix.
+
 ## Rig
 
 Minimum functional chain:
