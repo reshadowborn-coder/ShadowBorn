@@ -6,9 +6,12 @@ on:
     branches: [main]
     paths:
       - "tools/blender/shadow_rig_smoke.py"
+      - "tools/blender/shadow_mesh_candidate.py"
       - ".github/workflows/dcc-shadow-smoke.yml"
       - "docs/art/SHADOW_PRODUCTION_BRIEF.md"
       - "tests/dcc_shadow_generated_glb_test.gd"
+      - "tests/dcc_shadow_mesh_candidate_test.gd"
+      - "tests/dcc_shadow_candidate_capture.gd"
 
 jobs:
   blender-rig-roundtrip:
@@ -39,6 +42,18 @@ jobs:
           test -s build/dcc_shadow/shadow_game_rig_smoke.glb
           test -s build/dcc_shadow/shadow_rig_smoke_report.json
 
+      - name: Build first original Shadow mesh candidate
+        run: |
+          set -euo pipefail
+          /tmp/blender-5.2.2-linux-x64/blender \
+            -b --factory-startup \
+            --python tools/blender/shadow_mesh_candidate.py \
+            -- --out-dir build/dcc_shadow 2>&1 | tee /tmp/shadow_mesh_candidate.log
+          grep -q "SHADOWBORN_SHADOW_MESH_CANDIDATE_PASS" /tmp/shadow_mesh_candidate.log
+          test -s build/dcc_shadow/shadow_mesh_candidate.blend
+          test -s build/dcc_shadow/shadow_mesh_candidate.glb
+          test -s build/dcc_shadow/shadow_mesh_candidate_report.json
+
       - name: Install Godot 4.7.2
         run: |
           set -euo pipefail
@@ -51,11 +66,33 @@ jobs:
         run: |
           set -euo pipefail
           mv build/dcc_shadow/shadow_game_rig_smoke.blend /tmp/shadow_game_rig_smoke.blend
+          mv build/dcc_shadow/shadow_mesh_candidate.blend /tmp/shadow_mesh_candidate.blend
           /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/shadow_godot_import.log
           ! grep -q "SCRIPT ERROR:" /tmp/shadow_godot_import.log
           /tmp/godot/godot --headless --path . --script res://tests/dcc_shadow_generated_glb_test.gd 2>&1 | tee /tmp/shadow_godot_test.log
           grep -q "Shadowborn generated Shadow GLB Godot import: PASS" /tmp/shadow_godot_test.log
+          /tmp/godot/godot --headless --path . --script res://tests/dcc_shadow_mesh_candidate_test.gd 2>&1 | tee /tmp/shadow_mesh_candidate_godot_test.log
+          grep -q "Shadowborn original Shadow mesh candidate Godot import: PASS" /tmp/shadow_mesh_candidate_godot_test.log
           mv /tmp/shadow_game_rig_smoke.blend build/dcc_shadow/shadow_game_rig_smoke.blend
+          mv /tmp/shadow_mesh_candidate.blend build/dcc_shadow/shadow_mesh_candidate.blend
+
+      - name: Prepare virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Capture Shadow candidate in side and gameplay cameras
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            /tmp/godot/godot --path . --rendering-method gl_compatibility \
+            --script res://tests/dcc_shadow_candidate_capture.gd 2>&1 | tee /tmp/shadow_candidate_capture.log
+          grep -q "SHADOWBORN_SHADOW_CANDIDATE_CAPTURE_PASS" /tmp/shadow_candidate_capture.log
+          test -s build/dcc_shadow/captures/shadow_candidate_idle_side.png
+          test -s build/dcc_shadow/captures/shadow_candidate_a1_windup_side.png
+          test -s build/dcc_shadow/captures/shadow_candidate_a1_contact_side.png
+          test -s build/dcc_shadow/captures/shadow_candidate_gameplay_idle.png
+          test -s build/dcc_shadow/captures/shadow_candidate_gameplay_a1.png
 
       - name: Upload Shadow DCC smoke artifacts
         uses: actions/upload-artifact@v4
