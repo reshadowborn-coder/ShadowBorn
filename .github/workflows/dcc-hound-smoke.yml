@@ -1,0 +1,44 @@
+name: Shadowborn Hound DCC Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/blender/grave_hound_rig_smoke.py"
+      - ".github/workflows/dcc-hound-smoke.yml"
+      - "docs/art/GRAVE_HOUND_PRODUCTION_BRIEF.md"
+
+jobs:
+  blender-rig-roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified Blender 5.2.2 LTS
+        run: |
+          set -euo pipefail
+          cd /tmp
+          curl -L --fail --retry 3 -O https://download.blender.org/release/Blender5.2/blender-5.2.2-linux-x64.tar.xz
+          curl -L --fail --retry 3 -o blender-5.2.2.sha256 https://download.blender.org/release/Blender5.2/blender-5.2.2.sha256
+          grep "blender-5.2.2-linux-x64.tar.xz" blender-5.2.2.sha256 | sha256sum -c -
+          tar -xf blender-5.2.2-linux-x64.tar.xz
+
+      - name: Run Rigify Wolf to GLB round-trip smoke
+        run: |
+          set -euo pipefail
+          mkdir -p build/dcc_hound
+          /tmp/blender-5.2.2-linux-x64/blender             -b --factory-startup             --python tools/blender/grave_hound_rig_smoke.py             -- --out-dir build/dcc_hound 2>&1 | tee /tmp/hound_dcc.log
+          grep -q "SHADOWBORN_DCC_SMOKE_PASS" /tmp/hound_dcc.log
+          test -s build/dcc_hound/grave_hound_rig_smoke.blend
+          test -s build/dcc_hound/grave_hound_rig_smoke.glb
+          test -s build/dcc_hound/grave_hound_rig_smoke_report.json
+
+      - name: Upload DCC smoke artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: grave-hound-dcc-smoke
+          path: build/dcc_hound/
+          if-no-files-found: error
+          retention-days: 14
