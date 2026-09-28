@@ -4,6 +4,8 @@ const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
 const BODY_PREFIX := "HND_BODY_CANDIDATE"
 const RIBS_PREFIX := "HND_EXPOSED_RIBS_CANDIDATE"
 const WOUND_PREFIX := "HND_THORAX_WOUND_CANDIDATE"
+const EYE_SOCKET_PREFIX := "HND_MISSING_EYE_SOCKET_CANDIDATE"
+const JAW_BONE_PREFIX := "HND_EXPOSED_JAW_BONE_CANDIDATE"
 const IDLE_ACTION := "HND_IDLE_LOW_01"
 const BITE_ACTION := "HND_BITE_01"
 const OUT_DIR := "res://build/dcc_hound/captures"
@@ -36,6 +38,8 @@ func _run() -> void:
 	var body := _find_mesh(actor,BODY_PREFIX)
 	var ribs := _find_mesh(actor,RIBS_PREFIX)
 	var wound := _find_mesh(actor,WOUND_PREFIX)
+	var eye_socket := _find_mesh(actor,EYE_SOCKET_PREFIX)
+	var jaw_bone := _find_mesh(actor,JAW_BONE_PREFIX)
 	if body == null or body.mesh == null:
 		push_error("Could not find %s in candidate GLB" % BODY_PREFIX)
 		quit(1)
@@ -48,11 +52,21 @@ func _run() -> void:
 		push_error("Could not find %s in candidate GLB" % WOUND_PREFIX)
 		quit(1)
 		return
+	if eye_socket == null or eye_socket.mesh == null:
+		push_error("Could not find %s in candidate GLB" % EYE_SOCKET_PREFIX)
+		quit(1)
+		return
+	if jaw_bone == null or jaw_bone.mesh == null:
+		push_error("Could not find %s in candidate GLB" % JAW_BONE_PREFIX)
+		quit(1)
+		return
 
-	_hide_non_candidate_meshes(actor,[body,ribs,wound])
+	_hide_non_candidate_meshes(actor,[body,ribs,wound,eye_socket,jaw_bone])
 	body.material_override = _clay_material()
 	wound.material_override = _wound_material()
 	ribs.material_override = _bone_material()
+	eye_socket.material_override = _eye_socket_material()
+	jaw_bone.material_override = _bone_material()
 
 	var aabb := body.mesh.get_aabb()
 	var target := body.to_global(aabb.get_center())
@@ -174,6 +188,13 @@ func _wound_material() -> StandardMaterial3D:
 	mat.roughness = 0.86
 	mat.metallic = 0.0
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return mat
+
+func _eye_socket_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.018,0.022,0.019)
+	mat.roughness = 0.92
+	mat.metallic = 0.0
 	return mat
 
 func _bone_material() -> StandardMaterial3D:
