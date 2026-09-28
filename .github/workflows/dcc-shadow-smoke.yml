@@ -1,0 +1,66 @@
+name: Shadowborn Shadow DCC Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/blender/shadow_rig_smoke.py"
+      - ".github/workflows/dcc-shadow-smoke.yml"
+      - "docs/art/SHADOW_PRODUCTION_BRIEF.md"
+      - "tests/dcc_shadow_generated_glb_test.gd"
+
+jobs:
+  blender-rig-roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified Blender 5.2.2 LTS
+        run: |
+          set -euo pipefail
+          cd /tmp
+          curl -L --fail --retry 3 -O https://download.blender.org/release/Blender5.2/blender-5.2.2-linux-x64.tar.xz
+          curl -L --fail --retry 3 -o blender-5.2.2.sha256 https://download.blender.org/release/Blender5.2/blender-5.2.2.sha256
+          grep "blender-5.2.2-linux-x64.tar.xz" blender-5.2.2.sha256 | sha256sum -c -
+          tar -xf blender-5.2.2-linux-x64.tar.xz
+
+      - name: Build Shadow Basic Human rig smoke
+        run: |
+          set -euo pipefail
+          mkdir -p build/dcc_shadow
+          /tmp/blender-5.2.2-linux-x64/blender \
+            -b --factory-startup \
+            --python tools/blender/shadow_rig_smoke.py \
+            -- --out-dir build/dcc_shadow 2>&1 | tee /tmp/shadow_dcc.log
+          grep -q "SHADOWBORN_SHADOW_DCC_SMOKE_PASS" /tmp/shadow_dcc.log
+          test -s build/dcc_shadow/shadow_game_rig_smoke.blend
+          test -s build/dcc_shadow/shadow_game_rig_smoke.glb
+          test -s build/dcc_shadow/shadow_rig_smoke_report.json
+
+      - name: Install Godot 4.7.2
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+
+      - name: Import generated Shadow GLB in Godot 4.7.2
+        run: |
+          set -euo pipefail
+          mv build/dcc_shadow/shadow_game_rig_smoke.blend /tmp/shadow_game_rig_smoke.blend
+          /tmp/godot/godot --headless --path . --editor --quit 2>&1 | tee /tmp/shadow_godot_import.log
+          ! grep -q "SCRIPT ERROR:" /tmp/shadow_godot_import.log
+          /tmp/godot/godot --headless --path . --script res://tests/dcc_shadow_generated_glb_test.gd 2>&1 | tee /tmp/shadow_godot_test.log
+          grep -q "Shadowborn generated Shadow GLB Godot import: PASS" /tmp/shadow_godot_test.log
+          mv /tmp/shadow_game_rig_smoke.blend build/dcc_shadow/shadow_game_rig_smoke.blend
+
+      - name: Upload Shadow DCC smoke artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadow-dcc-smoke
+          path: build/dcc_shadow/
+          if-no-files-found: error
+          retention-days: 14
