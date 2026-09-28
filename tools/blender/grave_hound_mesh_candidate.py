@@ -46,6 +46,7 @@ JAW_BONE_NAME = "HND_EXPOSED_JAW_BONE_CANDIDATE"
 MIN_CANDIDATE_VERTICES = 500
 MAX_CANDIDATE_VERTICES = 2200
 MAX_INFLUENCES = 4
+MAX_BODY_COMPONENTS_CANDIDATE = 11
 
 
 def _args() -> argparse.Namespace:
@@ -878,6 +879,11 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     mesh.from_pydata(builder.vertices, [], builder.faces)
     mesh.update()
     connected_components = _connected_component_count(mesh)
+    if connected_components > MAX_BODY_COMPONENTS_CANDIDATE:
+        raise RuntimeError(
+            "Hound body topology regressed to too many disconnected islands: "
+            f"{connected_components} > {MAX_BODY_COMPONENTS_CANDIDATE}"
+        )
     # Organic candidate uses smooth vertex normals; silhouette remains geometry-driven.
     for polygon in mesh.polygons:
         polygon.use_smooth = True
