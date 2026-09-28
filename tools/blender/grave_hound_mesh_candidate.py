@@ -40,6 +40,7 @@ from grave_hound_rig_smoke import (
 
 BODY_NAME = "HND_BODY_CANDIDATE"
 RIBS_NAME = "HND_EXPOSED_RIBS_CANDIDATE"
+WOUND_NAME = "HND_THORAX_WOUND_CANDIDATE"
 MIN_CANDIDATE_VERTICES = 500
 MAX_CANDIDATE_VERTICES = 2200
 MAX_INFLUENCES = 4
@@ -405,11 +406,24 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     head_bone = rig.data.bones["DEF-spine.011"]
     head_center = (head_bone.head_local + head_bone.tail_local) * 0.5
     head_forward = (head_bone.tail_local - head_bone.head_local).normalized()
-    b.ellipsoid(head_center + Vector((0, -0.010, 0.000)), Vector((0.142, 0.205, 0.125)), head_pool)
 
-    muzzle_root = head_center + head_forward * 0.090 + Vector((0, 0, -0.018))
-    muzzle_tip = head_center + head_forward * 0.345 + Vector((0, 0, -0.038))
-    b.tapered_segment(muzzle_root, muzzle_tip, 0.086, 0.048, head_pool, segments=10)
+    # Continuous canine skull/muzzle profile. The old ellipsoid + cylinder read
+    # as a toy head in fixed-camera captures, so the visible upper head is now
+    # one lofted surface from occiput to nose.
+    skull_rear = head_center - head_forward * 0.115 + Vector((0.0, 0.0, 0.010))
+    skull_mid = head_center + head_forward * 0.015 + Vector((0.0, 0.0, 0.008))
+    cheek = head_center + head_forward * 0.120 + Vector((0.0, 0.0, -0.004))
+    muzzle_mid = head_center + head_forward * 0.255 + Vector((0.0, 0.0, -0.028))
+    nose = head_center + head_forward * 0.370 + Vector((0.0, 0.0, -0.045))
+    head_stations = [
+        (skull_rear, 0.120, 0.112),
+        (skull_mid,  0.145, 0.126),
+        (cheek,      0.118, 0.098),
+        (muzzle_mid, 0.078, 0.065),
+        (nose,       0.050, 0.046),
+    ]
+    head_stations.sort(key=lambda station: station[0].y)
+    b.body_loft(head_stations, head_pool, segments=12)
 
     # Separate lower-jaw volume guarantees semantic bite deformation around DEF-jaw.
     jaw_head = _bone_head(rig, "DEF-jaw")
@@ -606,6 +620,91 @@ def _create_ribs_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     }
 
 
+def _create_wound_candidate(rig: bpy.types.Object) -> tuple[bpy.types.Object, dict]:
+    """Create a dark irregular thorax cavity under the exposed ribs.
+
+    This is a side-readable wound layer, not a literal boolean hole. At phone
+    scale it prevents the ribs from reading as decorative bars glued to intact skin.
+    """
+    builder = MeshBuilder()
+    chest = (_bone_center(rig, "DEF-spine.007") + _bone_center(rig, "DEF-spine.008")) * 0.5
+    forced = {"DEF-spine.007": 0.56, "DEF-spine.008": 0.44}
+    pool = _pool("DEF-spine.007", "DEF-spine.008")
+
+    center = chest + Vector((0.222, 0.010, 0.005))
+    ring_offsets = [
+        Vector((0.0, -0.165,  0.125)),
+        Vector((0.0, -0.205,  0.035)),
+        Vector((0.0, -0.170, -0.120)),
+        Vector((0.0, -0.055, -0.175)),
+        Vector((0.0,  0.085, -0.160)),
+        Vector((0.0,  0.180, -0.070)),
+        Vector((0.0,  0.185,  0.075)),
+        Vector((0.0,  0.080,  0.165)),
+        Vector((0.0, -0.060,  0.175)),
+    ]
+    points = [center + offset for offset in ring_offsets]
+    for i in range(len(points)):
+        builder.triangle(
+            center,
+            points[i],
+            points[(i + 1) % len(points)],
+            pool,
+            forced=forced,
+        )
+
+    mesh = bpy.data.meshes.new(WOUND_NAME + "_Mesh")
+    mesh.from_pydata(builder.vertices, [], builder.faces)
+    mesh.update()
+
+    obj = bpy.data.objects.new(WOUND_NAME, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+
+    mat = bpy.data.materials.new("HND_DRY_THORAX_CAVITY")
+    mat.diffuse_color = (0.052, 0.012, 0.010, 1.0)
+    mat.metallic = 0.0
+    mat.roughness = 0.84
+    obj.data.materials.append(mat)
+
+    groups: dict[str, bpy.types.VertexGroup] = {}
+    max_influences = 0
+    for vertex_index, point_tuple in enumerate(builder.vertices):
+        weights = _weights_for_vertex(
+            rig,
+            Vector(point_tuple),
+            builder.weight_pools[vertex_index],
+            builder.forced_weights[vertex_index],
+        )
+        max_influences = max(max_influences, len(weights))
+        for bone_name, weight in weights.items():
+            group = groups.get(bone_name)
+            if group is None:
+                group = obj.vertex_groups.new(name=bone_name)
+                groups[bone_name] = group
+            group.add([vertex_index], float(weight), "REPLACE")
+
+    modifier = obj.modifiers.new(name="HoundWoundArmature", type="ARMATURE")
+    modifier.object = rig
+    modifier.use_vertex_groups = True
+
+    world_matrix = obj.matrix_world.copy()
+    obj.parent = rig
+    obj.matrix_parent_inverse = rig.matrix_world.inverted()
+    obj.matrix_world = world_matrix
+
+    obj["shadowborn_asset_tier"] = "production_candidate"
+    obj["shadowborn_anatomy_layer"] = "thorax_wound_cavity"
+    obj["shadowborn_original_mesh"] = True
+    obj["shadowborn_shipping_accepted"] = False
+
+    return obj, {
+        "vertex_count": len(builder.vertices),
+        "polygon_count": len(builder.faces),
+        "max_influences_per_vertex": max_influences,
+        "material_slots": len(obj.data.materials),
+    }
+
+
 def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dict]:
     builder = _build_candidate_geometry(rig)
     vertex_count = len(builder.vertices)
@@ -688,6 +787,7 @@ def _export_candidate(
     rig: bpy.types.Object,
     candidate: bpy.types.Object,
     ribs: bpy.types.Object,
+    wound: bpy.types.Object,
     out_dir: Path,
 ) -> Path:
     path = out_dir / "grave_hound_mesh_candidate.glb"
@@ -695,6 +795,7 @@ def _export_candidate(
     rig.select_set(True)
     candidate.select_set(True)
     ribs.select_set(True)
+    wound.select_set(True)
     bpy.context.view_layer.objects.active = rig
 
     kwargs = dict(
@@ -749,6 +850,9 @@ def _roundtrip_candidate(path: Path) -> dict:
     ribs = next((obj for obj in meshes if obj.name.startswith(RIBS_NAME)), None)
     if ribs is None:
         raise RuntimeError(f"Round-trip lost {RIBS_NAME}")
+    wound = next((obj for obj in meshes if obj.name.startswith(WOUND_NAME)), None)
+    if wound is None:
+        raise RuntimeError(f"Round-trip lost {WOUND_NAME}")
 
     max_positive = 0
     weighted_vertices = 0
@@ -780,6 +884,8 @@ def _roundtrip_candidate(path: Path) -> dict:
         "candidate_polygon_count": len(candidate.data.polygons),
         "rib_vertex_count": len(ribs.data.vertices),
         "rib_polygon_count": len(ribs.data.polygons),
+        "wound_vertex_count": len(wound.data.vertices),
+        "wound_polygon_count": len(wound.data.polygons),
         "weighted_vertex_count": weighted_vertices,
         "max_positive_influences_per_vertex": max_positive,
         "animation_actions": actions,
@@ -800,23 +906,25 @@ def main() -> None:
     actions = _create_smoke_actions(rig)
     candidate, candidate_stats = _create_candidate_mesh(rig)
     ribs, rib_stats = _create_ribs_candidate(rig)
+    wound, wound_stats = _create_wound_candidate(rig)
 
     _reset_rig_pose(rig)
     source_path = _save_source(out_dir)
-    glb_path = _export_candidate(rig, candidate, ribs, out_dir)
+    glb_path = _export_candidate(rig, candidate, ribs, wound, out_dir)
     roundtrip = _roundtrip_candidate(glb_path)
 
     report = {
         "status": "pass",
-        "purpose": "tenth camera-reviewed original skinned Grave Hound candidate with sparse exposed thoracic ribs; not final user-accepted art",
+        "purpose": "eleventh camera-reviewed original skinned Grave Hound candidate with continuous limbs/head and exposed thorax wound; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 10,
+        "candidate_revision": 11,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
         "exposed_rib_stats_before_export": rib_stats,
+        "thorax_wound_stats_before_export": wound_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
         "semantic_actions_are_final_art": False,
@@ -827,6 +935,8 @@ def main() -> None:
             "compact_forelimb_read": True,
             "short_damaged_tail": True,
             "asymmetric_ears": True,
+            "continuous_canine_head_profile": True,
+            "exposed_thorax_cavity": True,
         },
         "source_blend": source_path.name,
         "candidate_glb": glb_path.name,
