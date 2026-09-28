@@ -832,6 +832,34 @@ def _create_head_damage_layers(rig: bpy.types.Object) -> tuple[list[bpy.types.Ob
     }
 
 
+def _connected_component_count(mesh: bpy.types.Mesh) -> int:
+    """Count disconnected topology islands in the generated body mesh."""
+    if len(mesh.vertices) == 0:
+        return 0
+    adjacency: list[set[int]] = [set() for _ in mesh.vertices]
+    for edge in mesh.edges:
+        a, b = int(edge.vertices[0]), int(edge.vertices[1])
+        adjacency[a].add(b)
+        adjacency[b].add(a)
+
+    visited: set[int] = set()
+    components = 0
+    for start in range(len(mesh.vertices)):
+        if start in visited:
+            continue
+        components += 1
+        stack = [start]
+        visited.add(start)
+        while stack:
+            current = stack.pop()
+            for neighbor in adjacency[current]:
+                if neighbor in visited:
+                    continue
+                visited.add(neighbor)
+                stack.append(neighbor)
+    return components
+
+
 def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dict]:
     builder = _build_candidate_geometry(rig)
     vertex_count = len(builder.vertices)
@@ -844,6 +872,7 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     mesh = bpy.data.meshes.new(BODY_NAME + "_Mesh")
     mesh.from_pydata(builder.vertices, [], builder.faces)
     mesh.update()
+    connected_components = _connected_component_count(mesh)
     # Organic candidate uses smooth vertex normals; silhouette remains geometry-driven.
     for polygon in mesh.polygons:
         polygon.use_smooth = True
@@ -930,6 +959,7 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
         "max_influences_per_vertex": max_influences,
         "four_influence_vertex_count": four_influence_vertices,
         "wet_fur_face_count": wet_face_count,
+        "connected_component_count": connected_components,
         "material_slots": len(obj.data.materials),
     }
 
@@ -1092,7 +1122,7 @@ def main() -> None:
         "candidate_mesh": BODY_NAME,
         "candidate_revision": 18,
         "material_export_contract": "opaque Principled BSDF metal/rough PBR for glTF",
-        "torso_topology": "single_connected_elliptical_loft_surface",
+        "torso_topology": "connected torso loft; whole candidate body still audited for disconnected surface islands",
         "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
         "exposed_rib_stats_before_export": rib_stats,
