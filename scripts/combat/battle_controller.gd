@@ -138,6 +138,23 @@ func _begin_turn(index: int) -> void:
 	active_actor_index = index
 	var actor: Dictionary = units[index]
 
+	# Owner-turn periodic damage resolves before action legality. This means
+	# Poison still advances on a Stun/Freeze/Sleep-stolen opportunity, while
+	# cooldowns remain frozen because no real action was committed.
+	var poison_damage := BattleRules.poison_tick(actor)
+	if poison_damage > 0:
+		battle_message.emit("%s suffers %d POISON" % [actor["name"],poison_damage])
+		_emit_state()
+		if int(actor.get("hp",0)) <= 0:
+			turn_scheduler.set_alive(StringName(str(actor["id"])),false)
+			actor_died.emit(str(actor["id"]))
+			var poison_generation := turn_loop_generation
+			await _wait_presentation_time(0.55,poison_generation)
+			if not running or poison_generation != turn_loop_generation:
+				return
+			_finish_turn()
+			return
+
 	var skipped := BattleRules.consume_control(actor.get("statuses",{}))
 	if not skipped.is_empty():
 		battle_message.emit("%s loses the turn: %s" % [actor["name"],skipped.to_upper()])
