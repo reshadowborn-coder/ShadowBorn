@@ -223,6 +223,14 @@ def _new_weighted_proxy(
     modifier = obj.modifiers.new(name="HoundArmature", type="ARMATURE")
     modifier.object = rig
     modifier.use_vertex_groups = True
+
+    # glTF skin export requires the armature to be the mesh object's parent,
+    # not merely referenced by an Armature modifier. Preserve world placement.
+    world_matrix = obj.matrix_world.copy()
+    obj.parent = rig
+    obj.matrix_parent_inverse = rig.matrix_world.inverted()
+    obj.matrix_world = world_matrix
+
     obj["shadowborn_dcc_smoke_proxy"] = True
     return obj
 
