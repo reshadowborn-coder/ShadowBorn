@@ -29,6 +29,9 @@ jobs:
       - name: Combat rules
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_rules_test.gd
+      - name: Combat temporal semantics
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/combat_temporal_semantics_test.gd
       - name: Deterministic turn scheduler
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/battle_turn_scheduler_test.gd
