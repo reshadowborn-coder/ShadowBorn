@@ -302,7 +302,6 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
         "DEF-shoulder.L", "DEF-shoulder.R",
         "DEF-thigh.L", "DEF-thigh.R",
         "DEF-front_thigh.L", "DEF-front_thigh.R",
-        "DEF-spine", "DEF-spine.001",
     )
 
     chest_front = shoulder_mid + Vector((0.0, -0.080, 0.005))
@@ -313,17 +312,15 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     pelvis_front = pelvis + Vector((0.0, -0.110, 0.015))
     pelvis_rear = pelvis + Vector((0.0, 0.145, 0.010))
 
-    tail_root = _bone_head(rig, "DEF-spine") + Vector((0.0, -0.015, 0.000))
     torso_stations = [
-        (chest_front, 0.205, 0.245),
-        (chest,       0.220, 0.255),
-        (chest_rear,  0.205, 0.225),
-        (abdomen_front,0.165, 0.170),
-        (abdomen_rear, 0.142, 0.132),
-        (loin,         0.158, 0.150),
-        (pelvis_front, 0.182, 0.190),
-        (pelvis_rear,  0.174, 0.182),
-        (tail_root,    0.090, 0.082),
+        (chest_front, 0.198, 0.225),
+        (chest,       0.214, 0.238),
+        (chest_rear,  0.198, 0.210),
+        (abdomen_front,0.158, 0.158),
+        (abdomen_rear, 0.138, 0.125),
+        (loin,         0.152, 0.145),
+        (pelvis_front, 0.178, 0.184),
+        (pelvis_rear,  0.168, 0.174),
     ]
     # Basic Quadruped faces -Y, so ensure station order follows head -> tail.
     torso_stations.sort(key=lambda station: station[0].y)
@@ -339,11 +336,11 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     head_bone = rig.data.bones["DEF-spine.011"]
     head_center = (head_bone.head_local + head_bone.tail_local) * 0.5
     head_forward = (head_bone.tail_local - head_bone.head_local).normalized()
-    b.ellipsoid(head_center + Vector((0, 0, 0.006)), Vector((0.150, 0.178, 0.148)), head_pool)
+    b.ellipsoid(head_center + Vector((0, -0.010, 0.000)), Vector((0.142, 0.205, 0.125)), head_pool)
 
-    muzzle_root = head_center + head_forward * 0.085 + Vector((0, 0, -0.020))
-    muzzle_tip = head_center + head_forward * 0.325 + Vector((0, 0, -0.040))
-    b.tapered_segment(muzzle_root, muzzle_tip, 0.095, 0.055, head_pool, segments=10)
+    muzzle_root = head_center + head_forward * 0.090 + Vector((0, 0, -0.018))
+    muzzle_tip = head_center + head_forward * 0.345 + Vector((0, 0, -0.038))
+    b.tapered_segment(muzzle_root, muzzle_tip, 0.086, 0.048, head_pool, segments=10)
 
     # Separate lower-jaw volume guarantees semantic bite deformation around DEF-jaw.
     jaw_head = _bone_head(rig, "DEF-jaw")
@@ -382,20 +379,30 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     _append_leg(b, rig, "L", front=False)
     _append_leg(b, rig, "R", front=False)
 
-    # Damaged tail: shortened to three deform segments and given a slight corpse droop.
+    # Damaged tail uses an authored short corpse silhouette instead of inheriting
+    # the full Rigify tail length. Rigify bones provide deformation only.
     tail_names = ("DEF-spine", "DEF-spine.001", "DEF-spine.002")
-    tail_radii = (0.060, 0.046, 0.030)
-    for i, name in enumerate(tail_names):
-        drop_a = Vector((0, 0, -0.018 * float(i)))
-        drop_b = Vector((0, 0, -0.018 * float(i + 1)))
-        b.tapered_segment(
-            _bone_head(rig, name) + drop_a,
-            _bone_tail(rig, name) + drop_b,
-            tail_radii[i],
-            max(tail_radii[i] * 0.68, 0.016),
-            tail_names,
-            segments=8,
-        )
+    tail_start = pelvis_rear + Vector((0.0, 0.125, 0.030))
+    tail_mid = tail_start + Vector((0.0, 0.180, -0.035))
+    tail_tip = tail_mid + Vector((0.0, 0.150, -0.050))
+    b.tapered_segment(
+        tail_start,
+        tail_mid,
+        0.052,
+        0.037,
+        tail_names,
+        segments=8,
+        forced={"DEF-spine": 0.70, "DEF-spine.001": 0.30},
+    )
+    b.tapered_segment(
+        tail_mid,
+        tail_tip,
+        0.037,
+        0.018,
+        tail_names,
+        segments=8,
+        forced={"DEF-spine.001": 0.58, "DEF-spine.002": 0.42},
+    )
 
     return b
 
@@ -636,12 +643,13 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "fourth camera-reviewed original skinned Grave Hound candidate with connected torso/tail silhouette; not final user-accepted art",
+        "purpose": "fifth camera-reviewed original skinned Grave Hound candidate with compact authored damaged tail and canine skull profile; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 4,
+        "candidate_revision": 5,
         "torso_topology": "single_connected_elliptical_loft_surface",
+        "tail_policy": "short authored silhouette weighted to Rigify tail deform bones",
         "candidate_stats_before_export": candidate_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
