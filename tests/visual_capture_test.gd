@@ -48,6 +48,13 @@ func _run() -> void:
 	battle.queue_free()
 	await process_frame
 
+	# Production identity evidence: Bite and Rend are mechanically distinct skills.
+	# Capture them through the exact same timing harness so a presentation fallback
+	# that collapses both actions becomes visible in CI artifacts instead of hiding
+	# behind skill IDs or damage values.
+	await _capture_hound_skill_package("hound_bite","bite")
+	await _capture_hound_skill_package("hound_rend","rend")
+
 	# Pose-fraction captures are diagnostic, not semantic timing. They let us compare
 	# silhouette evolution independent of tween timing and expose generic/reused clips
 	# that a single "hero frame" can hide. Production contact still comes from the
@@ -56,6 +63,7 @@ func _run() -> void:
 	await _capture_hound_bite_pose(0.50,OUT_DIR+"/hound_bite_pose_50.png")
 	await _capture_hound_bite_pose(0.85,OUT_DIR+"/hound_bite_pose_85.png")
 
+	await _capture_shadow_basic_package()
 	await _capture_shadow_skill("shadow_basic",OUT_DIR+"/shadow_a1.png",0.18)
 	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
 	# Highlighted weapon and rotation-sweep captures are intentionally no longer
@@ -63,6 +71,33 @@ func _run() -> void:
 	# regression tests; keep the helpers below for manual diagnosis only.
 	print("Shadowborn visual capture: PASS")
 	quit(0)
+
+
+func _capture_hound_skill_package(skill_id: String,label: String) -> void:
+	var battle := BattleStageScript.new()
+	root.add_child(battle)
+	await process_frame
+	battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await create_timer(0.20).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_idle.png")
+	battle.play_windup("hound","shadow",skill_id)
+	await create_timer(0.08).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_coil.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_launch.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_contact.png")
+	battle.play_impact("hound","shadow",skill_id,12,"")
+	await create_timer(0.035).timeout
+	await _capture(OUT_DIR+"/hound_"+label+"_impact.png")
+	battle.queue_free()
+	await process_frame
 
 
 func _capture_hound_bite_pose(fraction: float,path: String) -> void:
@@ -92,6 +127,41 @@ func _capture_hound_bite_pose(fraction: float,path: String) -> void:
 	await _capture(path)
 	battle.queue_free()
 	await process_frame
+
+
+func _capture_shadow_basic_package() -> void:
+	var battle := BattleStageScript.new()
+	root.add_child(battle)
+	await process_frame
+	battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await create_timer(0.20).timeout
+	await _capture(OUT_DIR+"/shadow_a1_idle.png")
+	battle.play_windup("shadow","hound","shadow_basic")
+	await create_timer(0.08).timeout
+	await _capture(OUT_DIR+"/shadow_a1_anticipation.png")
+	await create_timer(0.10).timeout
+	await _capture(OUT_DIR+"/shadow_a1_mid.png")
+	await create_timer(0.12).timeout
+	await _capture(OUT_DIR+"/shadow_a1_late.png")
+	await create_timer(0.08).timeout
+	# basic_slash semantic windup is 0.38 s at 1x in BattleController.
+	# Capture immediately before play_impact so physical contact can be judged
+	# without impact VFX, target reaction, damage text or camera feedback.
+	await _capture(OUT_DIR+"/shadow_a1_contact_vfx_off.png")
+	battle.play_impact("shadow","hound","shadow_basic",12,"")
+	await create_timer(0.07).timeout
+	await _capture(OUT_DIR+"/shadow_a1_reaction.png")
+	await create_timer(0.28).timeout
+	await _capture(OUT_DIR+"/shadow_a1_settle.png")
+	battle.queue_free()
+	await process_frame
+
 
 func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 	var battle := BattleStageScript.new()
