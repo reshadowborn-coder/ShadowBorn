@@ -39,6 +39,7 @@ FOUR_INFLUENCE_BONES = (
     "DEF-shoulder.L",
     "DEF-shoulder.R",
 )
+SMOKE_ACTIONS = ("HND_IDLE_LOW_01", "HND_BITE_01")
 
 
 def _args() -> argparse.Namespace:
@@ -73,7 +74,7 @@ def _enable_rigify() -> None:
 def _clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
-    for datablocks in (bpy.data.meshes, bpy.data.armatures, bpy.data.curves):
+    for datablocks in (bpy.data.meshes, bpy.data.armatures, bpy.data.curves, bpy.data.actions):
         for block in list(datablocks):
             if block.users == 0:
                 datablocks.remove(block)
@@ -280,6 +281,52 @@ def _create_skin_proxy(rig: bpy.types.Object) -> list[bpy.types.Object]:
     return proxies
 
 
+def _reset_rig_pose(rig: bpy.types.Object) -> None:
+    for pose_bone in rig.pose.bones:
+        pose_bone.location = (0.0, 0.0, 0.0)
+        pose_bone.scale = (1.0, 1.0, 1.0)
+        if pose_bone.rotation_mode == "QUATERNION":
+            pose_bone.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+        elif pose_bone.rotation_mode == "AXIS_ANGLE":
+            pose_bone.rotation_axis_angle = (0.0, 0.0, 1.0, 0.0)
+        else:
+            pose_bone.rotation_euler = (0.0, 0.0, 0.0)
+
+
+def _create_smoke_actions(rig: bpy.types.Object) -> list[str]:
+    """Create semantic-name export probes; these are not production animation art."""
+    jaw = rig.pose.bones.get(CUSTOM_JAW_NAME)
+    if jaw is None:
+        raise RuntimeError("Generated Rigify control rig is missing jaw control bone")
+
+    bpy.context.scene.render.fps = 30
+    rig.animation_data_create()
+    created: list[str] = []
+
+    action_specs = {
+        "HND_IDLE_LOW_01": [(1, -0.02), (16, -0.04), (31, -0.02)],
+        "HND_BITE_01": [(1, 0.00), (5, 0.68), (9, -0.10), (13, 0.00)],
+    }
+
+    for action_name, keys in action_specs.items():
+        _reset_rig_pose(rig)
+        action = bpy.data.actions.new(action_name)
+        rig.animation_data.action = action
+        jaw.rotation_mode = "XYZ"
+        for frame, angle in keys:
+            jaw.rotation_euler = (angle, 0.0, 0.0)
+            jaw.keyframe_insert(
+                data_path="rotation_euler",
+                frame=frame,
+                group="HND_Jaw",
+            )
+        created.append(action_name)
+
+    rig.animation_data.action = None
+    _reset_rig_pose(rig)
+    return created
+
+
 def _save_source(out_dir: Path) -> Path:
     blend_path = out_dir / "grave_hound_game_rig_smoke.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
@@ -310,7 +357,13 @@ def _export_smoke_glb(
         export_skins=True,
         export_def_bones=True,
         export_leaf_bone=False,
-        export_animations=False,
+        export_animations=True,
+        export_animation_mode="ACTIONS",
+        export_anim_single_armature=True,
+        export_reset_pose_bones=True,
+        export_frame_step=1,
+        export_force_sampling=True,
+        export_anim_slide_to_zero=True,
         export_yup=True,
         export_cameras=False,
         export_lights=False,
@@ -390,6 +443,14 @@ def _roundtrip_check(glb_path: Path) -> dict:
             f"Round-trip GLB exceeds four positive influences per vertex: {max_positive_influences}"
         )
 
+    imported_actions = sorted(action.name for action in bpy.data.actions)
+    missing_actions = sorted(set(SMOKE_ACTIONS) - set(imported_actions))
+    if missing_actions:
+        raise RuntimeError(
+            f"Round-trip GLB lost semantic animation actions: {missing_actions}; "
+            f"imported={imported_actions}"
+        )
+
     return {
         "imported_armature": armature.name,
         "imported_bone_count": len(bone_names),
@@ -399,6 +460,8 @@ def _roundtrip_check(glb_path: Path) -> dict:
         "max_positive_influences_per_vertex": max_positive_influences,
         "four_influence_proxy_max_positive_influences": four_proxy_max_positive_influences,
         "four_influence_proxy_found": four_influence_proxy_found,
+        "imported_animation_actions": imported_actions,
+        "semantic_actions_found": all(name in imported_actions for name in SMOKE_ACTIONS),
     }
 
 
@@ -418,6 +481,7 @@ def main() -> None:
     rig = _generate_rig(metarig)
     deform_bones = sorted(b.name for b in rig.data.bones if b.use_deform)
     proxies = _create_skin_proxy(rig)
+    smoke_actions = _create_smoke_actions(rig)
     source_path = _save_source(out_dir)
     glb_path, export_contract = _export_smoke_glb(rig, proxies, out_dir)
     roundtrip = _roundtrip_check(glb_path)
@@ -440,6 +504,8 @@ def main() -> None:
         "skin_proxy_mesh_count": len(proxies),
         "skin_proxy_is_shipping_art": False,
         "four_influence_probe_bones": list(FOUR_INFLUENCE_BONES),
+        "semantic_smoke_actions": smoke_actions,
+        "semantic_smoke_actions_are_production_art": False,
         "export_contract": export_contract,
         "source_blend": source_path.name,
         "smoke_glb": glb_path.name,
