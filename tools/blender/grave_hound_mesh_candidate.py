@@ -303,6 +303,9 @@ def _pbr_material(
     """Create a glTF-exportable opaque Principled BSDF material."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
+    # Godot's glTF import mirrors Blender material sidedness. Keep the Hound
+    # closed surfaces backface-culled so mobile does not pay for hidden faces.
+    mat.use_backface_culling = True
     mat.diffuse_color = base_color
     nodes = mat.node_tree.nodes if mat.node_tree is not None else None
     bsdf = nodes.get("Principled BSDF") if nodes is not None else None
