@@ -302,6 +302,7 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
         "DEF-shoulder.L", "DEF-shoulder.R",
         "DEF-thigh.L", "DEF-thigh.R",
         "DEF-front_thigh.L", "DEF-front_thigh.R",
+        "DEF-spine", "DEF-spine.001",
     )
 
     chest_front = shoulder_mid + Vector((0.0, -0.080, 0.005))
@@ -312,6 +313,7 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     pelvis_front = pelvis + Vector((0.0, -0.110, 0.015))
     pelvis_rear = pelvis + Vector((0.0, 0.145, 0.010))
 
+    tail_root = _bone_head(rig, "DEF-spine") + Vector((0.0, -0.015, 0.000))
     torso_stations = [
         (chest_front, 0.205, 0.245),
         (chest,       0.220, 0.255),
@@ -321,6 +323,7 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
         (loin,         0.158, 0.150),
         (pelvis_front, 0.182, 0.190),
         (pelvis_rear,  0.174, 0.182),
+        (tail_root,    0.090, 0.082),
     ]
     # Basic Quadruped faces -Y, so ensure station order follows head -> tail.
     torso_stations.sort(key=lambda station: station[0].y)
@@ -356,19 +359,20 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     )
 
     # Ear silhouette: one intact, one torn/asymmetric. Both remain head-driven.
-    ear_root_l = head_center + Vector((0.115, 0.015, 0.115))
+    ear_root_l = head_center + Vector((0.110, 0.010, 0.105))
     b.triangle(
-        ear_root_l,
-        ear_root_l + Vector((0.020, 0.020, 0.255)),
-        ear_root_l + Vector((-0.070, 0.030, 0.045)),
+        ear_root_l + Vector((0.0, -0.055, 0.0)),
+        ear_root_l + Vector((0.010, 0.000, 0.255)),
+        ear_root_l + Vector((-0.020, 0.095, 0.035)),
         head_pool,
         forced={"DEF-spine.011": 1.0},
     )
-    ear_root_r = head_center + Vector((-0.115, 0.020, 0.105))
+    # Right ear is deliberately torn/shorter and leans rearward.
+    ear_root_r = head_center + Vector((-0.110, 0.025, 0.095))
     b.triangle(
-        ear_root_r,
-        ear_root_r + Vector((-0.015, 0.010, 0.170)),
-        ear_root_r + Vector((0.060, 0.020, 0.040)),
+        ear_root_r + Vector((0.0, -0.045, 0.0)),
+        ear_root_r + Vector((-0.010, 0.035, 0.170)),
+        ear_root_r + Vector((0.015, 0.115, 0.030)),
         head_pool,
         forced={"DEF-spine.011": 1.0},
     )
@@ -450,6 +454,9 @@ def _create_candidate_mesh(rig: bpy.types.Object) -> tuple[bpy.types.Object, dic
     mesh = bpy.data.meshes.new(BODY_NAME + "_Mesh")
     mesh.from_pydata(builder.vertices, [], builder.faces)
     mesh.update()
+    # Organic candidate uses smooth vertex normals; silhouette remains geometry-driven.
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
 
     obj = bpy.data.objects.new(BODY_NAME, mesh)
     bpy.context.scene.collection.objects.link(obj)
@@ -629,11 +636,11 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "third camera-reviewed original skinned Grave Hound mesh candidate with connected torso loft; not final user-accepted art",
+        "purpose": "fourth camera-reviewed original skinned Grave Hound candidate with connected torso/tail silhouette; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 3,
+        "candidate_revision": 4,
         "torso_topology": "single_connected_elliptical_loft_surface",
         "candidate_stats_before_export": candidate_stats,
         "roundtrip": roundtrip,
