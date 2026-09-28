@@ -6,6 +6,7 @@ const MAX_GAME_BONES := 48
 const REQUIRED_BONE := "DEF-jaw"
 const REQUIRED_IDLE_ACTION := "HND_IDLE_LOW_01"
 const REQUIRED_BITE_ACTION := "HND_BITE_01"
+const MIN_BITE_DURATION := 0.50
 
 func _init() -> void:
 	call_deferred("_run")
