@@ -118,32 +118,42 @@ static func attach_sword(root: Node3D) -> void:
 		return
 
 	var skeleton := _find_skeleton(root)
-	if skeleton != null and skeleton.find_bone("Wrist.R") >= 0:
-		var socket := BoneAttachment3D.new()
-		socket.name = "WeaponSocket"
-		socket.bone_name = "Wrist.R"
-		skeleton.add_child(socket)
+	if skeleton != null:
+		# Legacy/vendor rigs use Wrist.R. The Blender 5.2 Rigify Basic Human
+		# production path exports DEF-hand.R. Prefer the production deform bone
+		# when present so the authored Grip contract survives the handoff.
+		var weapon_bone := ""
+		if skeleton.find_bone("DEF-hand.R") >= 0:
+			weapon_bone = "DEF-hand.R"
+		elif skeleton.find_bone("Wrist.R") >= 0:
+			weapon_bone = "Wrist.R"
 
-		var sword := create_sword_prop()
-		sword.name = "ShadowbornWeapon"
-		var tier := str(sword.get_meta("shadowborn_visual_tier",""))
-		if tier == "production":
-			var grip := sword.find_child("Grip",true,false) as Node3D
-			if grip == null:
-				push_error("Production Shadow Sword must provide authored Grip marker")
-			else:
-				var mount := Node3D.new()
-				mount.name = "WeaponGripMount"
-				mount.rotation_degrees = PRODUCTION_SWORD_WRIST_ROTATION
-				socket.add_child(mount)
-				sword.transform = grip.transform.affine_inverse()
-				mount.add_child(sword)
+		if not weapon_bone.is_empty():
+			var socket := BoneAttachment3D.new()
+			socket.name = "WeaponSocket"
+			socket.bone_name = weapon_bone
+			skeleton.add_child(socket)
+
+			var sword := create_sword_prop()
+			sword.name = "ShadowbornWeapon"
+			var tier := str(sword.get_meta("shadowborn_visual_tier",""))
+			if tier == "production":
+				var grip := sword.find_child("Grip",true,false) as Node3D
+				if grip == null:
+					push_error("Production Shadow Sword must provide authored Grip marker")
+				else:
+					var mount := Node3D.new()
+					mount.name = "WeaponGripMount"
+					mount.rotation_degrees = PRODUCTION_SWORD_WRIST_ROTATION
+					socket.add_child(mount)
+					sword.transform = grip.transform.affine_inverse()
+					mount.add_child(sword)
+					return
+			elif tier == "debug_vendor":
+				sword.position = DEV_SWORD_WRIST_OFFSET
+				sword.rotation_degrees = DEV_SWORD_WRIST_ROTATION
+				socket.add_child(sword)
 				return
-		elif tier == "debug_vendor":
-			sword.position = DEV_SWORD_WRIST_OFFSET
-			sword.rotation_degrees = DEV_SWORD_WRIST_ROTATION
-			socket.add_child(sword)
-			return
 
 	var fallback_socket := Node3D.new()
 	fallback_socket.name = "WeaponSocket"
