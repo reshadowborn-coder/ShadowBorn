@@ -14,7 +14,7 @@ position = Vector3(-2.8, 0, 0.3)
 position = Vector3(2.8, 0, -0.3)
 
 [node name="CameraTarget" type="Marker3D" parent="."]
-position = Vector3(0, 1, 0)
+position = Vector3(0.35, 1.02, -0.45)
 
 [node name="BattleCamera" type="Camera3D" parent="."]
 position = Vector3(0, 2.4, 9)
