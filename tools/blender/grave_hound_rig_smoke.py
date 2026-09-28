@@ -46,16 +46,17 @@ def _require_blender_version() -> None:
 
 
 def _enable_rigify() -> None:
+    # Importing Rigify is not enough: the add-on must be registered so Armature
+    # receives rigify_colors / rigify_target_rig and the generation operators.
     try:
-        importlib.import_module("rigify")
-        return
-    except ModuleNotFoundError:
-        pass
-
-    result = bpy.ops.preferences.addon_enable(module="rigify")
+        result = bpy.ops.preferences.addon_enable(module="rigify")
+    except Exception as exc:
+        raise RuntimeError(f"Could not enable bundled Rigify add-on: {exc}") from exc
     if "FINISHED" not in result:
         raise RuntimeError(f"Could not enable bundled Rigify add-on: {result}")
     importlib.import_module("rigify")
+    if not hasattr(bpy.types.Armature, "rigify_colors"):
+        raise RuntimeError("Rigify module loaded but Armature properties were not registered")
 
 
 def _clear_scene() -> None:
