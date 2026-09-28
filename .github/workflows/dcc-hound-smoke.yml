@@ -25,14 +25,14 @@ jobs:
           grep "blender-5.2.2-linux-x64.tar.xz" blender-5.2.2.sha256 | sha256sum -c -
           tar -xf blender-5.2.2-linux-x64.tar.xz
 
-      - name: Run Rigify Wolf to GLB round-trip smoke
+      - name: Run compact quadruped game-rig to GLB round-trip smoke
         run: |
           set -euo pipefail
           mkdir -p build/dcc_hound
           /tmp/blender-5.2.2-linux-x64/blender             -b --factory-startup             --python tools/blender/grave_hound_rig_smoke.py             -- --out-dir build/dcc_hound 2>&1 | tee /tmp/hound_dcc.log
           grep -q "SHADOWBORN_DCC_SMOKE_PASS" /tmp/hound_dcc.log
-          test -s build/dcc_hound/grave_hound_rig_smoke.blend
-          test -s build/dcc_hound/grave_hound_rig_smoke.glb
+          test -s build/dcc_hound/grave_hound_game_rig_smoke.blend
+          test -s build/dcc_hound/grave_hound_game_rig_smoke.glb
           test -s build/dcc_hound/grave_hound_rig_smoke_report.json
 
       - name: Upload DCC smoke artifacts
