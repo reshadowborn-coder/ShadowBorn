@@ -387,30 +387,19 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     _append_leg(b, rig, "L", front=False)
     _append_leg(b, rig, "R", front=False)
 
-    # Damaged tail uses an authored short corpse silhouette instead of inheriting
-    # the full Rigify tail length. Rigify bones provide deformation only.
-    tail_names = ("DEF-spine", "DEF-spine.001", "DEF-spine.002")
-    # Start inside the rear torso cross-section so skinning cannot reveal a gap.
+    # Damaged tail stump: tail-chain deformation repeatedly pulled the prototype
+    # away from the pelvis in fixed-camera captures. For this corpse design the
+    # retained visible tail is a short broken stump anchored to the pelvis/loin.
     tail_start = pelvis_rear.copy()
-    tail_mid = tail_start + Vector((0.0, 0.160, -0.032))
-    tail_tip = tail_mid + Vector((0.0, 0.120, -0.042))
+    tail_tip = tail_start + Vector((0.0, 0.135, -0.028))
     b.tapered_segment(
         tail_start,
-        tail_mid,
-        0.052,
-        0.037,
-        tail_names,
-        segments=8,
-        forced={"DEF-spine.004": 0.68, "DEF-spine": 0.32},
-    )
-    b.tapered_segment(
-        tail_mid,
         tail_tip,
-        0.037,
+        0.050,
         0.018,
-        tail_names,
+        _pool("DEF-spine.004", "DEF-spine.005"),
         segments=8,
-        forced={"DEF-spine": 0.52, "DEF-spine.001": 0.48},
+        forced={"DEF-spine.004": 0.72, "DEF-spine.005": 0.28},
     )
 
     return b
@@ -652,13 +641,13 @@ def main() -> None:
 
     report = {
         "status": "pass",
-        "purpose": "eighth camera-reviewed original skinned Grave Hound candidate with pelvis-anchored tail weighting and restrained ears; not final user-accepted art",
+        "purpose": "ninth camera-reviewed original skinned Grave Hound candidate with pelvis-anchored broken tail stump and restrained ears; not final user-accepted art",
         "blender_version": bpy.app.version_string,
         "rig_route": "Basic Quadruped + Shadowborn custom jaw",
         "candidate_mesh": BODY_NAME,
-        "candidate_revision": 8,
+        "candidate_revision": 9,
         "torso_topology": "single_connected_elliptical_loft_surface",
-        "tail_policy": "short authored silhouette weighted to Rigify tail deform bones",
+        "tail_policy": "short broken stump anchored to pelvis/loin deform bones; full tail chain intentionally not visible",
         "candidate_stats_before_export": candidate_stats,
         "roundtrip": roundtrip,
         "semantic_actions": actions,
