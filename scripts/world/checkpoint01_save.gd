@@ -126,11 +126,19 @@ static func _read_state(path: String):
 	return _validate_state(state_variant)
 
 static func _validate_state(raw: Dictionary):
-	if typeof(raw.get("version",null)) != TYPE_INT or int(raw.get("version",0)) != SAVE_VERSION:
+	var version_value = raw.get("version",null)
+	if typeof(version_value) not in [TYPE_INT,TYPE_FLOAT]:
 		return null
-	if typeof(raw.get("generation",null)) != TYPE_INT:
+	var version_number := float(version_value)
+	if version_number != floor(version_number) or int(version_number) != SAVE_VERSION:
 		return null
-	var generation := int(raw.get("generation",0))
+	var generation_value = raw.get("generation",null)
+	if typeof(generation_value) not in [TYPE_INT,TYPE_FLOAT]:
+		return null
+	var generation_number := float(generation_value)
+	if generation_number != floor(generation_number):
+		return null
+	var generation := int(generation_number)
 	if generation < 0 or generation > 2147483647:
 		return null
 	if typeof(raw.get("checkpoint",null)) != TYPE_STRING:
