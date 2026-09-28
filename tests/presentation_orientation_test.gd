@@ -204,5 +204,11 @@ func _check_diagonal_battle_composition(stage: Node) -> int:
 	failures += _expect(not camera.is_position_behind(shadow.global_position),"Shadow stays in front of the diagonal battle camera")
 	failures += _expect(not camera.is_position_behind(hound.global_position),"Grave Hound stays in front of the diagonal battle camera")
 	failures += _expect(screen_gap >= viewport_size.x*0.24,"diagonal battle keeps a readable screen-space attack lane")
-	failures += _expect(depth_ratio <= 1.35,"diagonal battle keeps perspective scale difference controlled")
+	# The preferred three-quarter camera intentionally puts Shadow in the foreground
+	# and the Hound deeper in the arena. A previous <=1.35 ceiling accidentally
+	# rejected the user-preferred camera and favored the flatter straight-on view.
+	# Keep enough depth to preserve the diagonal read, but cap it before the enemy
+	# becomes implausibly small relative to Shadow.
+	failures += _expect(depth_ratio >= 1.20,"diagonal battle preserves intentional foreground/midground depth")
+	failures += _expect(depth_ratio <= 1.50,"diagonal battle keeps perspective scale difference controlled")
 	return failures
