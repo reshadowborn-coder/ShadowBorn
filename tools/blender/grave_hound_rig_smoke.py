@@ -182,7 +182,47 @@ def _generate_rig(metarig: bpy.types.Object) -> bpy.types.Object:
         )
     if "DEF-jaw" not in deform_names:
         raise RuntimeError("Generated game rig is missing DEF-jaw")
+    _lock_limb_ik_stretch(rig)
     return rig
+
+
+def _lock_limb_ik_stretch(rig: bpy.types.Object) -> None:
+    """Disable Rigify limb stretching before authoring/exporting gameplay actions.
+
+    Rigify exposes IK_Stretch on limb controls and IK constraints can also allow
+    solver stretch. Grave Hound paws must support body weight instead of
+    telescoping when hips/chest move during Bite.
+    """
+    property_bones: list[str] = []
+    ik_constraints = 0
+    stretch_constraints_disabled = 0
+
+    for pose_bone in rig.pose.bones:
+        if "IK_Stretch" in pose_bone:
+            pose_bone["IK_Stretch"] = 0.0
+            property_bones.append(pose_bone.name)
+        for constraint in pose_bone.constraints:
+            if constraint.type != "IK":
+                continue
+            ik_constraints += 1
+            if getattr(constraint, "use_stretch", False):
+                constraint.use_stretch = False
+                stretch_constraints_disabled += 1
+
+    if len(property_bones) < 4:
+        raise RuntimeError(
+            "Expected Rigify IK_Stretch controls for four quadruped limbs; "
+            f"found {len(property_bones)} on {sorted(property_bones)}"
+        )
+    if ik_constraints < 4:
+        raise RuntimeError(
+            f"Expected at least four limb IK constraints, found {ik_constraints}"
+        )
+
+    rig["shadowborn_ik_stretch_locked"] = True
+    rig["shadowborn_ik_stretch_property_bones"] = "|".join(sorted(property_bones))
+    rig["shadowborn_ik_constraint_count"] = ik_constraints
+    rig["shadowborn_ik_constraints_disabled"] = stretch_constraints_disabled
 
 
 def _tetra_vertices(center: Vector, radius: float) -> tuple[list[tuple[float, float, float]], list[tuple[int, int, int]]]:
@@ -586,6 +626,10 @@ def main() -> None:
         "candidate_budget_is_platform_limit": False,
         "generated_deform_bones": deform_bones,
         "likely_animation_controls": likely_animation_controls,
+        "ik_stretch_locked": bool(rig.get("shadowborn_ik_stretch_locked", False)),
+        "ik_stretch_property_bones": str(rig.get("shadowborn_ik_stretch_property_bones", "")).split("|"),
+        "ik_constraint_count": int(rig.get("shadowborn_ik_constraint_count", 0)),
+        "ik_constraints_disabled": int(rig.get("shadowborn_ik_constraints_disabled", 0)),
         "skin_proxy_mesh_count": len(proxies),
         "skin_proxy_is_shipping_art": False,
         "four_influence_probe_bones": list(FOUR_INFLUENCE_BONES),
