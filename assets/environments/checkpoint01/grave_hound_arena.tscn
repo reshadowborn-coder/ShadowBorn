@@ -17,6 +17,6 @@ position = Vector3(2.8, 0, -0.3)
 position = Vector3(0.35, 1.02, -0.45)
 
 [node name="BattleCamera" type="Camera3D" parent="."]
-position = Vector3(0, 2.4, 9)
-fov = 38.0
+position = Vector3(-5.05, 4, 6.55)
+fov = 34.0
 current = true
