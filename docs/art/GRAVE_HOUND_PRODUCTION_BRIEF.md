@@ -166,6 +166,7 @@ PASS:
 - Black silhouette reads as a waist-high undead canid rather than a generic wolf blob or insect/spider shape.
 - Flat gray preserves skull/muzzle, shoulder/thorax, abdomen/pelvis and paw-chain readability without texture/emission help.
 - Bite contact has no obvious limb telescoping, foreleg spider stretch, detached paw, floating body or instantaneous pose reset.
+- Rigify limb `IK_Stretch` is locked to 0 for the generated quadruped game-rig candidate, and IK constraints have stretch disabled before actions are authored/exported; this is a deformation safeguard, not proof of final paw contact.
 - Neutral PBR remains readable with emission off and does not depend on transparent gore/fur cards.
 - The generated GLB still passes Godot 4.7.2 import, one-skeleton skinning, semantic action and four-influence gates.
 
