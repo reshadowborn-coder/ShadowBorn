@@ -1,5 +1,7 @@
 extends Node
 
+const Checkpoint01Save = preload("res://scripts/world/checkpoint01_save.gd")
+
 var screen_layer: CanvasLayer
 var awakening: AwakeningStage
 var stage: BattleStage
@@ -9,7 +11,14 @@ var lifecycle_app_paused := false
 var lifecycle_focus_out := false
 
 func _ready() -> void:
-	_show_title()
+	var saved := Checkpoint01Save.load_state()
+	match str(saved.get("checkpoint","title")):
+		"awakening":
+			_start_awakening(false)
+		"first_battle":
+			_start_first_battle(false)
+		_:
+			_show_title()
 
 func _notification(what: int) -> void:
 	if not is_inside_tree():
@@ -87,13 +96,17 @@ func _show_title() -> void:
 	build.modulate = Color(0.56,0.62,0.72)
 	root.add_child(build)
 
-func _start_awakening() -> void:
+func _start_awakening(persist_checkpoint: bool = true) -> void:
+	if persist_checkpoint:
+		Checkpoint01Save.save_checkpoint("awakening")
 	_clear_all()
 	awakening = AwakeningStage.new()
 	add_child(awakening)
 	awakening.finished.connect(_start_first_battle)
 
-func _start_first_battle() -> void:
+func _start_first_battle(persist_checkpoint: bool = true) -> void:
+	if persist_checkpoint:
+		Checkpoint01Save.save_checkpoint("first_battle")
 	if is_instance_valid(awakening):
 		awakening.queue_free()
 	awakening = null
@@ -111,15 +124,27 @@ func _start_first_battle() -> void:
 	battle.action_impact.connect(stage.play_impact)
 	battle.actor_died.connect(stage.play_death)
 	battle.battle_message.connect(hud.show_message)
-	battle.battle_finished.connect(hud.show_result)
+	battle.battle_finished.connect(_on_battle_finished)
 
 	hud.skill_requested.connect(battle.request_player_skill)
 	hud.auto_changed.connect(battle.set_auto)
 	hud.speed_changed.connect(battle.set_speed)
 	hud.replay_requested.connect(_start_awakening)
-	hud.title_requested.connect(_show_title)
+	hud.title_requested.connect(_return_to_title)
 
 	battle.start_battle()
+
+func _on_battle_finished(victory: bool) -> void:
+	# Stable-checkpoint policy: never persist a half-resolved action. A defeat
+	# restarts the encounter; this prototype's victory returns to title because
+	# no post-battle progression scene/reward transaction exists yet.
+	Checkpoint01Save.save_checkpoint("title" if victory else "first_battle")
+	if is_instance_valid(hud):
+		hud.show_result(victory)
+
+func _return_to_title() -> void:
+	Checkpoint01Save.save_checkpoint("title")
+	_show_title()
 
 func _clear_all() -> void:
 	if is_instance_valid(screen_layer):

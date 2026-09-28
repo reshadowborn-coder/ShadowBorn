@@ -38,6 +38,9 @@ jobs:
       - name: iOS lifecycle combat pause
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/ios_lifecycle_pause_test.gd
+      - name: Checkpoint 01 atomic save
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/checkpoint01_save_test.gd
       - name: Asset pipeline
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/asset_pipeline_test.gd
