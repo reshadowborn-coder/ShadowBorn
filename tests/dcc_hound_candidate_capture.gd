@@ -2,6 +2,7 @@ extends SceneTree
 
 const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
 const BODY_PREFIX := "HND_BODY_CANDIDATE"
+const RIBS_PREFIX := "HND_EXPOSED_RIBS_CANDIDATE"
 const IDLE_ACTION := "HND_IDLE_LOW_01"
 const BITE_ACTION := "HND_BITE_01"
 const OUT_DIR := "res://build/dcc_hound/captures"
@@ -31,14 +32,20 @@ func _run() -> void:
 	var actor := packed.instantiate() as Node3D
 	stage.add_child(actor)
 
-	var body := _find_body(actor)
+	var body := _find_mesh(actor,BODY_PREFIX)
+	var ribs := _find_mesh(actor,RIBS_PREFIX)
 	if body == null or body.mesh == null:
 		push_error("Could not find %s in candidate GLB" % BODY_PREFIX)
 		quit(1)
 		return
+	if ribs == null or ribs.mesh == null:
+		push_error("Could not find %s in candidate GLB" % RIBS_PREFIX)
+		quit(1)
+		return
 
-	_hide_non_candidate_meshes(actor,body)
+	_hide_non_candidate_meshes(actor,[body,ribs])
 	body.material_override = _clay_material()
+	ribs.material_override = _bone_material()
 
 	var aabb := body.mesh.get_aabb()
 	var target := body.to_global(aabb.get_center())
@@ -123,20 +130,20 @@ func _run() -> void:
 	print("SHADOWBORN_HOUND_CANDIDATE_CAPTURE_PASS")
 	quit(0)
 
-func _find_body(node: Node) -> MeshInstance3D:
-	if node is MeshInstance3D and node.name.begins_with(BODY_PREFIX):
+func _find_mesh(node: Node,prefix: String) -> MeshInstance3D:
+	if node is MeshInstance3D and node.name.begins_with(prefix):
 		return node as MeshInstance3D
 	for child in node.get_children():
-		var found := _find_body(child)
+		var found := _find_mesh(child,prefix)
 		if found != null:
 			return found
 	return null
 
-func _hide_non_candidate_meshes(node: Node,body: MeshInstance3D) -> void:
-	if node is MeshInstance3D and node != body:
+func _hide_non_candidate_meshes(node: Node,keep: Array[MeshInstance3D]) -> void:
+	if node is MeshInstance3D and not keep.has(node as MeshInstance3D):
 		(node as MeshInstance3D).visible = false
 	for child in node.get_children():
-		_hide_non_candidate_meshes(child,body)
+		_hide_non_candidate_meshes(child,keep)
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
@@ -151,6 +158,13 @@ func _clay_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.24,0.255,0.23)
 	mat.roughness = 0.82
+	mat.metallic = 0.0
+	return mat
+
+func _bone_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.52,0.47,0.34)
+	mat.roughness = 0.94
 	mat.metallic = 0.0
 	return mat
 
