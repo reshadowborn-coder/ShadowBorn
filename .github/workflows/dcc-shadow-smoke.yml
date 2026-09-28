@@ -12,6 +12,7 @@ on:
       - "tests/dcc_shadow_generated_glb_test.gd"
       - "tests/dcc_shadow_mesh_candidate_test.gd"
       - "tests/dcc_shadow_candidate_capture.gd"
+      - "tests/dcc_shadow_sword_orientation_capture.gd"
 
 jobs:
   blender-rig-roundtrip:
@@ -93,6 +94,18 @@ jobs:
           test -s build/dcc_shadow/captures/shadow_candidate_a1_contact_side.png
           test -s build/dcc_shadow/captures/shadow_candidate_gameplay_idle.png
           test -s build/dcc_shadow/captures/shadow_candidate_gameplay_a1.png
+
+      - name: Capture Rigify Shadow sword orientation sweep
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            /tmp/godot/godot --path . --rendering-method gl_compatibility \
+            --script res://tests/dcc_shadow_sword_orientation_capture.gd 2>&1 | tee /tmp/shadow_sword_sweep.log
+          grep -q "SHADOWBORN_SHADOW_SWORD_SWEEP_PASS" /tmp/shadow_sword_sweep.log
+          test -s build/dcc_shadow/captures/shadow_sword_sweep_m180.png
+          test -s build/dcc_shadow/captures/shadow_sword_sweep_m90.png
+          test -s build/dcc_shadow/captures/shadow_sword_sweep_0.png
+          test -s build/dcc_shadow/captures/shadow_sword_sweep_90.png
 
       - name: Upload Shadow DCC smoke artifacts
         uses: actions/upload-artifact@v4
