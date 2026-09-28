@@ -65,7 +65,7 @@ func _run() -> void:
 		failures += _expect(bool(animation_stats["required_actions_found"]),"Godot imports semantic Hound idle and bite actions by name")
 		failures += _expect(bool(animation_stats["bite_has_jaw_track"]),"HND_BITE_01 contains an imported DEF-jaw animation track")
 		failures += _expect(bool(animation_stats["bite_has_body_track"]),"HND_BITE_01 contains imported torso/neck deformation, not jaw-only motion")
-		failures += _expect(float(animation_stats["bite_length"]) > 0.05,"HND_BITE_01 has non-zero imported duration")
+		failures += _expect(float(animation_stats["bite_length"]) >= MIN_BITE_DURATION,"HND_BITE_01 preserves a readable anticipation/contact/recovery window")
 
 		print("HOUND_DCC_GODOT_METRICS bone_count=%d jaw_index=%d skeleton=%s mesh_instances=%d skinned_surfaces=%d four_influence_probe=%s animations=%s bite_length=%.3f bite_jaw_track=%s" % [
 			bone_count,
