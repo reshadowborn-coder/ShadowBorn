@@ -153,6 +153,66 @@ class MeshBuilder:
             self.faces.append((front_center, rings[0][i], rings[0][n]))
             self.faces.append((rear_center, rings[-1][n], rings[-1][i]))
 
+    def tube_chain(
+        self,
+        points: list[Vector],
+        radii: list[float],
+        weight_pool: tuple[str, ...],
+        segments: int = 8,
+        cap_ends: bool = True,
+        forced: dict[str, float] | None = None,
+    ) -> None:
+        """Create one connected limb/neck tube through all joints.
+
+        Rings are oriented from the local path tangent, so bends stay connected
+        without the visible cap seams produced by per-bone cylinders.
+        """
+        if len(points) < 2 or len(points) != len(radii):
+            raise RuntimeError("tube_chain requires matching point/radius arrays")
+
+        rings: list[list[int]] = []
+        for index, point in enumerate(points):
+            if index == 0:
+                tangent = (points[1] - points[0]).normalized()
+            elif index == len(points) - 1:
+                tangent = (points[-1] - points[-2]).normalized()
+            else:
+                tangent = (points[index + 1] - points[index - 1]).normalized()
+
+            reference = Vector((0, 0, 1))
+            if abs(tangent.dot(reference)) > 0.92:
+                reference = Vector((1, 0, 0))
+            side = tangent.cross(reference).normalized()
+            up = side.cross(tangent).normalized()
+
+            ring: list[int] = []
+            for i in range(segments):
+                angle = math.tau * float(i) / float(segments)
+                radial = side * math.cos(angle) + up * math.sin(angle)
+                ring.append(
+                    self._add_vertex(
+                        point + radial * radii[index],
+                        weight_pool,
+                        forced,
+                    )
+                )
+            rings.append(ring)
+
+        for ring_index in range(len(rings) - 1):
+            a = rings[ring_index]
+            b = rings[ring_index + 1]
+            for i in range(segments):
+                n = (i + 1) % segments
+                self.faces.append((a[i], a[n], b[n], b[i]))
+
+        if cap_ends:
+            first_center = self._add_vertex(points[0], weight_pool, forced)
+            last_center = self._add_vertex(points[-1], weight_pool, forced)
+            for i in range(segments):
+                n = (i + 1) % segments
+                self.faces.append((first_center, rings[0][n], rings[0][i]))
+                self.faces.append((last_center, rings[-1][i], rings[-1][n]))
+
     def tapered_segment(
         self,
         start: Vector,
@@ -242,7 +302,7 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
             f"DEF-front_foot.{side}.001",
             f"DEF-front_toe.{side}",
         ]
-        radii = [0.074, 0.069, 0.058, 0.050, 0.046, 0.040, 0.032]
+        joint_radii = [0.072, 0.068, 0.060, 0.052, 0.045, 0.039, 0.032, 0.024]
     else:
         names = [
             f"DEF-thigh.{side}",
@@ -253,20 +313,23 @@ def _append_leg(builder: MeshBuilder, rig: bpy.types.Object, side: str, front: b
             f"DEF-foot.{side}.001",
             f"DEF-toe.{side}",
         ]
-        radii = [0.088, 0.080, 0.067, 0.057, 0.050, 0.043, 0.034]
+        joint_radii = [0.086, 0.080, 0.070, 0.060, 0.050, 0.043, 0.034, 0.025]
 
     leg_pool = tuple(names)
-    for index, bone_name in enumerate(names):
-        start = _bone_head(rig, bone_name)
-        end = _bone_tail(rig, bone_name)
-        r0 = radii[index]
-        r1 = max(r0 * 0.82, 0.030)
-        builder.tapered_segment(start, end, r0, r1, leg_pool, segments=8)
+    points = [_bone_head(rig, names[0])]
+    points.extend(_bone_tail(rig, bone_name) for bone_name in names)
+    builder.tube_chain(
+        points,
+        joint_radii,
+        leg_pool,
+        segments=9,
+        cap_ends=True,
+    )
 
-    paw_center = _bone_tail(rig, names[-1])
+    paw_center = points[-1] + Vector((0.0, -0.018, 0.010))
     builder.ellipsoid(
-        paw_center + Vector((0.0, -0.015, 0.012)),
-        Vector((0.058, 0.084, 0.036)),
+        paw_center,
+        Vector((0.052, 0.078, 0.031)),
         leg_pool,
         segments=10,
         rings=6,
@@ -327,12 +390,17 @@ def _build_candidate_geometry(rig: bpy.types.Object) -> MeshBuilder:
     torso_stations.sort(key=lambda station: station[0].y)
     b.body_loft(torso_stations, torso_pool, segments=14)
 
-    # Neck transitions into shoulders instead of floating as a thin tube.
+    # One connected neck tube avoids stacked-cylinder seams under the skull.
     neck_start = _bone_center(rig, "DEF-spine.008")
     neck_mid = _bone_center(rig, "DEF-spine.009")
     neck_end = _bone_center(rig, "DEF-spine.010")
-    b.tapered_segment(neck_start, neck_mid, 0.125, 0.110, neck_pool, segments=10)
-    b.tapered_segment(neck_mid, neck_end, 0.110, 0.098, neck_pool, segments=10)
+    b.tube_chain(
+        [neck_start, neck_mid, neck_end],
+        [0.122, 0.108, 0.094],
+        neck_pool,
+        segments=10,
+        cap_ends=True,
+    )
 
     head_bone = rig.data.bones["DEF-spine.011"]
     head_center = (head_bone.head_local + head_bone.tail_local) * 0.5
