@@ -4,6 +4,8 @@ const CANDIDATE_GLTF := "res://build/dcc_hound/grave_hound_mesh_candidate.glb"
 const BODY_PREFIX := "HND_BODY_CANDIDATE"
 const RIBS_PREFIX := "HND_EXPOSED_RIBS_CANDIDATE"
 const WOUND_PREFIX := "HND_THORAX_WOUND_CANDIDATE"
+const EYE_SOCKET_PREFIX := "HND_MISSING_EYE_SOCKET_CANDIDATE"
+const JAW_BONE_PREFIX := "HND_EXPOSED_JAW_BONE_CANDIDATE"
 const REQUIRED_IDLE := "HND_IDLE_LOW_01"
 const REQUIRED_BITE := "HND_BITE_01"
 
@@ -67,6 +69,16 @@ func _run() -> void:
 			wound_vertices += (wound_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 		failures += _expect(wound_vertices >= 18,"Thorax wound candidate has substantive side-readable geometry")
 		failures += _expect(wound.skin != null,"Thorax wound candidate remains skinned to Hound rig")
+
+	var eye_socket := _find_mesh_prefix(meshes,EYE_SOCKET_PREFIX)
+	failures += _expect(eye_socket != null,"Godot preserves the single missing-eye socket mesh")
+	if eye_socket != null:
+		failures += _expect(eye_socket.skin != null,"Missing-eye socket remains skinned to Hound head")
+
+	var jaw_damage := _find_mesh_prefix(meshes,JAW_BONE_PREFIX)
+	failures += _expect(jaw_damage != null,"Godot preserves restrained exposed jaw-bone mesh")
+	if jaw_damage != null:
+		failures += _expect(jaw_damage.skin != null,"Jaw-damage layer remains skinned to Hound jaw")
 
 	if body != null and body.mesh != null:
 		var vertex_count := 0
@@ -136,6 +148,12 @@ func _collect(node: Node,skeletons: Array[Skeleton3D],meshes: Array[MeshInstance
 		players.append(node as AnimationPlayer)
 	for child in node.get_children():
 		_collect(child,skeletons,meshes,players)
+
+func _find_mesh_prefix(meshes: Array[MeshInstance3D],prefix: String) -> MeshInstance3D:
+	for mesh_instance in meshes:
+		if mesh_instance.name.begins_with(prefix):
+			return mesh_instance
+	return null
 
 func _animation_names(players: Array[AnimationPlayer]) -> PackedStringArray:
 	var names := PackedStringArray()
