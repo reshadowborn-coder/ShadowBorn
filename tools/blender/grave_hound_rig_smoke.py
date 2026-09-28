@@ -360,16 +360,35 @@ def _roundtrip_check(glb_path: Path) -> dict:
 
     weighted_meshes = 0
     four_influence_proxy_found = False
+    max_positive_influences = 0
+    four_proxy_max_positive_influences = 0
+
     for mesh_obj in meshes:
-        if len(mesh_obj.vertex_groups) > 0:
+        mesh_has_weights = False
+        local_max = 0
+        for vertex in mesh_obj.data.vertices:
+            positive = sum(1 for assignment in vertex.groups if assignment.weight > 1e-6)
+            local_max = max(local_max, positive)
+            max_positive_influences = max(max_positive_influences, positive)
+            mesh_has_weights = mesh_has_weights or positive > 0
+        if mesh_has_weights:
             weighted_meshes += 1
+
         if mesh_obj.name.startswith("HND_SKIN_PROXY_4_INFLUENCE"):
-            four_influence_proxy_found = len(mesh_obj.vertex_groups) == 4
+            four_proxy_max_positive_influences = local_max
+            four_influence_proxy_found = local_max == 4
 
     if weighted_meshes < 1:
-        raise RuntimeError("Round-trip GLB lost all skin vertex groups")
+        raise RuntimeError("Round-trip GLB lost all positive skin weights")
     if not four_influence_proxy_found:
-        raise RuntimeError("Round-trip GLB lost the four-influence proxy contract")
+        raise RuntimeError(
+            "Round-trip GLB lost the four-influence proxy contract: "
+            f"probe max positive influences={four_proxy_max_positive_influences}"
+        )
+    if max_positive_influences > 4:
+        raise RuntimeError(
+            f"Round-trip GLB exceeds four positive influences per vertex: {max_positive_influences}"
+        )
 
     return {
         "imported_armature": armature.name,
@@ -377,6 +396,8 @@ def _roundtrip_check(glb_path: Path) -> dict:
         "imported_bones": bone_names,
         "imported_mesh_count": len(meshes),
         "weighted_mesh_count": weighted_meshes,
+        "max_positive_influences_per_vertex": max_positive_influences,
+        "four_influence_proxy_max_positive_influences": four_proxy_max_positive_influences,
         "four_influence_proxy_found": four_influence_proxy_found,
     }
 
