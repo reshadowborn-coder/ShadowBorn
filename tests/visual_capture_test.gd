@@ -44,8 +44,7 @@ func _run() -> void:
 	await create_timer(0.18).timeout
 	await _capture(OUT_DIR+"/grave_hound_attack_launch.png")
 	await create_timer(0.26).timeout
-	battle.play_impact("hound","shadow","hound_bite",1,"")
-	await process_frame
+	# Capture CONTACT_T0 before play_impact starts the recovery tween.
 	await _capture(OUT_DIR+"/grave_hound_attack_contact.png")
 	battle.queue_free()
 	await process_frame
@@ -109,8 +108,7 @@ func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 	await create_timer(0.20).timeout
 	battle.play_windup("shadow","hound",skill_id)
 	await create_timer(delay).timeout
-	battle.play_impact("shadow","hound",skill_id,1,"")
-	await process_frame
+	# Contact frame is captured before impact/recovery mutates presentation state.
 	await _capture(path)
 	battle.queue_free()
 	await process_frame
