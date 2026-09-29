@@ -15,6 +15,7 @@ const PLAYER_ID := "shadow"
 const TurnScheduler = preload("res://scripts/combat/battle_turn_scheduler.gd")
 const CombatCommandClass = preload("res://scripts/combat/combat_command.gd")
 const CombatCatalog = preload("res://scripts/combat/checkpoint01_combat_catalog.gd")
+const CombatResolverClass = preload("res://scripts/combat/combat_resolver.gd")
 
 var units: Array[Dictionary] = []
 var auto_enabled := false
@@ -208,21 +209,20 @@ func _execute_action(attacker_index: int, skill_index: int, skill: CombatSkillDe
 	if not running or generation != turn_loop_generation:
 		return
 
-	var damage := BattleRules.compute_damage(float(attacker["power"]),skill.multiplier,float(target["defense"]))
-	var actual := BattleRules.apply_damage(target,damage)
-	var effect := ""
-	if String(skill.effect_id) == "turn_cut" and int(target["hp"]) > 0:
-		turn_scheduler.adjust_gauge_bp(StringName(str(target["id"])),-3000)
+	var result: CombatActionResult = CombatResolverClass.resolve(attacker,target,skill_index,skill)
+	target["hp"] = result.target_hp_after
+	attacker["cooldowns"] = result.attacker_cooldowns_after.duplicate()
+	if result.target_gauge_delta_bp != 0:
+		turn_scheduler.adjust_gauge_bp(result.target_id,result.target_gauge_delta_bp)
 		_sync_units_from_scheduler()
-		effect = "TURN METER -30"
 
-	attacker["cooldowns"] = BattleRules.resolve_action_cooldowns(
-		attacker.get("cooldowns",[0,0]),
-		skill_index,
-		skill.cooldown_opportunities
+	action_impact.emit(
+		String(result.attacker_id),
+		String(result.target_id),
+		String(result.skill_id),
+		result.damage_applied,
+		result.effect_text
 	)
-
-	action_impact.emit(str(attacker["id"]),str(target["id"]),skill_id,actual,effect)
 	_emit_state()
 	await _wait_presentation_time(skill.recover_seconds,generation)
 	if not running or generation != turn_loop_generation:

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CombatPresentationProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/combat_presentation_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+skill_id = &"hound_bite"
+presentation_action_id = &"HND_BITE_01"
+choreography_id = &"hound_bite"
+backstep_distance = 0.08
+backstep_vertical = -0.045
+backstep_seconds = 0.10
+approach_distance = 0.98
+approach_vertical = 0.075
+approach_seconds = 0.23
+reaction_distance = 0.18
+reaction_lift = 0.035
+reaction_out_seconds = 0.065
+reaction_return_seconds = 0.14
+recover_delay_seconds = 0.06
+recover_seconds = 0.25
+impact_vfx_family = &"basic_slash"
+camera_profile = &"none"

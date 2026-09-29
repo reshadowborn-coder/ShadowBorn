@@ -5,6 +5,8 @@ const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd"
 
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
 const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
+const PresentationCatalog = preload("res://scripts/presentation/checkpoint01_presentation_catalog.gd")
+const AnimationDriverClass = preload("res://scripts/presentation/combat_animation_driver.gd")
 
 const PLAYER_HOME := Vector3(-2.80,0.0,0.30)
 const ENEMY_HOME := Vector3(2.80,0.0,-0.30)
@@ -23,6 +25,7 @@ var actor_home: Dictionary = {}
 var actor_health_roots: Dictionary = {}
 var actor_health_fills: Dictionary = {}
 var actor_busy: Dictionary = {}
+var animation_drivers: Dictionary = {}
 var fallback_idle_ids: Dictionary = {}
 var battle_camera: Camera3D
 var clock := 0.0
@@ -59,77 +62,95 @@ func apply_state(snapshot: Dictionary) -> void:
 func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void:
 	if not actor_nodes.has(attacker_id) or not actor_nodes.has(target_id):
 		return
+	var profile: CombatPresentationProfile = PresentationCatalog.profile_for(StringName(skill_id))
+	if profile == null:
+		push_error("Missing presentation profile for skill_id=%s" % skill_id)
+		return
+
 	actor_busy[attacker_id] = true
 	var attacker: Node3D = actor_nodes[attacker_id]
+	var driver: CombatAnimationDriver = animation_drivers.get(attacker_id)
+	if driver == null:
+		actor_busy[attacker_id] = false
+		push_error("Missing animation driver for actor_id=%s" % attacker_id)
+		return
 	var home: Vector3 = actor_home[attacker_id]
 	var target_home: Vector3 = actor_home[target_id]
 	var direction := (target_home-home).normalized()
+	var backstep_target := home-direction*profile.backstep_distance+Vector3(0,profile.backstep_vertical,0)
+	var approach_target := home+direction*profile.approach_distance+Vector3(0,profile.approach_vertical,0)
 
-	if attacker_id == "shadow":
-		if skill_id == "shadow_lunge":
-			# A2: separate choreography — evasive shadow entry, then a heavy slash.
-			CharacterFactory.play_shadow_heavy_prep(attacker,presentation_speed)
+	match String(profile.choreography_id):
+		"shadow_heavy":
+			driver.play_action_start(profile,presentation_speed)
 			_spawn_shadow_charge(attacker.global_position + Vector3(0,0.85,0))
 			var seq := create_tween()
 			seq.set_speed_scale(presentation_speed)
-			seq.tween_interval(0.28)
+			seq.tween_interval(profile.prep_delay_seconds)
 			seq.tween_callback(func():
 				if is_instance_valid(attacker):
-					CharacterFactory.play_shadow_heavy_strike(attacker,presentation_speed)
+					driver.play_action_commit(profile,presentation_speed)
 			)
 
 			var heavy_move := create_tween()
 			heavy_move.set_speed_scale(presentation_speed)
-			heavy_move.tween_property(attacker,"position",home-direction*0.16,0.11)
-			heavy_move.tween_property(attacker,"position",home+direction*2.02,0.43).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			heavy_move.tween_property(attacker,"position",backstep_target,profile.backstep_seconds)
+			heavy_move.tween_property(attacker,"position",approach_target,profile.approach_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 			var cam := create_tween()
 			cam.set_speed_scale(presentation_speed)
 			cam.set_parallel(true)
-			cam.tween_property(battle_camera,"position",camera_home+Vector3(0.78,-0.30,-0.95),0.30).set_trans(Tween.TRANS_SINE)
-			cam.tween_property(battle_camera,"fov",32.5,0.30)
-		else:
-			# A1: short readable sword cut with only a small step.
-			CharacterFactory.play_shadow_basic(attacker,presentation_speed)
+			cam.tween_property(battle_camera,"position",camera_home+profile.camera_offset,profile.camera_in_seconds).set_trans(Tween.TRANS_SINE)
+			cam.tween_property(battle_camera,"fov",profile.camera_fov,profile.camera_in_seconds)
+		"shadow_basic":
+			driver.play_action_start(profile,presentation_speed)
 			var basic_move := create_tween()
 			basic_move.set_speed_scale(presentation_speed)
-			basic_move.tween_property(attacker,"position",home-direction*0.08,0.07)
-			basic_move.tween_property(attacker,"position",home+direction*0.88,0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	else:
-		CharacterFactory.play_hound_attack(attacker,presentation_speed)
-		# Camera-reviewed canine bite: coil through the hindquarters, then spring.
-		# The old 1.28 m flat crawl exaggerated the imported forelegs and read insect-like.
-		var hound_move := create_tween()
-		hound_move.set_speed_scale(presentation_speed)
-		hound_move.tween_property(attacker,"position",home-direction*0.08+Vector3(0,-0.045,0),0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		hound_move.tween_property(attacker,"position",home+direction*0.98+Vector3(0,0.075,0),0.23).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			basic_move.tween_property(attacker,"position",backstep_target,profile.backstep_seconds)
+			basic_move.tween_property(attacker,"position",approach_target,profile.approach_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		"hound_bite":
+			driver.play_action_start(profile,presentation_speed)
+			var hound_move := create_tween()
+			hound_move.set_speed_scale(presentation_speed)
+			hound_move.tween_property(attacker,"position",backstep_target,profile.backstep_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			hound_move.tween_property(attacker,"position",approach_target,profile.approach_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_:
+			actor_busy[attacker_id] = false
+			push_error("Unsupported choreography_id=%s for skill_id=%s" % [profile.choreography_id,skill_id])
 
 func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: int,effect: String) -> void:
 	if not actor_nodes.has(target_id):
 		return
+	var profile: CombatPresentationProfile = PresentationCatalog.profile_for(StringName(skill_id))
+	if profile == null:
+		push_error("Missing presentation profile for skill_id=%s" % skill_id)
+		return
+
 	var target: Node3D = actor_nodes[target_id]
 	var home: Vector3 = actor_home[target_id]
 
-	if target_id == "shadow":
-		CharacterFactory.play_shadow_hit(target,presentation_speed)
+	var target_driver: CombatAnimationDriver = animation_drivers.get(target_id)
+	if target_driver != null:
+		target_driver.play_hit(presentation_speed)
 	else:
-		CharacterFactory.play_hound_hit(target,presentation_speed)
+		push_error("Missing animation driver for target_id=%s" % target_id)
 
 	var attacker_home: Vector3 = actor_home.get(attacker_id,Vector3.ZERO)
 	var away := (home-attacker_home).normalized()
-	var reaction_distance := 0.34 if skill_id == "shadow_lunge" else 0.18
-	var lift := 0.07 if skill_id == "shadow_lunge" else 0.035
 
 	var hit := create_tween()
 	hit.set_speed_scale(presentation_speed)
-	hit.tween_property(target,"position",home+away*reaction_distance+Vector3(0,lift,0),0.065)
-	hit.tween_property(target,"position",home,0.20 if skill_id=="shadow_lunge" else 0.14).set_trans(Tween.TRANS_BACK)
+	hit.tween_property(target,"position",home+away*profile.reaction_distance+Vector3(0,profile.reaction_lift,0),profile.reaction_out_seconds)
+	hit.tween_property(target,"position",home,profile.reaction_return_seconds).set_trans(Tween.TRANS_BACK)
 
-	if skill_id == "shadow_lunge":
-		_spawn_heavy_shadow_impact(target.global_position+Vector3(0,0.95,0),away)
-		_camera_heavy_kick()
-	else:
-		_spawn_basic_slash_impact(target.global_position+Vector3(0,0.95,0),away)
+	match String(profile.impact_vfx_family):
+		"heavy_shadow":
+			_spawn_heavy_shadow_impact(target.global_position+Vector3(0,0.95,0),away)
+			_camera_heavy_kick()
+		"basic_slash":
+			_spawn_basic_slash_impact(target.global_position+Vector3(0,0.95,0),away)
+		_:
+			push_error("Unsupported impact_vfx_family=%s for skill_id=%s" % [profile.impact_vfx_family,skill_id])
 
 	_spawn_damage_text(target.global_position+Vector3(0,2.05,0),damage,effect)
 
@@ -138,29 +159,29 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		var a_home: Vector3 = actor_home[attacker_id]
 		var recover := create_tween()
 		recover.set_speed_scale(presentation_speed)
-		recover.tween_interval(0.14 if skill_id=="shadow_lunge" else 0.06)
-		recover.tween_property(attacker,"position",a_home,0.40 if skill_id=="shadow_lunge" else 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+		recover.tween_interval(profile.recover_delay_seconds)
+		recover.tween_property(attacker,"position",a_home,profile.recover_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 		recover.tween_callback(func():
 			actor_busy[attacker_id] = false
-			if attacker_id == "shadow":
-				CharacterFactory.play_shadow_idle(attacker,presentation_speed)
-			else:
-				CharacterFactory.play_hound_idle(attacker,presentation_speed)
+			var attacker_driver: CombatAnimationDriver = animation_drivers.get(attacker_id)
+			if attacker_driver != null:
+				attacker_driver.play_idle(presentation_speed)
 		)
 
-	if skill_id == "shadow_lunge":
+	if profile.camera_profile == &"heavy":
 		var cam_back := create_tween()
 		cam_back.set_speed_scale(presentation_speed)
 		cam_back.set_parallel(true)
-		cam_back.tween_property(battle_camera,"position",camera_home,0.40)
-		cam_back.tween_property(battle_camera,"fov",CAMERA_FOV,0.40)
+		cam_back.tween_property(battle_camera,"position",camera_home,profile.camera_out_seconds)
+		cam_back.tween_property(battle_camera,"fov",CAMERA_FOV,profile.camera_out_seconds)
 
 func play_death(actor_id: String) -> void:
 	if not actor_nodes.has(actor_id):
 		return
 	var actor: Node3D = actor_nodes[actor_id]
 	actor_busy[actor_id] = true
-	if CharacterFactory.play_death(actor,presentation_speed):
+	var driver: CombatAnimationDriver = animation_drivers.get(actor_id)
+	if driver != null and driver.play_death(presentation_speed):
 		return
 	var home: Vector3 = actor_home[actor_id]
 	var t := create_tween()
@@ -391,6 +412,9 @@ func _spawn_actor(unit: Dictionary) -> void:
 	root.add_child(visual)
 
 	var model := CharacterFactory.create_shadow(true) if id=="shadow" else CharacterFactory.create_hound()
+	var actor_kind := &"shadow" if id=="shadow" else &"hound"
+	var animation_driver := AnimationDriverClass.new(model,actor_kind)
+	animation_drivers[id] = animation_driver
 	if id=="shadow":
 		model.scale = Vector3(1.05,1.05,1.05)
 	else:
@@ -401,10 +425,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 		model.scale = HOUND_PRODUCTION_SCALE if visual_tier=="production" else HOUND_PREVIEW_SCALE
 	visual.add_child(model)
 
-	if id=="shadow":
-		CharacterFactory.play_shadow_idle(model,presentation_speed)
-	else:
-		CharacterFactory.play_hound_idle(model,presentation_speed)
+	animation_driver.play_idle(presentation_speed)
 
 	var animation_names := CharacterFactory.animation_names(model)
 	if animation_names.is_empty():
