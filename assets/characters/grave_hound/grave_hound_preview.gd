@@ -151,6 +151,13 @@ func _attach_head(skeleton: Skeleton3D) -> void:
 	_tag_preview(nose)
 	head_socket.add_child(nose)
 
+	# Semantic bite source follows the animated Head bone. Contact QA must never
+	# infer the mouth from whole-body AABBs once the project-owned preview exists.
+	var bite_contact := Marker3D.new()
+	bite_contact.name = "BiteContact"
+	bite_contact.position = Vector3(0.0,0.515,0.0)
+	head_socket.add_child(bite_contact)
+
 func _attach_ears(skeleton: Skeleton3D) -> void:
 	for side in ["L","R"]:
 		var socket := _bone_socket(skeleton,"Ear1.%s" % side,"HoundEarSocket%s" % side)

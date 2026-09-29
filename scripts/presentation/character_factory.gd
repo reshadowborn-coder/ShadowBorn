@@ -18,10 +18,11 @@ const DEV_SWORD_PRESENTATION_SCALE := 0.75
 const DEV_SWORD_WRIST_OFFSET := Vector3.ZERO
 const DEV_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,180.0)
 # The authored sword's BladeTip is +Y from Grip. Camera-side rotation sweep
-# showed the old 180-degree vendor correction sent the production blade back
-# into the forearm/torso. -90 degrees makes it leave the right hand toward the
-# opponent in the fixed battle camera.
-const PRODUCTION_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,-90.0)
+# The restored diagonal shipping camera exposed that the previous -90 degree
+# mount projected the blade behind Shadow, away from the opponent at CONTACT_T0.
+# +90 degrees flips the authored +Y Grip->BladeTip axis toward the enemy while
+# keeping the hilt seated on Wrist.R.
+const PRODUCTION_SWORD_WRIST_ROTATION := Vector3(0.0,0.0,90.0)
 # Measured on the Blender 5.2 Rigify Basic Human production candidate:
 # DEF-hand.R uses a different rest basis from legacy Wrist.R. Rotating the
 # authored BladeTip (+Y from Grip) +90 degrees around local X points the blade

@@ -79,10 +79,13 @@ func _check_shadow_sword_direction(stage: Node) -> int:
 		push_error("Sword direction regression: Grip/BladeTip markers missing")
 		return 1
 	var blade_length_world := grip.global_position.distance_to(tip.global_position)
+	var grip_target_distance := grip.global_position.distance_to(hound_root.global_position)
+	var tip_target_distance := tip.global_position.distance_to(hound_root.global_position)
 	var camera := stage.get("battle_camera") as Camera3D
 	var failures := 0
-	failures += _expect(CharacterFactory.PRODUCTION_SWORD_WRIST_ROTATION.is_equal_approx(Vector3(0.0,0.0,-90.0)),"Production starter sword keeps camera-verified -90 degree Wrist.R mount")
+	failures += _expect(CharacterFactory.PRODUCTION_SWORD_WRIST_ROTATION.is_equal_approx(Vector3(0.0,0.0,90.0)),"Production starter sword keeps target-facing +90 degree Wrist.R mount")
 	failures += _expect(blade_length_world > 0.70,"Production starter sword keeps its authored Grip-to-BladeTip reach")
+	failures += _expect(tip_target_distance < grip_target_distance,"Production starter sword BladeTip points closer to the opponent than the Grip")
 	if camera == null:
 		push_error("Sword direction regression: battle camera missing")
 		failures += 1

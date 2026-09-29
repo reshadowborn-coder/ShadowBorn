@@ -41,9 +41,10 @@ func _run() -> void:
 	battle.play_windup("hound","shadow","hound_bite")
 	await create_timer(0.08).timeout
 	await _capture(OUT_DIR+"/grave_hound_attack_coil.png")
-	await create_timer(0.12).timeout
+	await create_timer(0.18).timeout
 	await _capture(OUT_DIR+"/grave_hound_attack_launch.png")
-	await create_timer(0.12).timeout
+	await create_timer(0.26).timeout
+	# Capture CONTACT_T0 before play_impact starts the recovery tween.
 	await _capture(OUT_DIR+"/grave_hound_attack_contact.png")
 	battle.queue_free()
 	await process_frame
@@ -56,8 +57,8 @@ func _run() -> void:
 	await _capture_hound_bite_pose(0.50,OUT_DIR+"/hound_bite_pose_50.png")
 	await _capture_hound_bite_pose(0.85,OUT_DIR+"/hound_bite_pose_85.png")
 
-	await _capture_shadow_skill("shadow_basic",OUT_DIR+"/shadow_a1.png",0.18)
-	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.48)
+	await _capture_shadow_skill("basic_slash",OUT_DIR+"/shadow_a1.png",0.40)
+	await _capture_shadow_skill("shadow_lunge",OUT_DIR+"/shadow_a2.png",0.74)
 	# Highlighted weapon and rotation-sweep captures are intentionally no longer
 	# part of every push. The -90° mount is now locked by presentation orientation
 	# regression tests; keep the helpers below for manual diagnosis only.
@@ -107,6 +108,7 @@ func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 	await create_timer(0.20).timeout
 	battle.play_windup("shadow","hound",skill_id)
 	await create_timer(delay).timeout
+	# Contact frame is captured before impact/recovery mutates presentation state.
 	await _capture(path)
 	battle.queue_free()
 	await process_frame
