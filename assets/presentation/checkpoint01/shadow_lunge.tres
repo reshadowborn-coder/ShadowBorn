@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CombatPresentationProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/combat_presentation_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+skill_id = &"shadow_lunge"
+presentation_action_id = &"SHD_A2_LUNGE_01"
+choreography_id = &"shadow_heavy"
+backstep_distance = 0.16
+backstep_seconds = 0.11
+approach_distance = 2.02
+approach_seconds = 0.43
+prep_delay_seconds = 0.28
+reaction_distance = 0.34
+reaction_lift = 0.07
+reaction_out_seconds = 0.065
+reaction_return_seconds = 0.20
+recover_delay_seconds = 0.14
+recover_seconds = 0.40
+impact_vfx_family = &"heavy_shadow"
+camera_profile = &"heavy"
