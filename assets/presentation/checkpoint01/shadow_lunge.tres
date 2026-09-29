@@ -10,6 +10,7 @@ choreography_id = &"shadow_heavy"
 backstep_distance = 0.16
 backstep_seconds = 0.11
 approach_distance = 2.02
+contact_root_gap = 1.20
 approach_seconds = 0.43
 prep_delay_seconds = 0.28
 reaction_distance = 0.34
