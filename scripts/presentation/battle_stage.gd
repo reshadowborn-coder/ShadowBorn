@@ -477,12 +477,12 @@ func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
 
 
 func _build_combat_impact_target(actor_root: Node3D,id: String) -> void:
-	# Stable semantic target for melee contact QA. Keep this on the gameplay root
+	# Stable semantic target for melee contact QA. Shadow uses upper torso; the low Hound uses neck/head height so sword slashes are measured against the visible struck region. Keep this on the gameplay root
 	# instead of the animated mesh so hit reactions cannot move the target before
 	# CONTACT_T0 is sampled.
 	var marker := Marker3D.new()
 	marker.name = "CombatImpactTarget"
-	marker.position = Vector3(0,1.05,0) if id=="shadow" else Vector3(0,0.82,0)
+	marker.position = Vector3(0,1.05,0) if id=="shadow" else Vector3(0,1.50,0)
 	actor_root.add_child(marker)
 
 func _build_world_healthplate(actor_root: Node3D,id: String) -> void:
