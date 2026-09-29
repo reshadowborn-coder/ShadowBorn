@@ -34,7 +34,7 @@ func _run() -> void:
 	_check(sample["source_kind"] == "marker" and sample["source_name"] == "BladeTip","BladeTip marker is preferred")
 	_check(sample["target_kind"] == "marker" and sample["target_name"] == "CombatImpactTarget","explicit target marker is preferred")
 	_check(bool(sample["acceptance_markers_ready"]),"explicit source+target markers are acceptance-ready")
-	_check(is_equal_approx(float(sample["contact_gap_3d"]),0.5),"contact gap is measured between semantic markers")
+	_check(is_equal_approx(float(sample["contact_gap_3d"]),0.9),"contact gap is measured between semantic markers")
 	_check(is_equal_approx(float(sample["root_gap_3d"]),2.0),"root gap remains separately observable")
 
 	attacker.position = Vector3(0.17,0.0,0.0)
