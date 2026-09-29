@@ -161,7 +161,7 @@ static func _visible_world_bounds(root: Node3D) -> Dictionary:
 	var max_v := Vector3.ZERO
 	var stack: Array[Node] = [root]
 	while not stack.is_empty():
-		var node := stack.pop_back()
+		var node: Node = stack.pop_back() as Node
 		if node is MeshInstance3D:
 			var mesh_instance := node as MeshInstance3D
 			if mesh_instance.mesh != null and mesh_instance.is_visible_in_tree():
