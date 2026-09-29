@@ -20,3 +20,7 @@ recover_delay_seconds = 0.14
 recover_seconds = 0.40
 impact_vfx_family = &"heavy_shadow"
 camera_profile = &"heavy"
+camera_offset = Vector3(0.78, -0.30, -0.95)
+camera_fov = 32.5
+camera_in_seconds = 0.30
+camera_out_seconds = 0.40
