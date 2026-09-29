@@ -15,8 +15,10 @@ func _init() -> void:
 		if profile != null:
 			_check(profile.presentation_action_id == skill.presentation_action_id,"%s combat/presentation action IDs match" % skill.skill_id)
 
-	_check(is_equal_approx(PresentationCatalog.BASIC_SLASH.approach_distance,0.88),"A1 current choreography distance preserved")
-	_check(is_equal_approx(PresentationCatalog.HOUND_BITE.approach_distance,0.98),"Bite current choreography distance preserved")
+	_check(PresentationCatalog.BASIC_SLASH.contact_root_gap > 0.0,"A1 uses semantic contact standoff instead of fixed short root travel")
+	_check(PresentationCatalog.SHADOW_LUNGE.contact_root_gap > 0.0,"A2 uses semantic contact standoff")
+	_check(PresentationCatalog.HOUND_BITE.contact_root_gap > 0.0,"Bite uses semantic contact standoff instead of fixed short root travel")
+	_check(PresentationCatalog.HOUND_REND.contact_root_gap > 0.0,"Rend uses semantic contact standoff")
 	_check(PresentationCatalog.HOUND_BITE.impact_vfx_family == &"basic_slash","current Bite placeholder VFX is represented explicitly, not hidden in BattleStage")
 	_check(PresentationCatalog.profile_for(&"unknown") == null,"unknown skills have no presentation fallback")
 
