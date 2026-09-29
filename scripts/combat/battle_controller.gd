@@ -13,6 +13,8 @@ const PLAYER_TEAM := "player"
 const ENEMY_TEAM := "enemy"
 const PLAYER_ID := "shadow"
 const TurnScheduler = preload("res://scripts/combat/battle_turn_scheduler.gd")
+const CombatCommandClass = preload("res://scripts/combat/combat_command.gd")
+const CombatCatalog = preload("res://scripts/combat/checkpoint01_combat_catalog.gd")
 
 var units: Array[Dictionary] = []
 var auto_enabled := false
@@ -44,9 +46,8 @@ func start_battle() -> void:
 func set_auto(value: bool) -> void:
 	auto_enabled = value
 	if waiting_for_player and auto_enabled and active_actor_index >= 0:
-		waiting_for_player = false
-		action_busy = true
-		_execute_action(active_actor_index,_choose_auto_skill(active_actor_index))
+		var actor_id := StringName(str(units[active_actor_index].get("id","")))
+		_submit_action_command(CombatCommandClass.new(actor_id,_choose_auto_skill(active_actor_index),&"auto_toggle"))
 
 func set_speed(multiplier: float) -> void:
 	battle_speed = clampf(multiplier,1.0,2.0)
@@ -57,12 +58,7 @@ func request_player_skill(skill_index: int) -> void:
 	var actor: Dictionary = units[active_actor_index]
 	if str(actor.get("id","")) != PLAYER_ID:
 		return
-	var cooldowns: Array = actor.get("cooldowns",[0,0])
-	if not BattleRules.cooldown_ready(cooldowns,skill_index):
-		return
-	waiting_for_player = false
-	action_busy = true
-	_execute_action(active_actor_index,skill_index)
+	_submit_action_command(CombatCommandClass.new(StringName(str(actor["id"])),skill_index,&"manual"))
 
 func _schedule_next_turn() -> void:
 	if not running or action_busy or waiting_for_player:
@@ -173,9 +169,28 @@ func _begin_turn(index: int) -> void:
 		_emit_state()
 		return
 
-	_execute_action(index,_choose_auto_skill(index))
+	_submit_action_command(CombatCommandClass.new(StringName(str(actor["id"])),_choose_auto_skill(index),&"auto"))
 
-func _execute_action(attacker_index: int, skill_index: int) -> void:
+func _submit_action_command(command: CombatCommand) -> bool:
+	if not running or active_actor_index < 0:
+		return false
+	var attacker_index := _unit_index_for_id(String(command.actor_id))
+	if attacker_index < 0 or attacker_index != active_actor_index:
+		return false
+	var actor: Dictionary = units[attacker_index]
+	var cooldowns: Array = actor.get("cooldowns",[0,0])
+	if not BattleRules.cooldown_ready(cooldowns,command.skill_index):
+		return false
+	var skill: CombatSkillDefinition = CombatCatalog.skill_for(command.actor_id,command.skill_index)
+	if skill == null:
+		push_error("No combat definition for actor=%s skill_index=%d" % [command.actor_id,command.skill_index])
+		return false
+	waiting_for_player = false
+	action_busy = true
+	_execute_action(attacker_index,command.skill_index,skill)
+	return true
+
+func _execute_action(attacker_index: int, skill_index: int, skill: CombatSkillDefinition) -> void:
 	action_busy = true
 	waiting_for_player = false
 	var attacker: Dictionary = units[attacker_index]
@@ -185,19 +200,18 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 		_finish_turn()
 		return
 	var target: Dictionary = units[target_index]
-	var skill := _skill_for(attacker,skill_index)
-	var skill_id := str(skill["id"])
+	var skill_id := String(skill.skill_id)
 
 	action_windup.emit(str(attacker["id"]),str(target["id"]),skill_id)
 	var generation := turn_loop_generation
-	await _wait_presentation_time(float(skill["windup"]),generation)
+	await _wait_presentation_time(skill.windup_seconds,generation)
 	if not running or generation != turn_loop_generation:
 		return
 
-	var damage := BattleRules.compute_damage(float(attacker["power"]),float(skill["multiplier"]),float(target["defense"]))
+	var damage := BattleRules.compute_damage(float(attacker["power"]),skill.multiplier,float(target["defense"]))
 	var actual := BattleRules.apply_damage(target,damage)
 	var effect := ""
-	if str(skill.get("effect","")) == "turn_cut" and int(target["hp"]) > 0:
+	if String(skill.effect_id) == "turn_cut" and int(target["hp"]) > 0:
 		turn_scheduler.adjust_gauge_bp(StringName(str(target["id"])),-3000)
 		_sync_units_from_scheduler()
 		effect = "TURN METER -30"
@@ -205,12 +219,12 @@ func _execute_action(attacker_index: int, skill_index: int) -> void:
 	attacker["cooldowns"] = BattleRules.resolve_action_cooldowns(
 		attacker.get("cooldowns",[0,0]),
 		skill_index,
-		int(skill.get("cooldown",0))
+		skill.cooldown_opportunities
 	)
 
 	action_impact.emit(str(attacker["id"]),str(target["id"]),skill_id,actual,effect)
 	_emit_state()
-	await _wait_presentation_time(float(skill["recover"]),generation)
+	await _wait_presentation_time(skill.recover_seconds,generation)
 	if not running or generation != turn_loop_generation:
 		return
 
@@ -247,15 +261,6 @@ func _choose_auto_skill(index: int) -> int:
 	if str(actor["team"]) == PLAYER_TEAM and cooldowns.size() > 1 and BattleRules.cooldown_ready(cooldowns,1):
 		return 1
 	return 0
-
-func _skill_for(actor: Dictionary, skill_index: int) -> Dictionary:
-	if str(actor["team"]) == PLAYER_TEAM:
-		if skill_index == 1:
-			return {"id":"shadow_lunge","multiplier":1.72,"cooldown":3,"windup":0.72,"recover":0.72,"effect":"turn_cut"}
-		return {"id":"basic_slash","multiplier":1.0,"cooldown":0,"windup":0.38,"recover":0.48,"effect":""}
-	if skill_index == 1:
-		return {"id":"hound_rend","multiplier":1.28,"cooldown":2,"windup":0.52,"recover":0.62,"effect":""}
-	return {"id":"hound_bite","multiplier":1.0,"cooldown":0,"windup":0.52,"recover":0.62,"effect":""}
 
 func _make_shadow() -> Dictionary:
 	return {
