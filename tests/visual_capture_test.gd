@@ -107,9 +107,9 @@ func _capture_shadow_skill(skill_id: String,path: String,delay: float) -> void:
 		]
 	})
 	await create_timer(0.20).timeout
-	battle.play_windup("shadow","grave_hound",skill_id)
+	battle.play_windup("shadow","hound",skill_id)
 	await create_timer(delay).timeout
-	battle.play_impact("shadow","grave_hound",skill_id,1,"")
+	battle.play_impact("shadow","hound",skill_id,1,"")
 	await process_frame
 	await _capture(path)
 	battle.queue_free()
