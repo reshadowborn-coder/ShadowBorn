@@ -9,8 +9,10 @@ func _init() -> void:
 
 func _run() -> void:
 	root.size = Vector2i(1280,720)
-	await _measure_exchange("shadow","grave_hound","basic_slash",0.40,0.36)
-	await _measure_exchange("grave_hound","shadow","hound_bite",0.55,0.36)
+	await _measure_exchange("shadow","grave_hound","basic_slash",0.40,0.40)
+	await _measure_exchange("shadow","grave_hound","shadow_lunge",0.74,0.55)
+	await _measure_exchange("grave_hound","shadow","hound_bite",0.55,0.45)
+	await _measure_exchange("grave_hound","shadow","hound_rend",0.55,0.45)
 	print("Live contact probe integration complete. failures=%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -39,6 +41,10 @@ func _measure_exchange(attacker_id: String,target_id: String,skill_id: String,wi
 	_check(bool(sample.get("source_found",false)),"%s resolves a diagnostic source point" % skill_id)
 	_check(bool(sample.get("target_found",false)),"%s resolves a diagnostic target region" % skill_id)
 	_check(is_finite(float(sample.get("contact_gap_3d",INF))),"%s reports finite diagnostic contact gap" % skill_id)
+	_check(bool(sample.get("acceptance_markers_ready",false)),"%s resolves explicit source and target contact markers" % skill_id)
+	_check(float(sample.get("root_gap_3d",INF)) <= 1.55,"%s closes the melee root gap instead of dealing remote damage" % skill_id)
+	_check(float(sample.get("contact_gap_3d",INF)) <= 0.75,"%s contact markers enter the provisional melee envelope" % skill_id)
+	_check(float(sample.get("screen_gap_px",INF)) <= 110.0,"%s contact reads close enough in the shipping camera" % skill_id)
 	print("LIVE_CONTACT %s root_gap_3d=%.4f contact_gap_3d=%.4f screen_gap_px=%s source=%s/%s target=%s/%s acceptance_markers=%s" % [
 		skill_id,
 		float(sample.get("root_gap_3d",INF)),
