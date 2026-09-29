@@ -74,6 +74,9 @@ jobs:
       - name: Presentation profiles
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/presentation_profile_test.gd
+      - name: Combat contact probe
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/combat_contact_probe_test.gd
       - name: Combat animation driver
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_animation_driver_test.gd
