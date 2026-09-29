@@ -77,6 +77,9 @@ jobs:
       - name: Combat contact probe
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_contact_probe_test.gd
+      - name: Live contact probe integration
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/live_contact_probe_integration_test.gd
       - name: Combat animation driver
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/combat_animation_driver_test.gd
