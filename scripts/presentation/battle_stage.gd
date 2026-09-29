@@ -81,9 +81,15 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 		return
 	var home: Vector3 = actor_home[attacker_id]
 	var target_home: Vector3 = actor_home[target_id]
-	var direction := (target_home-home).normalized()
+	var flat_delta := target_home-home
+	flat_delta.y = 0.0
+	var direction := flat_delta.normalized()
+	var formation_gap := flat_delta.length()
+	var approach_distance := profile.approach_distance
+	if profile.contact_root_gap > 0.0:
+		approach_distance = maxf(0.0,formation_gap-profile.contact_root_gap)
 	var backstep_target := home-direction*profile.backstep_distance+Vector3(0,profile.backstep_vertical,0)
-	var approach_target := home+direction*profile.approach_distance+Vector3(0,profile.approach_vertical,0)
+	var approach_target := home+direction*approach_distance+Vector3(0,profile.approach_vertical,0)
 
 	match String(profile.choreography_id):
 		"shadow_heavy":
@@ -451,6 +457,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 	# The dev humanoid and dev hound do not share the same local forward axis, so
 	# applying one root look_at() rule made the combat screenshot read back-to-back.
 	_face_actor_at_opponent(root,model,id)
+	_build_combat_impact_target(root,id)
 
 	_build_world_healthplate(root,id)
 
@@ -468,6 +475,15 @@ func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
 	else:
 		model.rotation_degrees.y = 180.0
 
+
+func _build_combat_impact_target(actor_root: Node3D,id: String) -> void:
+	# Stable semantic target for melee contact QA. Keep this on the gameplay root
+	# instead of the animated mesh so hit reactions cannot move the target before
+	# CONTACT_T0 is sampled.
+	var marker := Marker3D.new()
+	marker.name = "CombatImpactTarget"
+	marker.position = Vector3(0,1.05,0) if id=="shadow" else Vector3(0,0.82,0)
+	actor_root.add_child(marker)
 
 func _build_world_healthplate(actor_root: Node3D,id: String) -> void:
 	# A dedicated presentation node follows actor translation but not actor yaw.
