@@ -6,6 +6,7 @@ const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd"
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
 const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
 const PresentationCatalog = preload("res://scripts/presentation/checkpoint01_presentation_catalog.gd")
+const AnimationDriverClass = preload("res://scripts/presentation/combat_animation_driver.gd")
 
 const PLAYER_HOME := Vector3(-2.80,0.0,0.30)
 const ENEMY_HOME := Vector3(2.80,0.0,-0.30)
@@ -24,6 +25,7 @@ var actor_home: Dictionary = {}
 var actor_health_roots: Dictionary = {}
 var actor_health_fills: Dictionary = {}
 var actor_busy: Dictionary = {}
+var animation_drivers: Dictionary = {}
 var fallback_idle_ids: Dictionary = {}
 var battle_camera: Camera3D
 var clock := 0.0
@@ -67,6 +69,11 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 
 	actor_busy[attacker_id] = true
 	var attacker: Node3D = actor_nodes[attacker_id]
+	var driver: CombatAnimationDriver = animation_drivers.get(attacker_id)
+	if driver == null:
+		actor_busy[attacker_id] = false
+		push_error("Missing animation driver for actor_id=%s" % attacker_id)
+		return
 	var home: Vector3 = actor_home[attacker_id]
 	var target_home: Vector3 = actor_home[target_id]
 	var direction := (target_home-home).normalized()
@@ -75,14 +82,14 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 
 	match String(profile.choreography_id):
 		"shadow_heavy":
-			CharacterFactory.play_shadow_heavy_prep(attacker,presentation_speed)
+			driver.play_action_start(profile,presentation_speed)
 			_spawn_shadow_charge(attacker.global_position + Vector3(0,0.85,0))
 			var seq := create_tween()
 			seq.set_speed_scale(presentation_speed)
 			seq.tween_interval(profile.prep_delay_seconds)
 			seq.tween_callback(func():
 				if is_instance_valid(attacker):
-					CharacterFactory.play_shadow_heavy_strike(attacker,presentation_speed)
+					driver.play_action_commit(profile,presentation_speed)
 			)
 
 			var heavy_move := create_tween()
@@ -96,13 +103,13 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 			cam.tween_property(battle_camera,"position",camera_home+profile.camera_offset,profile.camera_in_seconds).set_trans(Tween.TRANS_SINE)
 			cam.tween_property(battle_camera,"fov",profile.camera_fov,profile.camera_in_seconds)
 		"shadow_basic":
-			CharacterFactory.play_shadow_basic(attacker,presentation_speed)
+			driver.play_action_start(profile,presentation_speed)
 			var basic_move := create_tween()
 			basic_move.set_speed_scale(presentation_speed)
 			basic_move.tween_property(attacker,"position",backstep_target,profile.backstep_seconds)
 			basic_move.tween_property(attacker,"position",approach_target,profile.approach_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		"hound_bite":
-			CharacterFactory.play_hound_attack(attacker,presentation_speed)
+			driver.play_action_start(profile,presentation_speed)
 			var hound_move := create_tween()
 			hound_move.set_speed_scale(presentation_speed)
 			hound_move.tween_property(attacker,"position",backstep_target,profile.backstep_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -122,10 +129,11 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 	var target: Node3D = actor_nodes[target_id]
 	var home: Vector3 = actor_home[target_id]
 
-	if target_id == "shadow":
-		CharacterFactory.play_shadow_hit(target,presentation_speed)
+	var target_driver: CombatAnimationDriver = animation_drivers.get(target_id)
+	if target_driver != null:
+		target_driver.play_hit(presentation_speed)
 	else:
-		CharacterFactory.play_hound_hit(target,presentation_speed)
+		push_error("Missing animation driver for target_id=%s" % target_id)
 
 	var attacker_home: Vector3 = actor_home.get(attacker_id,Vector3.ZERO)
 	var away := (home-attacker_home).normalized()
@@ -155,10 +163,9 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		recover.tween_property(attacker,"position",a_home,profile.recover_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 		recover.tween_callback(func():
 			actor_busy[attacker_id] = false
-			if attacker_id == "shadow":
-				CharacterFactory.play_shadow_idle(attacker,presentation_speed)
-			else:
-				CharacterFactory.play_hound_idle(attacker,presentation_speed)
+			var attacker_driver: CombatAnimationDriver = animation_drivers.get(attacker_id)
+			if attacker_driver != null:
+				attacker_driver.play_idle(presentation_speed)
 		)
 
 	if profile.camera_profile == &"heavy":
@@ -173,7 +180,8 @@ func play_death(actor_id: String) -> void:
 		return
 	var actor: Node3D = actor_nodes[actor_id]
 	actor_busy[actor_id] = true
-	if CharacterFactory.play_death(actor,presentation_speed):
+	var driver: CombatAnimationDriver = animation_drivers.get(actor_id)
+	if driver != null and driver.play_death(presentation_speed):
 		return
 	var home: Vector3 = actor_home[actor_id]
 	var t := create_tween()
@@ -404,6 +412,9 @@ func _spawn_actor(unit: Dictionary) -> void:
 	root.add_child(visual)
 
 	var model := CharacterFactory.create_shadow(true) if id=="shadow" else CharacterFactory.create_hound()
+	var actor_kind := &"shadow" if id=="shadow" else &"hound"
+	var animation_driver := AnimationDriverClass.new(model,actor_kind)
+	animation_drivers[id] = animation_driver
 	if id=="shadow":
 		model.scale = Vector3(1.05,1.05,1.05)
 	else:
@@ -414,10 +425,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 		model.scale = HOUND_PRODUCTION_SCALE if visual_tier=="production" else HOUND_PREVIEW_SCALE
 	visual.add_child(model)
 
-	if id=="shadow":
-		CharacterFactory.play_shadow_idle(model,presentation_speed)
-	else:
-		CharacterFactory.play_hound_idle(model,presentation_speed)
+	animation_driver.play_idle(presentation_speed)
 
 	var animation_names := CharacterFactory.animation_names(model)
 	if animation_names.is_empty():
