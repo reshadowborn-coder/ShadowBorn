@@ -71,6 +71,9 @@ jobs:
       - name: Environment preview integration
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/environment_preview_integration_test.gd
+      - name: Presentation profiles
+        run: |
+          /tmp/godot/godot --headless --path . --script res://tests/presentation_profile_test.gd
       - name: Presentation budget
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/presentation_budget_test.gd
