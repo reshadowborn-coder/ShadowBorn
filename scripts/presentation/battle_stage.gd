@@ -1,12 +1,15 @@
 class_name BattleStage
 extends Node3D
 
+signal contact_probe_sample(sample: Dictionary)
+
 const VisualPolicy = preload("res://scripts/presentation/visual_asset_policy.gd")
 
 const MaterialLibrary = preload("res://scripts/presentation/act0_material_library.gd")
 const EnvironmentAssetLibrary = preload("res://scripts/presentation/act0_environment_asset_library.gd")
 const PresentationCatalog = preload("res://scripts/presentation/checkpoint01_presentation_catalog.gd")
 const AnimationDriverClass = preload("res://scripts/presentation/combat_animation_driver.gd")
+const ContactProbe = preload("res://scripts/presentation/combat_contact_probe.gd")
 
 const PLAYER_HOME := Vector3(-2.80,0.0,0.30)
 const ENEMY_HOME := Vector3(2.80,0.0,-0.30)
@@ -41,6 +44,8 @@ var camera_target := CAMERA_TARGET
 var vfx_meshes: Dictionary = {}
 var vfx_materials: Dictionary = {}
 var stone_material_shared: ShaderMaterial
+var last_contact_probe: Dictionary = {}
+var last_recovery_probe: Dictionary = {}
 
 func _ready() -> void:
 	_prepare_vfx_resources()
@@ -129,6 +134,13 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 	var target: Node3D = actor_nodes[target_id]
 	var home: Vector3 = actor_home[target_id]
 
+	if actor_nodes.has(attacker_id):
+		var attacker_probe_node := actor_nodes[attacker_id] as Node3D
+		last_contact_probe = ContactProbe.sample(attacker_probe_node,target,StringName(skill_id),battle_camera)
+		last_contact_probe["attacker_id"] = attacker_id
+		last_contact_probe["target_id"] = target_id
+		contact_probe_sample.emit(last_contact_probe.duplicate(true))
+
 	var target_driver: CombatAnimationDriver = animation_drivers.get(target_id)
 	if target_driver != null:
 		target_driver.play_hit(presentation_speed)
@@ -163,6 +175,9 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		recover.tween_property(attacker,"position",a_home,profile.recover_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 		recover.tween_callback(func():
 			actor_busy[attacker_id] = false
+			last_recovery_probe = ContactProbe.recovery_sample(attacker,a_home,attacker_id)
+			last_recovery_probe["skill_id"] = skill_id
+			contact_probe_sample.emit(last_recovery_probe.duplicate(true))
 			var attacker_driver: CombatAnimationDriver = animation_drivers.get(attacker_id)
 			if attacker_driver != null:
 				attacker_driver.play_idle(presentation_speed)
