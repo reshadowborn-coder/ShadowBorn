@@ -46,6 +46,7 @@ var vfx_materials: Dictionary = {}
 var stone_material_shared: ShaderMaterial
 var last_contact_probe: Dictionary = {}
 var last_recovery_probe: Dictionary = {}
+var last_staging_probe: Dictionary = {}
 
 func _ready() -> void:
 	_prepare_vfx_resources()
@@ -82,8 +83,24 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 	var home: Vector3 = actor_home[attacker_id]
 	var target_home: Vector3 = actor_home[target_id]
 	var direction := (target_home-home).normalized()
+	var approach_distance := profile.approach_distance
+	if profile.adaptive_contact_staging:
+		var target_node := actor_nodes[target_id] as Node3D
+		var staging_probe: Dictionary = ContactProbe.sample(attacker,target_node,StringName(skill_id),battle_camera)
+		var measured_gap := float(staging_probe.get("contact_gap_3d",INF))
+		if is_finite(measured_gap):
+			var measured_approach := maxf(profile.approach_distance,measured_gap-profile.desired_contact_gap)
+			approach_distance = minf(measured_approach,profile.max_approach_distance)
+		last_staging_probe = staging_probe.duplicate(true)
+		last_staging_probe["phase"] = "staging"
+		last_staging_probe["attacker_id"] = attacker_id
+		last_staging_probe["target_id"] = target_id
+		last_staging_probe["base_approach_distance"] = profile.approach_distance
+		last_staging_probe["applied_approach_distance"] = approach_distance
+		last_staging_probe["desired_contact_gap"] = profile.desired_contact_gap
+
 	var backstep_target := home-direction*profile.backstep_distance+Vector3(0,profile.backstep_vertical,0)
-	var approach_target := home+direction*profile.approach_distance+Vector3(0,profile.approach_vertical,0)
+	var approach_target := home+direction*approach_distance+Vector3(0,profile.approach_vertical,0)
 
 	match String(profile.choreography_id):
 		"shadow_heavy":
