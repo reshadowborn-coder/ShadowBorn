@@ -22,6 +22,10 @@ extends Resource
 @export var recover_seconds: float = 0.0
 @export var impact_vfx_family: StringName = &""
 @export var camera_profile: StringName = &"none"
+@export var camera_offset: Vector3 = Vector3.ZERO
+@export var camera_fov: float = 0.0
+@export var camera_in_seconds: float = 0.0
+@export var camera_out_seconds: float = 0.0
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -31,7 +35,7 @@ func validate() -> PackedStringArray:
 		errors.append("%s presentation_action_id is required" % skill_id)
 	if choreography_id.is_empty():
 		errors.append("%s choreography_id is required" % skill_id)
-	for value in [backstep_seconds,approach_seconds,prep_delay_seconds,reaction_out_seconds,reaction_return_seconds,recover_delay_seconds,recover_seconds]:
+	for value in [backstep_seconds,approach_seconds,prep_delay_seconds,reaction_out_seconds,reaction_return_seconds,recover_delay_seconds,recover_seconds,camera_in_seconds,camera_out_seconds]:
 		if value < 0.0:
 			errors.append("%s presentation durations must be >= 0" % skill_id)
 	return errors
