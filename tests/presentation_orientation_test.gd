@@ -30,7 +30,7 @@ func _run() -> void:
 	failures += _check_hound_visual_forward(battle)
 	failures += _check_world_healthplates(battle)
 	failures += _check_shadow_sword_direction(battle)
-	failures += _check_diagonal_battle_composition(battle)
+	failures += _check_side_on_battle_composition(battle)
 	battle.queue_free()
 	await process_frame
 
@@ -178,40 +178,48 @@ func _expect(condition: bool,label: String) -> int:
 	return 1
 
 
-func _check_diagonal_battle_composition(stage: Node) -> int:
+func _check_side_on_battle_composition(stage: Node) -> int:
+	# RR-950 / QA-23: geometric acceptance candidate, NOT visual/device approval.
+	# Numeric tolerances must be calibrated against accepted production silhouettes.
 	var camera := stage.get("battle_camera") as Camera3D
+	var production := stage.get("production_environment") as Node3D
 	var actors: Dictionary = stage.get("actor_nodes")
 	var shadow := actors.get("shadow") as Node3D
 	var hound := actors.get("hound") as Node3D
-	if camera == null or shadow == null or hound == null:
-		push_error("Diagonal composition regression: camera/actors missing")
+	if camera == null or production == null or shadow == null or hound == null:
+		push_error("Side-on gate: missing production camera or combatants")
 		return 1
-
-	var viewport_size := camera.get_viewport().get_visible_rect().size
-	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
-		push_error("Diagonal composition regression: invalid viewport size")
+	var authored := production.find_child("BattleCamera",true,false) as Camera3D
+	var view := camera.get_viewport().get_visible_rect().size
+	if authored == null or view.x <= 0.0 or view.y <= 0.0:
+		push_error("Side-on gate: missing authored camera or invalid viewport")
 		return 1
-
 	var shadow_screen := camera.unproject_position(shadow.global_position)
 	var hound_screen := camera.unproject_position(hound.global_position)
-	var screen_gap := shadow_screen.distance_to(hound_screen)
-	var shadow_distance := camera.global_position.distance_to(shadow.global_position)
-	var hound_distance := camera.global_position.distance_to(hound.global_position)
-	var depth_ratio := maxf(shadow_distance,hound_distance)/maxf(0.001,minf(shadow_distance,hound_distance))
-	var target: Vector3 = stage.get("camera_target")
-
+	var lane := hound.global_position-shadow.global_position
+	lane.y = 0.0
+	if lane.length_squared() < 0.001:
+		push_error("Side-on gate: degenerate combat lane")
+		return 1
+	var forward := -camera.global_transform.basis.z.normalized()
+	var alignment := absf(forward.dot(lane.normalized()))
+	var feet_delta := absf(shadow_screen.y-hound_screen.y)/view.y
+	var gap := (hound_screen.x-shadow_screen.x)/view.x
+	var d_shadow := camera.global_position.distance_to(shadow.global_position)
+	var d_hound := camera.global_position.distance_to(hound.global_position)
+	var depth_ratio := maxf(d_shadow,d_hound)/maxf(0.001,minf(d_shadow,d_hound))
 	var failures := 0
-	failures += _expect(camera.global_position.distance_to(Vector3(-5.05,4.00,6.55)) <= 0.02,"battle restores the user-preferred diagonal camera origin")
-	failures += _expect(target.distance_to(Vector3(0.35,1.02,-0.45)) <= 0.02,"battle restores the diagonal camera target")
-	failures += _expect(absf(camera.fov-34.0) <= 0.05,"battle restores the tighter 34 degree field of view")
-	failures += _expect(not camera.is_position_behind(shadow.global_position),"Shadow stays in front of the diagonal battle camera")
-	failures += _expect(not camera.is_position_behind(hound.global_position),"Grave Hound stays in front of the diagonal battle camera")
-	failures += _expect(screen_gap >= viewport_size.x*0.24,"diagonal battle keeps a readable screen-space attack lane")
-	# The preferred three-quarter camera intentionally puts Shadow in the foreground
-	# and the Hound deeper in the arena. A previous <=1.35 ceiling accidentally
-	# rejected the user-preferred camera and favored the flatter straight-on view.
-	# Keep enough depth to preserve the diagonal read, but cap it before the enemy
-	# becomes implausibly small relative to Shadow.
-	failures += _expect(depth_ratio >= 1.20,"diagonal battle preserves intentional foreground/midground depth")
-	failures += _expect(depth_ratio <= 1.50,"diagonal battle keeps perspective scale difference controlled")
+	failures += _expect(camera == authored,"side-on uses the production-authored battle camera")
+	failures += _expect(camera.current,"side-on production camera is active")
+	failures += _expect(camera.keep_aspect == Camera3D.KEEP_HEIGHT,"side-on keeps vertical FOV for wide phones")
+	failures += _expect(not camera.is_position_behind(shadow.global_position) and not camera.is_position_behind(hound.global_position),"both actors in front of side-on camera")
+	failures += _expect(camera.is_position_in_frustum(shadow.global_position) and camera.is_position_in_frustum(hound.global_position),"both actor foot anchors inside frustum")
+	failures += _expect(alignment <= 0.20,"optical axis nearly perpendicular to combat lane")
+	failures += _expect(shadow_screen.x < hound_screen.x,"Shadow left and Hound right")
+	failures += _expect(feet_delta <= 0.05,"actor feet align within 5 percent of viewport height")
+	failures += _expect(gap >= 0.24 and gap <= 0.68,"side-on horizontal lane gap is readable")
+	failures += _expect(depth_ratio <= 1.12,"actor perspective depths remain comparable")
+	failures += _expect(shadow_screen.x >= view.x*0.05 and hound_screen.x <= view.x*0.95,"actor anchors have horizontal margins")
+	failures += _expect(shadow_screen.y >= view.y*0.08 and shadow_screen.y <= view.y*0.94 and hound_screen.y >= view.y*0.08 and hound_screen.y <= view.y*0.94,"actor foot anchors have vertical margins")
+	print("QA-23 side-on geometry: viewport=%s feet=%.4f lane=%.4f depth=%.4f alignment=%.4f" % [view,feet_delta,gap,depth_ratio,alignment])
 	return failures
