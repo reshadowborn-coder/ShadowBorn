@@ -626,6 +626,8 @@ func _prepare_vfx_resources() -> void:
 		shard_meshes.append(shard_mesh)
 	vfx_meshes["heavy_shards"] = shard_meshes
 
+# RR-956 blockout: MeshInstance3D has no modulate property. Preserve effect
+# lifetime and geometry animation; Mobile-compatible fade needs device QA.
 func _spawn_impact_flash(pos: Vector3) -> void:
 	var flash := MeshInstance3D.new()
 	flash.mesh = vfx_meshes["flash"] as Mesh
@@ -634,7 +636,7 @@ func _spawn_impact_flash(pos: Vector3) -> void:
 	var t := create_tween()
 	t.set_parallel(true)
 	t.tween_property(flash,"scale",Vector3.ONE*3.2,0.12)
-	t.tween_property(flash,"modulate:a",0.0,0.12)
+	
 	t.chain().tween_callback(flash.queue_free)
 
 func _spawn_basic_slash_impact(pos: Vector3,direction: Vector3) -> void:
@@ -651,7 +653,7 @@ func _spawn_basic_slash_impact(pos: Vector3,direction: Vector3) -> void:
 		t.set_speed_scale(presentation_speed)
 		t.set_parallel(true)
 		t.tween_property(streak,"scale",Vector3(1.0,1.0,1.8),0.10)
-		t.tween_property(streak,"modulate:a",0.0,0.13)
+		t.tween_interval(0.13)
 		t.chain().tween_callback(streak.queue_free)
 
 func _spawn_shadow_charge(pos: Vector3) -> void:
@@ -664,7 +666,7 @@ func _spawn_shadow_charge(pos: Vector3) -> void:
 	t.set_speed_scale(presentation_speed)
 	t.set_parallel(true)
 	t.tween_property(ring,"scale",Vector3.ONE*2.6,0.32)
-	t.tween_property(ring,"modulate:a",0.0,0.32)
+	
 	t.chain().tween_callback(ring.queue_free)
 
 func _spawn_heavy_shadow_impact(pos: Vector3,direction: Vector3) -> void:
@@ -677,7 +679,7 @@ func _spawn_heavy_shadow_impact(pos: Vector3,direction: Vector3) -> void:
 	t.set_speed_scale(presentation_speed)
 	t.set_parallel(true)
 	t.tween_property(burst,"scale",Vector3(4.6,2.6,4.6),0.18).set_trans(Tween.TRANS_QUAD)
-	t.tween_property(burst,"modulate:a",0.0,0.22)
+	t.tween_interval(0.22)
 	t.chain().tween_callback(burst.queue_free)
 
 	# A2 keeps a broader silhouette but shares five prebuilt shard meshes/materials.
@@ -693,7 +695,7 @@ func _spawn_heavy_shadow_impact(pos: Vector3,direction: Vector3) -> void:
 		st.set_speed_scale(presentation_speed)
 		st.set_parallel(true)
 		st.tween_property(shard,"position",pos+direction*(0.65+0.08*i)+Vector3(0,(i-2)*0.10,0),0.15)
-		st.tween_property(shard,"modulate:a",0.0,0.18)
+		st.tween_interval(0.18)
 		st.chain().tween_callback(shard.queue_free)
 
 func _camera_heavy_kick() -> void:

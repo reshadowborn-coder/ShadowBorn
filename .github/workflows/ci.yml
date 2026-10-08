@@ -91,7 +91,9 @@ jobs:
           /tmp/godot/godot --headless --path . --script res://tests/presentation_orientation_test.gd
       - name: RR-956 transformed-parent presentation
         run: |
-          /tmp/godot/godot --headless --path . --script res://tests/presentation_transform_space_test.gd
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --script res://tests/presentation_transform_space_test.gd 2>&1 | tee /tmp/rr956.log
+          ! grep -Eq "(^|[[:space:]])(ERROR:|SCRIPT ERROR:)" /tmp/rr956.log
       - name: Weapon proportion probe
         run: |
           /tmp/godot/godot --headless --path . --script res://tests/weapon_proportion_probe_test.gd

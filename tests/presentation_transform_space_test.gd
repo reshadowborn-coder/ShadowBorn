@@ -64,6 +64,7 @@ func _run() -> void:
 	_check_effects(stage,vfx["basic_slash"],3,a1_world,0.12,lane,"A1 slash")
 	_check_damage_text(stage,hound.global_position+Vector3(0.0,2.05,0.0),"A1 damage")
 	await create_timer(0.36).timeout
+	_check_effects(stage,vfx["basic_slash"],0,a1_world,0.12,lane,"A1 expired")
 
 	# Recovery unit fixture: 41 degrees is injected into cached state after
 	# initialization. This tests recovery behavior, not a 41-degree authored scene.
@@ -72,14 +73,17 @@ func _run() -> void:
 	stage.play_windup("shadow","hound","shadow_lunge")
 	_check_effects(stage,[vfx["shadow_charge"]],1,shadow.global_position+Vector3(0.0,0.85,0.0),0.02,Vector3.ZERO,"A2 charge")
 	await create_timer(0.58).timeout
+	_check_effects(stage,[vfx["shadow_charge"]],0,shadow.global_position,0.02,Vector3.ZERO,"A2 charge expired")
 
 	var a2_world := hound.global_position+Vector3(0.0,0.95,0.0)
 	stage.play_impact("shadow","hound","shadow_lunge",19,"")
-	var heavy: Array = (vfx["heavy_shards"] as Array).duplicate()
+	var heavy: Array = []
+	heavy.append_array(vfx["heavy_shards"])
 	heavy.append(vfx["heavy_burst"])
 	_check_effects(stage,heavy,6,a2_world,0.02,lane,"A2 burst and shards")
 	_check_damage_text(stage,hound.global_position+Vector3(0.0,2.05,0.0),"A2 damage")
 	await create_timer(0.68).timeout
+	_check_effects(stage,heavy,0,a2_world,0.02,lane,"A2 burst and shards expired")
 	_check(camera.position.distance_to(stage.get("camera_home"))<0.03,"A2 camera returns to parent-local home")
 	_check(absf(camera.fov-41.0)<0.05,"A2 camera restores nondefault cached FOV")
 	_check(not (stage.get("last_recovery_probe") as Dictionary).is_empty(),"A2 emits recovery probe")
