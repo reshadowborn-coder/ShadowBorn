@@ -7,6 +7,10 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	# QA-23: headless CI must use the intended virtual AND physical aspect.
+	root.content_scale_size = Vector2i(1920,1080)
+	root.size = Vector2i(1920,1080)
+	await process_frame
 	var failures := 0
 
 	var awakening := AwakeningStageScript.new()
@@ -30,8 +34,27 @@ func _run() -> void:
 	failures += _check_hound_visual_forward(battle)
 	failures += _check_world_healthplates(battle)
 	failures += _check_shadow_sword_direction(battle)
-	failures += _check_side_on_battle_composition(battle)
+	failures += _check_side_on_battle_composition(battle,Vector2(1920.0,1080.0))
 	battle.queue_free()
+	await process_frame
+
+	# Independent iPhone 13 Pro landscape-aspect scene, never a scaled 16:9 proxy.
+	root.content_scale_size = Vector2i(2532,1170)
+	root.size = Vector2i(2532,1170)
+	await process_frame
+	var phone_battle := BattleStageScript.new()
+	root.add_child(phone_battle)
+	await process_frame
+	phone_battle.apply_state({
+		"speed":1.0,
+		"units":[
+			{"id":"shadow","name":"Shadow","hp":100,"max_hp":100},
+			{"id":"hound","name":"Grave Hound","hp":80,"max_hp":80}
+		]
+	})
+	await process_frame
+	failures += _check_side_on_battle_composition(phone_battle,Vector2(2532.0,1170.0))
+	phone_battle.queue_free()
 	await process_frame
 
 	if failures == 0:
@@ -178,7 +201,7 @@ func _expect(condition: bool,label: String) -> int:
 	return 1
 
 
-func _check_side_on_battle_composition(stage: Node) -> int:
+func _check_side_on_battle_composition(stage: Node,expected_view: Vector2) -> int:
 	# RR-950 / QA-23: geometric acceptance candidate, NOT visual/device approval.
 	# Numeric tolerances must be calibrated against accepted production silhouettes.
 	var camera := stage.get("battle_camera") as Camera3D
@@ -190,7 +213,11 @@ func _check_side_on_battle_composition(stage: Node) -> int:
 		push_error("Side-on gate: missing production camera or combatants")
 		return 1
 	var authored := production.find_child("BattleCamera",true,false) as Camera3D
-	var view := camera.get_viewport().get_visible_rect().size
+	var view := Vector2(camera.get_viewport().get_visible_rect().size)
+	print("QA-23 viewport audit: expected=%s visible=%s physical=%s virtual=%s" % [expected_view,view,root.size,root.content_scale_size])
+	if not view.is_equal_approx(expected_view):
+		push_error("QA-23 viewport mismatch: expected=%s visible=%s" % [expected_view,view])
+		return 1
 	if authored == null or view.x <= 0.0 or view.y <= 0.0:
 		push_error("Side-on gate: missing authored camera or invalid viewport")
 		return 1
@@ -205,8 +232,10 @@ func _check_side_on_battle_composition(stage: Node) -> int:
 	var alignment := absf(forward.dot(lane.normalized()))
 	var feet_delta := absf(shadow_screen.y-hound_screen.y)/view.y
 	var gap := (hound_screen.x-shadow_screen.x)/view.x
-	var d_shadow := camera.global_position.distance_to(shadow.global_position)
-	var d_hound := camera.global_position.distance_to(hound.global_position)
+	# RR-959: camera-space optical depth, not radial camera-to-actor distance.
+	var world_to_camera := camera.global_transform.affine_inverse()
+	var d_shadow := -(world_to_camera * shadow.global_position).z
+	var d_hound := -(world_to_camera * hound.global_position).z
 	var depth_ratio := maxf(d_shadow,d_hound)/maxf(0.001,minf(d_shadow,d_hound))
 	var failures := 0
 	failures += _expect(camera == authored,"side-on uses the production-authored battle camera")
