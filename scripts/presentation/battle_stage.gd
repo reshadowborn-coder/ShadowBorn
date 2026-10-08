@@ -37,6 +37,7 @@ var production_environment: Node3D
 var player_home := PLAYER_HOME
 var enemy_home := ENEMY_HOME
 var camera_home := CAMERA_HOME
+var camera_home_fov := CAMERA_FOV
 var camera_target := CAMERA_TARGET
 
 # Mesh/material resources are immutable during combat. Build them once so A1/A2
@@ -94,7 +95,7 @@ func play_windup(attacker_id: String,target_id: String,skill_id: String) -> void
 	match String(profile.choreography_id):
 		"shadow_heavy":
 			driver.play_action_start(profile,presentation_speed)
-			_spawn_shadow_charge(attacker.global_position + Vector3(0,0.85,0))
+			_spawn_shadow_charge(to_local(attacker.global_position + Vector3(0,0.85,0)))
 			var seq := create_tween()
 			seq.set_speed_scale(presentation_speed)
 			seq.tween_interval(profile.prep_delay_seconds)
@@ -163,14 +164,14 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 
 	match String(profile.impact_vfx_family):
 		"heavy_shadow":
-			_spawn_heavy_shadow_impact(target.global_position+Vector3(0,0.95,0),away)
+			_spawn_heavy_shadow_impact(to_local(target.global_position+Vector3(0,0.95,0)),away)
 			_camera_heavy_kick()
 		"basic_slash":
-			_spawn_basic_slash_impact(target.global_position+Vector3(0,0.95,0),away)
+			_spawn_basic_slash_impact(to_local(target.global_position+Vector3(0,0.95,0)),away)
 		_:
 			push_error("Unsupported impact_vfx_family=%s for skill_id=%s" % [profile.impact_vfx_family,skill_id])
 
-	_spawn_damage_text(target.global_position+Vector3(0,2.05,0),damage,effect)
+	_spawn_damage_text(to_local(target.global_position+Vector3(0,2.05,0)),damage,effect)
 
 	if actor_nodes.has(attacker_id):
 		var attacker: Node3D = actor_nodes[attacker_id]
@@ -194,7 +195,7 @@ func play_impact(attacker_id: String,target_id: String,skill_id: String,damage: 
 		cam_back.set_speed_scale(presentation_speed)
 		cam_back.set_parallel(true)
 		cam_back.tween_property(battle_camera,"position",camera_home,profile.camera_out_seconds)
-		cam_back.tween_property(battle_camera,"fov",CAMERA_FOV,profile.camera_out_seconds)
+		cam_back.tween_property(battle_camera,"fov",camera_home_fov,profile.camera_out_seconds)
 
 func play_death(actor_id: String) -> void:
 	if not actor_nodes.has(actor_id):
@@ -235,20 +236,21 @@ func _build_environment() -> void:
 		var authored_camera := production_environment.find_child("BattleCamera",true,false) as Camera3D
 
 		if player_anchor != null:
-			player_home = player_anchor.global_position
+			player_home = to_local(player_anchor.global_position)
 		else:
 			push_error("Production battle scene must provide Node3D named PlayerHome")
 		if enemy_anchor != null:
-			enemy_home = enemy_anchor.global_position
+			enemy_home = to_local(enemy_anchor.global_position)
 		else:
 			push_error("Production battle scene must provide Node3D named EnemyHome")
 		if target_anchor != null:
-			camera_target = target_anchor.global_position
+			camera_target = to_local(target_anchor.global_position)
 		else:
 			push_error("Production battle scene must provide Node3D named CameraTarget")
 		if authored_camera != null:
 			battle_camera = authored_camera
-			camera_home = authored_camera.global_position
+			camera_home = authored_camera.position
+			camera_home_fov = authored_camera.fov
 			battle_camera.current = true
 		else:
 			push_error("Production battle scene must provide Camera3D named BattleCamera")
@@ -341,7 +343,7 @@ func _build_debug_environment() -> void:
 	battle_camera.fov = CAMERA_FOV
 	battle_camera.position = camera_home
 	add_child(battle_camera)
-	battle_camera.look_at(camera_target,Vector3.UP)
+	battle_camera.look_at(to_global(camera_target),Vector3.UP)
 
 func _build_preview_boundary_ruins() -> void:
 	var placements := [
@@ -463,7 +465,7 @@ func _spawn_actor(unit: Dictionary) -> void:
 
 func _face_actor_at_opponent(root: Node3D,model: Node3D,id: String) -> void:
 	var opponent := enemy_home if id=="shadow" else player_home
-	root.look_at(opponent,Vector3.UP)
+	root.look_at(to_global(opponent),Vector3.UP)
 	root.rotation_degrees.x = 0.0
 	root.rotation_degrees.z = 0.0
 
@@ -642,9 +644,9 @@ func _spawn_basic_slash_impact(pos: Vector3,direction: Vector3) -> void:
 		var streak := MeshInstance3D.new()
 		streak.mesh = meshes[i] as Mesh
 		streak.position = pos + Vector3(0,0.10*float(i-1),0)
-		streak.look_at(pos+direction,Vector3.UP)
-		streak.rotation_degrees.z += -24.0+24.0*i
 		add_child(streak)
+		streak.look_at(to_global(pos+direction),Vector3.UP)
+		streak.rotation_degrees.z += -24.0+24.0*i
 		var t := create_tween()
 		t.set_speed_scale(presentation_speed)
 		t.set_parallel(true)
@@ -684,9 +686,9 @@ func _spawn_heavy_shadow_impact(pos: Vector3,direction: Vector3) -> void:
 		var shard := MeshInstance3D.new()
 		shard.mesh = shard_meshes[i] as Mesh
 		shard.position = pos
-		shard.look_at(pos+direction,Vector3.UP)
-		shard.rotation_degrees.z += -48.0+24.0*i
 		add_child(shard)
+		shard.look_at(to_global(pos+direction),Vector3.UP)
+		shard.rotation_degrees.z += -48.0+24.0*i
 		var st := create_tween()
 		st.set_speed_scale(presentation_speed)
 		st.set_parallel(true)
