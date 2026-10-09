@@ -54,6 +54,12 @@ The current slice may be technically functional while still looking wrong from t
 - Reduce transparent effects and cosmetic particles before sacrificing actor readability.
 - Physical-device profiling is required before claiming performance target achieved.
 
+## Renderer provenance evidence gate
+- GL Compatibility/OpenGL screenshots are diagnostic projection and layout proxies, not Mobile renderer or iPhone Metal acceptance. Record exact commit SHA, Godot version, renderer, driver, viewport and production/preview asset tier with every capture.
+- Mobile renderer screenshots from a supported desktop Vulkan runner are a separate intermediate test. If Mobile cannot initialize, report UNAVAILABLE rather than silently falling back to GL.
+- Only a physical iPhone 13 Pro Metal capture can validate target lighting/VFX, safe-area touch placement, GPU frame time and thermal behavior. Do not raise the 2/100 visible-quality estimate from CI or proxy images.
+- A production provenance tag on an environment scene proves source ownership, not visual approval; final Shadow/Hound GLBs and camera-view silhouette/CONTACT_T0_POST_DRAW evidence remain required.
+
 ## Required regression workflow
 Before merging a presentation change:
 1. Inspect the real final camera.
