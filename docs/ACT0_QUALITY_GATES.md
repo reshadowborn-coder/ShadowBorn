@@ -1,8 +1,8 @@
 # Shadowborn — ACT 0 + Temple Quality Gates
 
 Status: USER CANON / production quality contract
-Baseline visual-gameplay readiness: 5/100
-Latest user visual acceptance checkpoint (2026-09-28): 8.5/100 (previously 7/100). The slice is visibly better, especially Shadow, but remains raw; the newer camera angle was judged worse, so camera work must return toward the earlier diagonal composition before readiness rises again.
+Current user-reported visible build quality (2026-10-09): approximately 2/100. Historical 2026-09-26 baseline: 5/100.
+Historical 2026-09-28 feedback: 8.5/100 (previously 7/100), with a then-preferred diagonal angle. SUPERSEDED by the latest user canon: fixed battle rooms, controlled side-on RAID-like camera, no manual movement or walkable traversal, and no visible travel. Historical ratings do not override the latest approximately 2/100 quality assessment.
 
 ## Why this file exists
 The current slice may be technically functional while still looking wrong from the player's camera. These gates exist to prevent repeating visible orientation, staging and presentation mistakes and to make progress measurable by what the player actually sees.
@@ -34,8 +34,8 @@ The current slice may be technically functional while still looking wrong from t
 
 5. Graphics priority
 - Current graphics quality is below target and must be treated as a primary production problem.
-- Improve in this order: composition/camera -> actor silhouette -> lighting/value separation -> material families -> animation/contact -> restrained VFX -> microdetail.
-- Dark mood must not become black mush. Shadow, enemy, path and landmark must remain readable on a phone-sized image.
+- Improve in this order: composition/camera -> focal Shadow/Hound silhouettes and production assets -> animation/contact -> lighting/value -> materials/VFX -> microdetail.
+- Dark mood must not become black mush. Shadow, enemy, fixed battle floor and room landmarks must remain readable on a phone-sized image.
 - Avoid adding clutter/detail before macro readability is solved.
 
 6. Shadow quality target
@@ -65,6 +65,6 @@ Before merging a presentation change:
 7. Do not increase readiness unless the visible result is clearly better.
 
 ## Progress rule
-User-established baseline remains 5/100 until the visible slice genuinely improves.
+Current user-reported visible quality remains approximately 2/100 until new gameplay-camera and physical-device evidence justifies a revised user assessment. Preserve earlier 5/100 and 8.5/100 ratings as dated history only.
 Research/technical maturity must always be reported separately.
 No synthetic progress percentage.
