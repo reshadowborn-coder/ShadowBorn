@@ -10,7 +10,19 @@ func _init() -> void:
 
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
-	root.size = Vector2i(1280,720)
+	var requested := OS.get_environment("SHADOWBORN_CAPTURE_SIZE").split("x")
+	if requested.size() != 2:
+		push_error("Missing SHADOWBORN_CAPTURE_SIZE=WIDTHxHEIGHT")
+		quit(1)
+		return
+	var target := Vector2i(int(requested[0]),int(requested[1]))
+	root.content_scale_size = target
+	root.size = target
+	await process_frame
+	if Vector2i(root.get_visible_rect().size) != target:
+		push_error("Visual viewport mismatch: %s != %s" % [root.get_visible_rect().size,target])
+		quit(1)
+		return
 
 	var awakening := AwakeningStageScript.new()
 	root.add_child(awakening)
