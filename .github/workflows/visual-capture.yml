@@ -2,24 +2,26 @@ name: Shadowborn Visual Capture
 
 on:
   push:
-    branches: [main]
+    branches: [main, "reboot/qa23-dual-aspect-visual-evidence"]
     paths:
       - "assets/**"
-      - "scripts/presentation/**"
+      - "scenes/**"
+      - "scripts/**"
+      - "project.godot"
       - "tests/visual_capture_test.gd"
       - ".github/workflows/visual-capture.yml"
   pull_request:
-    paths:
-      - "assets/**"
-      - "scripts/presentation/**"
-      - "tests/visual_capture_test.gd"
-      - ".github/workflows/visual-capture.yml"
   workflow_dispatch:
 
 jobs:
   capture:
+    name: GL_PROXY ${{ matrix.capture_size }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        capture_size: ["1920x1080", "2532x1170"]
     steps:
       - uses: actions/checkout@v4
       - name: Install Godot 4.7.2
@@ -30,18 +32,57 @@ jobs:
           chmod +x /tmp/godot/godot
       - name: Import assets
         run: |
-          /tmp/godot/godot --headless --path . --editor --quit
+          set -o pipefail
+          /tmp/godot/godot --headless --path . --audio-driver Dummy --editor --quit 2>&1 | tee /tmp/import.log
+          if grep -Eq "(SCRIPT ERROR:|ERROR:)" /tmp/import.log; then exit 1; fi
       - name: Prepare virtual display
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb
-      - name: Capture presentation frames
+      - name: Capture presentation frames (GL_PROXY, never Metal)
+        env:
+          SHADOWBORN_CAPTURE_SIZE: ${{ matrix.capture_size }}
         run: |
-          xvfb-run -a -s "-screen 0 1280x720x24" /tmp/godot/godot --path . --rendering-method gl_compatibility --script res://tests/visual_capture_test.gd
-      - name: Upload visual captures
+          set -o pipefail
+          xvfb-run -a -s "-screen 0 ${{ matrix.capture_size }}x24" /tmp/godot/godot --path . --audio-driver Dummy --resolution ${{ matrix.capture_size }} --rendering-method gl_compatibility --script res://tests/visual_capture_test.gd 2>&1 | tee /tmp/capture.log
+          if grep -Eq "(SCRIPT ERROR:|ERROR:)" /tmp/capture.log; then exit 1; fi
+      - name: Validate GL_PROXY PNG inventory and native dimensions
+        env:
+          SHADOWBORN_CAPTURE_SIZE: ${{ matrix.capture_size }}
+        run: |
+          python3 - <<'PYPNG'
+          import os, pathlib, struct
+          expected = {
+              'awakening_corpse.png', 'awakening_rise.png', 'awakening_pickup.png',
+              'corpse_pose_sheet.png', 'shadow_idle_sheet.png', 'grave_hound_battle.png',
+              'grave_hound_attack_coil.png', 'grave_hound_attack_launch.png',
+              'grave_hound_attack_contact.png', 'hound_bite_pose_15.png',
+              'hound_bite_pose_50.png', 'hound_bite_pose_85.png',
+              'shadow_a1.png', 'shadow_a2.png'
+          }
+          folder = pathlib.Path('/tmp/shadowborn-visual')
+          actual = {p.name for p in folder.glob('*.png')}
+          assert actual == expected, f'PNG mismatch: missing={expected-actual}, extra={actual-expected}'
+          size = tuple(map(int, os.environ['SHADOWBORN_CAPTURE_SIZE'].split('x')))
+          for name in sorted(expected):
+              with (folder/name).open('rb') as f:
+                  header = f.read(24)
+              assert header[:8] == b'\\x89PNG\\r\\n\\x1a\\n' and header[12:16] == b'IHDR', f'Bad PNG: {name}'
+              assert struct.unpack('>II', header[16:24]) == size, f'Wrong dimensions: {name}'
+          (folder/'capture_manifest.txt').write_text(
+              f'SHA={os.environ["GITHUB_SHA"]}\\nENGINE=Godot 4.7.2\\n'
+              f'RENDERER=GL_PROXY gl_compatibility; NOT Metal\\n'
+              f'RESOLUTION={size[0]}x{size[1]}\\nPNG_COUNT={len(expected)}\\n'
+          )
+          print(f'GL_PROXY: {len(expected)} validated PNGs at {size} for {os.environ["GITHUB_SHA"]}')
+          PYPNG
+      - name: Upload GL_PROXY captures and provenance
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: shadowborn-visual-capture
-          path: /tmp/shadowborn-visual/*.png
-          if-no-files-found: error
+          name: shadowborn-GL_PROXY-${{ matrix.capture_size }}
+          path: |
+            /tmp/shadowborn-visual/*.png
+            /tmp/shadowborn-visual/capture_manifest.txt
+          if-no-files-found: warn
           retention-days: 14
