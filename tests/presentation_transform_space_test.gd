@@ -77,8 +77,12 @@ func _run() -> void:
 
 	var a2_world := hound.global_position+Vector3(0.0,0.95,0.0)
 	stage.play_impact("shadow","hound","shadow_lunge",19,"")
+	# Copy typed BoxMesh shards element-by-element into a genuinely untyped Array.
+	# append_array() can preserve the source Array[BoxMesh] element constraint;
+	# the burst is a SphereMesh and must coexist in this expectation list.
 	var heavy: Array = []
-	heavy.append_array(vfx["heavy_shards"])
+	for shard_mesh in vfx["heavy_shards"]:
+		heavy.append(shard_mesh)
 	heavy.append(vfx["heavy_burst"])
 	_check_effects(stage,heavy,6,a2_world,0.02,lane,"A2 burst and shards")
 	_check_damage_text(stage,hound.global_position+Vector3(0.0,2.05,0.0),"A2 damage")
